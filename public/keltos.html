@@ -3321,6 +3321,90 @@ video{
     </div>
   </header>
 
+  <!-- ============ MARKET INTELLIGENCE BAR ============ -->
+  <div class="mkt-intel-bar" id="mktIntelBar" aria-label="Piyasa zekası">
+    <div class="mi-item mi-fg" title="Fear & Greed Index">
+      <span class="mi-icon">🔥</span>
+      <span class="mi-label">Fear &amp; Greed</span>
+      <span class="mi-value" id="miFearGreed">72 <em>Greed</em></span>
+    </div>
+    <div class="mi-sep"></div>
+    <div class="mi-item mi-trend" title="Market Trend">
+      <span class="mi-icon">📈</span>
+      <span class="mi-label">Market Trend</span>
+      <span class="mi-value" id="miTrend">Bullish</span>
+    </div>
+    <div class="mi-sep"></div>
+    <div class="mi-item mi-conf" title="Signal Confidence">
+      <span class="mi-icon">⚡</span>
+      <span class="mi-label">Signal Confidence</span>
+      <span class="mi-value" id="miConfidence">84%</span>
+    </div>
+    <div class="mi-sep"></div>
+    <div class="mi-item mi-whale" title="Whale Activity">
+      <span class="mi-icon">🐋</span>
+      <span class="mi-label">Whale Activity</span>
+      <span class="mi-value" id="miWhale">High</span>
+    </div>
+  </div>
+  <style>
+    .mkt-intel-bar{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      background:linear-gradient(90deg, rgba(56,189,248,.06), rgba(167,139,250,.06));
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:8px 14px;
+      margin:0 0 14px;
+      font-size:12.5px;
+      box-shadow:0 4px 14px var(--shadow);
+      backdrop-filter:blur(6px);
+    }
+    .mkt-intel-bar .mi-item{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:4px 8px;border-radius:999px;
+      white-space:nowrap;
+    }
+    .mkt-intel-bar .mi-icon{font-size:14px;line-height:1}
+    .mkt-intel-bar .mi-label{color:var(--muted);font-weight:500}
+    .mkt-intel-bar .mi-value{color:var(--text);font-weight:700;letter-spacing:.2px}
+    .mkt-intel-bar .mi-value em{font-style:normal;font-weight:600;color:var(--yellow);margin-left:2px}
+    .mkt-intel-bar .mi-trend .mi-value{color:var(--green)}
+    .mkt-intel-bar .mi-conf .mi-value{color:var(--blue)}
+    .mkt-intel-bar .mi-whale .mi-value{color:var(--purple)}
+    .mkt-intel-bar .mi-sep{
+      width:1px;height:18px;background:var(--border);opacity:.7;
+    }
+    @media (max-width: 640px){
+      .mkt-intel-bar{gap:6px;padding:6px 10px;font-size:11.5px;border-radius:12px}
+      .mkt-intel-bar .mi-sep{display:none}
+      .mkt-intel-bar .mi-item{padding:3px 6px}
+      .mkt-intel-bar .mi-label{display:none}
+    }
+
+    /* SIGNAL REASONS */
+    .signal-reasons{
+      margin-top:10px;
+      padding:10px 12px;
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:10px;
+    }
+    .signal-reasons .sr-title{
+      font-size:11px;font-weight:700;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;
+    }
+    .signal-reasons ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+    .signal-reasons li{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text)}
+    .signal-reasons li .sr-ic{font-weight:900;width:14px;text-align:center}
+    .signal-reasons li.ok .sr-ic{color:var(--green)}
+    .signal-reasons li.bad .sr-ic{color:var(--red)}
+    .signal-reasons li.neu .sr-ic{color:var(--muted)}
+    .signal-reasons li small{color:var(--muted);margin-left:2px}
+    @media (max-width:560px){
+      .signal-reasons ul{grid-template-columns:1fr}
+    }
+  </style>
+
   <div class="k-control-row">
     <div class="live-market-bar">
       <div class="live-dot"></div>
@@ -4402,8 +4486,53 @@ function renderCard(d){
         <div class="metric"><div class="l">Hacim</div><div class="v">${d.volTrend||"--"}</div></div>
       </div>
       ${detailHtml}
+      ${buildSignalReasons(d)}
     </div>
   </div>`;
+}
+
+function buildSignalReasons(d){
+  try{
+    const isBuy = d.signal === "BUY";
+    const isSell = d.signal === "SELL";
+    // RSI
+    let rsiCls="neu", rsiTxt="Neutral";
+    if(typeof d.rsi === "number"){
+      if(d.rsi < 30){ rsiCls = isBuy ? "ok" : "bad"; rsiTxt = "Oversold ("+d.rsi.toFixed(0)+")"; }
+      else if(d.rsi > 70){ rsiCls = isSell ? "ok" : "bad"; rsiTxt = "Overbought ("+d.rsi.toFixed(0)+")"; }
+      else { rsiCls = "neu"; rsiTxt = "Neutral ("+d.rsi.toFixed(0)+")"; }
+    }
+    // MACD
+    let macdCls="neu", macdTxt="Flat";
+    if(d.macdHist !== null && d.macdHist !== undefined){
+      if(d.macdHist > 0){ macdCls = isBuy ? "ok" : (isSell ? "bad" : "neu"); macdTxt = "Bullish Cross"; }
+      else if(d.macdHist < 0){ macdCls = isSell ? "ok" : (isBuy ? "bad" : "neu"); macdTxt = "Bearish Cross"; }
+    }
+    // Volume
+    const v = String(d.volTrend||"").toLowerCase();
+    let volCls="neu", volTxt = d.volTrend || "Stable";
+    if(v.includes("art") || v.includes("yüks") || v.includes("yuks") || v.includes("up") || v.includes("inc") || v.includes("high")){
+      volCls = "ok"; volTxt = "Volume Increasing";
+    } else if(v.includes("düş") || v.includes("dus") || v.includes("low") || v.includes("dec")){
+      volCls = isSell ? "ok" : "bad"; volTxt = "Volume Decreasing";
+    }
+    // Trend (EMA20 vs EMA50 + signal alignment)
+    let trCls="neu", trTxt="Market Sentiment Neutral";
+    if(typeof d.e20 === "number" && typeof d.e50 === "number"){
+      if(d.e20 > d.e50){ trCls = isBuy ? "ok" : (isSell ? "bad" : "neu"); trTxt = "Market Sentiment Positive"; }
+      else if(d.e20 < d.e50){ trCls = isSell ? "ok" : (isBuy ? "bad" : "neu"); trTxt = "Market Sentiment Negative"; }
+    }
+    const ic = c => c==="ok" ? "✓" : (c==="bad" ? "✕" : "•");
+    return `<div class="signal-reasons">
+      <div class="sr-title">Neden Bu Sinyal Verildi?</div>
+      <ul>
+        <li class="${rsiCls}"><span class="sr-ic">${ic(rsiCls)}</span>RSI Durumu <small>${rsiTxt}</small></li>
+        <li class="${macdCls}"><span class="sr-ic">${ic(macdCls)}</span>MACD Trendi <small>${macdTxt}</small></li>
+        <li class="${volCls}"><span class="sr-ic">${ic(volCls)}</span>Hacim Değişimi <small>${volTxt}</small></li>
+        <li class="${trCls}"><span class="sr-ic">${ic(trCls)}</span>Genel Trend <small>${trTxt}</small></li>
+      </ul>
+    </div>`;
+  }catch(e){ return ""; }
 }
 
 function renderUltra(){
