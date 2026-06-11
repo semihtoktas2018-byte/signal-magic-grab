@@ -3425,8 +3425,143 @@ video{
     </div>
   </div>
 
+  <!-- ============ TOP OPPORTUNITIES PANEL ============ -->
+  <div class="top-opp-panel" id="topOppPanel" aria-label="Öne çıkan fırsatlar">
+    <div class="top-opp-item top-opp-best">
+      <span class="top-opp-ic">🏆</span>
+      <div class="top-opp-body">
+        <span class="top-opp-label">Best Opportunity</span>
+        <span class="top-opp-value" id="topOppBest">BTCUSDT</span>
+      </div>
+      <span class="top-opp-badge">#1</span>
+    </div>
+    <div class="top-opp-sep"></div>
+    <div class="top-opp-item top-opp-strong">
+      <span class="top-opp-ic">🔥</span>
+      <div class="top-opp-body">
+        <span class="top-opp-label">Strong Buy</span>
+        <span class="top-opp-value" id="topOppStrong">SOLUSDT</span>
+      </div>
+      <span class="top-opp-badge">HOT</span>
+    </div>
+    <div class="top-opp-sep"></div>
+    <div class="top-opp-item top-opp-momentum">
+      <span class="top-opp-ic">⚡</span>
+      <div class="top-opp-body">
+        <span class="top-opp-label">Momentum Trade</span>
+        <span class="top-opp-value" id="topOppMomentum">LINKUSDT</span>
+      </div>
+      <span class="top-opp-badge">↑</span>
+    </div>
+  </div>
+  <style>
+    .top-opp-panel{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin:0 0 14px;
+    }
+    .top-opp-item{
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:linear-gradient(180deg,rgba(10,20,34,.92),rgba(5,12,22,.96));
+      border:1px solid rgba(120,190,255,.14);
+      box-shadow:0 10px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+      transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+      cursor:default;
+    }
+    .top-opp-item::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:radial-gradient(circle at 80% 10%,rgba(255,255,255,.06),transparent 45%);
+    }
+    .top-opp-item:hover{
+      transform:translateY(-2px);
+      border-color:rgba(120,190,255,.28);
+      box-shadow:0 14px 35px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .top-opp-ic{
+      font-size:18px;
+      line-height:1;
+      flex-shrink:0;
+    }
+    .top-opp-body{
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+      min-width:0;
+    }
+    .top-opp-label{
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .top-opp-value{
+      font-size:14px;
+      font-weight:900;
+      color:#fff;
+      letter-spacing:.2px;
+    }
+    .top-opp-badge{
+      margin-left:auto;
+      padding:3px 8px;
+      border-radius:8px;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.4px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.10);
+      color:#e2e8f0;
+      flex-shrink:0;
+    }
+    .top-opp-best .top-opp-badge{
+      background:rgba(245,182,41,.12);
+      border-color:rgba(245,182,41,.30);
+      color:#ffd347;
+    }
+    .top-opp-strong .top-opp-badge{
+      background:rgba(34,197,94,.12);
+      border-color:rgba(34,197,94,.30);
+      color:#4ade80;
+    }
+    .top-opp-momentum .top-opp-badge{
+      background:rgba(56,189,248,.12);
+      border-color:rgba(56,189,248,.30);
+      color:#7dd3fc;
+    }
+    .top-opp-sep{
+      display:none;
+    }
+    @media(max-width:900px){
+      .top-opp-panel{
+        grid-template-columns:1fr;
+        gap:10px;
+      }
+      .top-opp-sep{display:none}
+      .top-opp-item{padding:10px 12px}
+      .top-opp-value{font-size:13px}
+    }
+    @media(max-width:520px){
+      .top-opp-panel{gap:8px;margin:0 0 12px}
+      .top-opp-item{padding:10px 12px;border-radius:12px}
+      .top-opp-ic{font-size:16px}
+      .top-opp-label{font-size:9px}
+      .top-opp-value{font-size:12px}
+    }
+  </style>
+
   <div class="warning" data-i="warning">Bu panel otomatik işlem açmaz. Sadece teknik analiz, risk hesabı ve güvenli paper trade simülasyonu yapar.</div>
   <div class="error-bar" id="errorBar"></div>
+
 
   <div class="tabs legacy-tabs">
     <button class="tab-btn active" onclick="switchTab('signals',this)">📊 Sinyaller</button>
