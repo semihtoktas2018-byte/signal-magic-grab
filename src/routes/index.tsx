@@ -3,27 +3,21 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "KELTOŞ PARAYA KOŞ v5.0" },
+      { name: "description", content: "Keltoş canlı kripto sinyalleri, paper trade ve backtest paneli." },
+      { property: "og:title", content: "KELTOŞ PARAYA KOŞ" },
+      { property: "og:description", content: "Canlı kripto sinyalleri, paper trade ve backtest." },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <iframe
+      src="/keltos.html"
+      title="Keltoş Signal"
+      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", border: 0 }}
+    />
   );
 }
