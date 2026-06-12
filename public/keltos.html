@@ -5481,6 +5481,84 @@ restartAutoRefresh();
   }, true);
 })();
 </script>
+<script>
+/* === KELTOŞ LIVE INTEL PANELS PATCH ===
+   Sahte/statik panelleri gerçek veriyle besler.
+   Mevcut sinyal/Telegram/Paper Trade JS'ine dokunmaz, sadece okuma yapar. */
+(function(){
+  if(window.__keltosIntelPatchLoaded) return;
+  window.__keltosIntelPatchLoaded = true;
 
+  function setText(id, val){ const el=document.getElementById(id); if(el) el.textContent = val; }
+  function setHTML(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html; }
+  function sym(s){ return String(s||'').replace('USDT',''); }
+
+  // ---- Fear & Greed (gerçek dış API, key gerektirmez) ----
+  function fetchFearGreed(){
+    fetch('https://api.alternative.me/fng/?limit=1')
+      .then(r=>r.json())
+      .then(j=>{
+        const d = j && j.data && j.data[0];
+        if(!d) return;
+        setHTML('miFearGreed', d.value+' <em>'+(d.value_classification||'')+'</em>');
+      })
+      .catch(()=>{});
+  }
+  fetchFearGreed();
+  setInterval(fetchFearGreed, 15*60*1000);
+
+  // ---- Diğer paneller: lastData üzerinden ----
+  function updateIntelPanels(){
+    const data = (typeof lastData!=='undefined' && Array.isArray(lastData)) ? lastData : [];
+    if(!data.length) return;
+
+    const buyCount=data.filter(d=>d.signal==='BUY').length;
+    const sellCount=data.filter(d=>d.signal==='SELL').length;
+    const avgScore=data.reduce((s,d)=>s+(Number(d.score)||0),0)/data.length;
+    const pos=data.filter(d=>(Number(d.change)||0)>0).length;
+    const neg=data.filter(d=>(Number(d.change)||0)<0).length;
+    let score = Math.round((avgScore*0.50) + ((buyCount-sellCount)/Math.max(data.length,1))*25 + ((pos-neg)/Math.max(data.length,1))*25 + 35);
+    score=Math.max(0,Math.min(100,score));
+    setText('miTrend', score>=56?'Bullish':(score<=35?'Bearish':'Neutral'));
+    setText('miConfidence', score+'%');
+
+    // Whale Activity (Tahmini) — hacim oranı bazlı proxy
+    const ratios = data.map(d=>Number(d.volRatio)||1);
+    const avgRatio = ratios.reduce((a,b)=>a+b,0)/ratios.length;
+    const highVolCount = data.filter(d=>d.volTrend==='HIGH').length;
+    const whaleLabel = (avgRatio>1.4 || highVolCount>=Math.ceil(data.length*0.4)) ? 'Yüksek (Tahmini)'
+                      : (avgRatio>1.1 || highVolCount>=2) ? 'Orta (Tahmini)'
+                      : 'Düşük (Tahmini)';
+    setText('miWhale', whaleLabel);
+
+    // ---- Top Opportunities ----
+    const buys = data.filter(d=>d.signal==='BUY').sort((a,b)=>(b.score||0)-(a.score||0));
+    const best = [...data].sort((a,b)=>(b.score||0)-(a.score||0))[0];
+    const strong = buys.find(d=>d.quality==='ULTRA'||d.quality==='GÜÇLÜ') || buys[0];
+    const momentum = data.filter(d=>d.volTrend==='HIGH').sort((a,b)=>Math.abs(b.change||0)-Math.abs(a.change||0))[0]
+                     || [...data].sort((a,b)=>Math.abs(b.change||0)-Math.abs(a.change||0))[0];
+
+    if(best) setText('topOppBest', sym(best.symbol)+'USDT');
+    setText('topOppStrong', strong ? sym(strong.symbol)+'USDT' : '—');
+    if(momentum) setText('topOppMomentum', sym(momentum.symbol)+'USDT');
+
+    // ---- Smart Money ----
+    const accumulating = buys.slice(0,2).map(d=>sym(d.symbol)).join(' · ') || '—';
+    const sells = data.filter(d=>d.signal==='SELL').sort((a,b)=>(b.score||0)-(a.score||0));
+    const distribution = sells.slice(0,2).map(d=>sym(d.symbol)).join(' · ') || '—';
+    const riskRatio = sellCount/Math.max(data.length,1);
+    const riskLevel = riskRatio>0.35 ? 'Yüksek' : riskRatio>0.15 ? 'Orta' : 'Düşük';
+
+    const smItems = document.querySelectorAll('#smartMoneyPanel .sm-value');
+    if(smItems[0]) smItems[0].textContent = whaleLabel;
+    if(smItems[1]) smItems[1].textContent = accumulating;
+    if(smItems[2]) smItems[2].textContent = distribution;
+    if(smItems[3]) smItems[3].textContent = riskLevel;
+  }
+
+  setInterval(updateIntelPanels, 5000);
+  setTimeout(updateIntelPanels, 2000);
+})();
+</script>
 </body>
 </html>
