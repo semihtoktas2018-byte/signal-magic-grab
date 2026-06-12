@@ -4739,6 +4739,34 @@ function buildSignalReasons(d){
   }catch(e){ return ""; }
 }
 
+function buildAIForecast(d){
+  try{
+    const isBuy = d.signal === "BUY";
+    const isSell = d.signal === "SELL";
+    const score = Math.min(99, Math.max(45, (d.score || 50)));
+    let dir = "Neutral", dirCls = "neu";
+    if(isBuy){ dir = "Bullish"; dirCls = "bull"; }
+    else if(isSell){ dir = "Bearish"; dirCls = "bear"; }
+    let outlook = "Consolidation Expected";
+    const e20ok = typeof d.e20 === "number";
+    const e50ok = typeof d.e50 === "number";
+    if(e20ok && e50ok){
+      if(isBuy && d.e20 > d.e50) outlook = "Strong Upside";
+      else if(isBuy) outlook = "Cautious Upside";
+      else if(isSell && d.e20 < d.e50) outlook = "Strong Downside";
+      else if(isSell) outlook = "Cautious Downside";
+    }
+    return `<div class="ai-forecast-card">
+      <div class="afc-head"><span class="afc-title">AI Forecast</span><span class="afc-badge">Premium</span></div>
+      <div class="ai-forecast-grid">
+        <div class="afc-item"><span class="afc-label">Direction</span><span class="afc-value ${dirCls}">${dir}</span></div>
+        <div class="afc-item"><span class="afc-label">Confidence</span><span class="afc-value">${score}%</span></div>
+        <div class="afc-item"><span class="afc-label">24H Outlook</span><span class="afc-value">${outlook}</span></div>
+      </div>
+    </div>`;
+  }catch(e){ return ""; }
+}
+
 function renderUltra(){
  const ul = lastData.filter(x =>
 x.score >= 50 &&
