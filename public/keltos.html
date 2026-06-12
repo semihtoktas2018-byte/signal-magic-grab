@@ -5560,5 +5560,46 @@ restartAutoRefresh();
   setTimeout(updateIntelPanels, 2000);
 })();
 </script>
+  <footer style="text-align:center; padding:24px 16px; margin-top:20px; border-top:1px solid rgba(120,190,255,.10);">
+  <div class="bamir-signature">
+    <span class="bamir-dot"></span>
+    A BAMIR ONLINE STORE'S PRODUCTION
+  </div>
+</footer>
+
+<style>
+.bamir-signature{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:#7dd3fc;
+  background:linear-gradient(90deg,#7dd3fc,#a78bfa,#7dd3fc);
+  background-size:200% auto;
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:bamirShine 4s linear infinite;
+}
+.bamir-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#22c55e;
+  box-shadow:0 0 8px #22c55e;
+  animation:bamirPulse 1.6s infinite;
+  flex-shrink:0;
+}
+@keyframes bamirShine{
+  to{ background-position:200% center; }
+}
+@keyframes bamirPulse{
+  0%,100%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.4); opacity:.5; }
+}
+</style>
 </body>
 </html>
