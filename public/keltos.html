@@ -3627,6 +3627,125 @@ video{
     }
   </style>
 
+  <!-- ============ SMART MONEY PANEL ============ -->
+  <div class="smart-money-panel" id="smartMoneyPanel" aria-label="Smart money akışı">
+    <div class="sm-head">
+      <span class="sm-ic">🐋</span>
+      <span class="sm-title">SMART MONEY</span>
+      <span class="sm-badge">LIVE</span>
+    </div>
+    <div class="sm-body">
+      <div class="sm-item">
+        <span class="sm-label">Whale Activity</span>
+        <span class="sm-value high">High</span>
+      </div>
+      <div class="sm-item">
+        <span class="sm-label">Accumulating</span>
+        <span class="sm-value green">BTC · SOL</span>
+      </div>
+      <div class="sm-item">
+        <span class="sm-label">Distribution</span>
+        <span class="sm-value red">DOGE</span>
+      </div>
+      <div class="sm-item">
+        <span class="sm-label">Risk Level</span>
+        <span class="sm-value yellow">Medium</span>
+      </div>
+    </div>
+  </div>
+  <style>
+    .smart-money-panel{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:12px 16px;
+      margin:0 0 14px;
+      border-radius:14px;
+      background:linear-gradient(180deg,rgba(10,20,34,.92),rgba(5,12,22,.96));
+      border:1px solid rgba(120,190,255,.14);
+      box-shadow:0 10px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+      overflow:hidden;
+      position:relative;
+    }
+    .smart-money-panel::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:radial-gradient(circle at 20% 10%,rgba(56,189,248,.06),transparent 45%);
+    }
+    .sm-head{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-shrink:0;
+      position:relative;
+      z-index:1;
+    }
+    .sm-ic{
+      font-size:20px;
+      line-height:1;
+    }
+    .sm-title{
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.4px;
+      color:#e2e8f0;
+    }
+    .sm-badge{
+      padding:2px 7px;
+      border-radius:8px;
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      background:rgba(34,197,94,.14);
+      border:1px solid rgba(34,197,94,.28);
+      color:#4ade80;
+    }
+    .sm-body{
+      display:flex;
+      align-items:center;
+      gap:18px;
+      flex-wrap:wrap;
+      flex:1;
+      justify-content:flex-end;
+      position:relative;
+      z-index:1;
+    }
+    .sm-item{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .sm-label{
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .sm-value{
+      font-size:12px;
+      font-weight:800;
+      color:#f8fafc;
+    }
+    .sm-value.green{color:var(--green)}
+    .sm-value.red{color:var(--red)}
+    .sm-value.yellow{color:var(--yellow)}
+    .sm-value.high{color:#7dd3fc}
+    @media(max-width:820px){
+      .smart-money-panel{flex-direction:column;align-items:flex-start;gap:10px;padding:12px 14px}
+      .sm-body{justify-content:flex-start;width:100%}
+    }
+    @media(max-width:520px){
+      .smart-money-panel{margin:0 0 12px}
+      .sm-title{font-size:12px}
+      .sm-body{gap:10px}
+      .sm-value{font-size:11px}
+    }
+  </style>
+
   <div class="warning" data-i="warning">Bu panel otomatik işlem açmaz. Sadece teknik analiz, risk hesabı ve güvenli paper trade simülasyonu yapar.</div>
   <div class="error-bar" id="errorBar"></div>
 
