@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { Bell } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,11 +60,59 @@ function readStats() {
 function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifSignals, setNotifSignals] = useState<any[]>([]);
+  const bellRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setStats(readStats());
     const id = setInterval(() => setStats(readStats()), 60000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const read = () => {
+      if (typeof window === "undefined") return;
+      try {
+        const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+        const arr = Array.isArray(wins) ? wins : [];
+        setNotifSignals(arr.slice(-3).reverse());
+      } catch {
+        setNotifSignals([]);
+      }
+    };
+    read();
+    const id = setInterval(read, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notifOpen]);
+
+  const badgeColor = (result?: string) => {
+    if (result === "tuttu") return "#22c55e";
+    if (result === "tutmadi") return "#ef4444";
+    return "#f5b629";
+  };
+  const badgeText = (result?: string) => {
+    if (result === "tuttu") return "Tuttu";
+    if (result === "tutmadi") return "Tutmadı";
+    return "Bekliyor";
+  };
+  const signalTypeColor = (type?: string) => {
+    const t = (type || "").toUpperCase();
+    if (t.includes("BUY")) return "#22c55e";
+    if (t.includes("SELL")) return "#ef4444";
+    return "#8a93a3";
+  };
 
   const features = [
     { icon: "⚡", title: "Canlı Sinyal", desc: "RSI + EMA + MACD + Bollinger analizi" },
@@ -98,6 +147,34 @@ function Landing() {
           <a href="#how">Nasıl</a>
           <a href="#pricing">Üyelik</a>
           <a href="/keltos.html" className="nav-cta">Panele Gir</a>
+          <div className="bell-wrap" ref={bellRef}>
+            <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
+              <Bell size={20} />
+              {notifSignals.length > 0 && <span className="bell-dot" />}
+            </button>
+            {notifOpen && (
+              <div className="bell-dropdown">
+                <div className="bell-header">Son Sinyaller</div>
+                {notifSignals.length === 0 ? (
+                  <div className="bell-empty">Henüz sinyal yok</div>
+                ) : (
+                  notifSignals.map((s, i) => (
+                    <div key={i} className="bell-item">
+                      <div className="bell-row">
+                        <span className="bell-coin">{s.coin || s.name || "—"}</span>
+                        <span className="bell-type" style={{ color: signalTypeColor(s.type || s.signal) }}>
+                          {(s.type || s.signal || "—").toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="bell-badge" style={{ background: badgeColor(s.result) + "22", color: badgeColor(s.result), border: "1px solid " + badgeColor(s.result) + "44" }}>
+                        {badgeText(s.result)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -264,4 +341,20 @@ const css = `
 .shimmer{font-weight:900;letter-spacing:.2em;font-size:clamp(14px,2vw,18px);background:linear-gradient(90deg,#3b82f6 0%,#8b5cf6 25%,#ec4899 50%,#8b5cf6 75%,#3b82f6 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 4s linear infinite;margin-bottom:10px}
 @keyframes shimmer{to{background-position:200% center}}
 .copy{color:var(--muted);font-size:12px;letter-spacing:.1em}
+
+.bell-wrap{position:relative}
+.bell-btn{background:transparent;border:none;color:var(--gold);cursor:pointer;padding:6px;border-radius:999px;display:grid;place-items:center;transition:background .2s ease;position:relative}
+.bell-btn:hover{background:rgba(245,182,41,.12)}
+.bell-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:#ef4444;border-radius:999px;box-shadow:0 0 6px rgba(239,68,68,.8)}
+.bell-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:260px;background:linear-gradient(180deg,rgba(10,15,23,.98),rgba(5,8,13,.98));border:1px solid var(--line);border-radius:16px;padding:10px 0;box-shadow:0 20px 50px -10px rgba(0,0,0,.6);z-index:60;animation:bellIn .25s ease}
+@keyframes bellIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.bell-header{padding:0 14px 8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.bell-empty{padding:18px 14px;text-align:center;color:var(--muted);font-size:13px}
+.bell-item{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .15s ease}
+.bell-item:hover{background:rgba(245,182,41,.06)}
+.bell-row{display:flex;align-items:center;gap:8px}
+.bell-coin{font-weight:700;font-size:13px;color:var(--text)}
+.bell-type{font-size:11px;font-weight:700;letter-spacing:.06em}
+.bell-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em;white-space:nowrap}
+@media(max-width:640px){.bell-dropdown{width:220px;right:-40px}}
 `;
