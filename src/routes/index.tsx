@@ -40,8 +40,30 @@ function useReveal() {
   return ref;
 }
 
+function readStats() {
+  if (typeof window === "undefined") return { hit: "--", coins: 9 };
+  try {
+    const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+    const arr = Array.isArray(wins) ? wins : [];
+    const w = arr.filter((x: any) => x?.result === "tuttu").length;
+    const total = arr.filter((x: any) => x?.result === "tuttu" || x?.result === "tutmadi").length;
+    const hit = total > 0 ? `${Math.round((w / total) * 100)}` : "--";
+    const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
+    const coins = Array.isArray(coinsRaw) && coinsRaw.length ? coinsRaw.length : 9;
+    return { hit, coins };
+  } catch {
+    return { hit: "--", coins: 9 };
+  }
+}
+
 function Landing() {
   const ref = useReveal();
+  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
+  useEffect(() => {
+    setStats(readStats());
+    const id = setInterval(() => setStats(readStats()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const features = [
     { icon: "⚡", title: "Canlı Sinyal", desc: "RSI + EMA + MACD + Bollinger analizi" },
