@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,8 +40,30 @@ function useReveal() {
   return ref;
 }
 
+function readStats() {
+  if (typeof window === "undefined") return { hit: "--", coins: 9 };
+  try {
+    const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+    const arr = Array.isArray(wins) ? wins : [];
+    const w = arr.filter((x: any) => x?.result === "tuttu").length;
+    const total = arr.filter((x: any) => x?.result === "tuttu" || x?.result === "tutmadi").length;
+    const hit = total > 0 ? `${Math.round((w / total) * 100)}` : "--";
+    const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
+    const coins = Array.isArray(coinsRaw) && coinsRaw.length ? coinsRaw.length : 9;
+    return { hit, coins };
+  } catch {
+    return { hit: "--", coins: 9 };
+  }
+}
+
 function Landing() {
   const ref = useReveal();
+  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
+  useEffect(() => {
+    setStats(readStats());
+    const id = setInterval(() => setStats(readStats()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const features = [
     { icon: "⚡", title: "Canlı Sinyal", desc: "RSI + EMA + MACD + Bollinger analizi" },
@@ -92,9 +114,9 @@ function Landing() {
               <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-ghost">💬 VIP Üyelik</a>
             </div>
             <div className="hero-stats">
-              <div><b>%87</b><span>İsabet</span></div>
+              <div><b>%{stats.hit}</b><span>İsabet</span></div>
               <div><b>24/7</b><span>Canlı</span></div>
-              <div><b>50+</b><span>Coin</span></div>
+              <div><b>{stats.coins}+</b><span>Coin</span></div>
             </div>
           </div>
           <div className="hero-img">
