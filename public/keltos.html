@@ -6030,7 +6030,109 @@ restartAutoRefresh();
     saveWins([]);
     renderTutanlar();
   };
+// ── OTOMATİK SİNYAL KAYIT ───────────────────────
+  let autoSavedSignals = {};
+  try{ autoSavedSignals = JSON.parse(localStorage.getItem('kpk_autoSaved')||'{}'); }catch(e){}
 
+  function autoSaveSignals(){
+    if(typeof lastData === 'undefined' || !Array.isArray(lastData)) return;
+
+    const now = Date.now();
+    const today = new Date().toDateString();
+    const wins = loadWins();
+    let changed = false;
+
+    lastData.forEach(d => {
+      if(d.signal === 'WAIT' || d.score < 75 || d.quality === 'ZAYIF') return;
+
+      const key = d.symbol + '_' + d.signal + '_' + today;
+      if(autoSavedSignals[key]) return; // bugün zaten kaydedilmiş
+
+      // Zaten manuel kayıtlarda var mı?
+      const alreadyExists = wins.some(w =>
+        w.coin === d.symbol &&
+        w.signal === d.signal &&
+        new Date(w.date).toDateString() === today
+      );
+      if(alreadyExists) return;
+
+      wins.push({
+        coin: d.symbol,
+        signal: d.signal,
+        price: d.price?.toFixed(d.price > 1 ? 2 : 6) || '0',
+        date: new Date().toISOString(),
+        result: 'bekliyor',
+        score: d.score,
+        auto: true // otomatik kaydedildi işareti
+      });
+
+      autoSavedSignals[key] = now;
+      changed = true;
+
+      if(typeof showToast === 'function'){
+        showToast(`🤖 Otomatik kaydedildi: ${d.symbol.replace('USDT','')} ${d.signal} (${d.score})`);
+      }
+    });
+
+    if(changed){
+      saveWins(wins);
+      localStorage.setItem('kpk_autoSaved', JSON.stringify(autoSavedSignals));
+      // Tutanlar sekmesi açıksa yenile
+      if(document.getElementById('tab-tutanlar')?.classList.contains('active')){
+        renderTutanlar();
+      }
+    }
+  }
+
+  // ── OTOMATİK SONUÇ KAPAMA ───────────────────────
+  function autoCloseResults(){
+    if(typeof lastData === 'undefined' || !Array.isArray(lastData)) return;
+
+    const wins = loadWins();
+    let changed = false;
+
+    wins.forEach((w, i) => {
+      if(w.result !== 'bekliyor') return;
+
+      const d = lastData.find(x => x.symbol === w.coin);
+      if(!d || !Number.isFinite(d.price)) return;
+
+      const entry = parseFloat(w.price);
+      if(!entry) return;
+
+      const riskPct = 0.02; // %2 risk
+      const tp = w.signal === 'BUY' ? entry * (1 + riskPct * 2) : entry * (1 - riskPct * 2);
+      const sl = w.signal === 'BUY' ? entry * (1 - riskPct) : entry * (1 + riskPct);
+      const current = d.price;
+
+      if(w.signal === 'BUY'){
+        if(current >= tp){ wins[i].result = 'tuttu'; wins[i].closePrice = current; changed = true; }
+        else if(current <= sl){ wins[i].result = 'tutmadi'; wins[i].closePrice = current; changed = true; }
+      } else {
+        if(current <= tp){ wins[i].result = 'tuttu'; wins[i].closePrice = current; changed = true; }
+        else if(current >= sl){ wins[i].result = 'tutmadi'; wins[i].closePrice = current; changed = true; }
+      }
+    });
+
+    if(changed){
+      saveWins(wins);
+      if(document.getElementById('tab-tutanlar')?.classList.contains('active')){
+        renderTutanlar();
+      }
+    }
+  }
+
+  // ── OTOMATİK KONTROL — her 60 saniyede bir ──────
+  setInterval(() => {
+    autoSaveSignals();
+    autoCloseResults();
+  }, 60000);
+
+  // İlk çalıştırma — veriler yüklendikten 5 saniye sonra
+  setTimeout(() => {
+    autoSaveSignals();
+    autoCloseResults();
+  }, 5000);
   // ── BAŞLAT ──────────────────────────────────────
   setTimeout(buildTutanlarTab, 500);
 
