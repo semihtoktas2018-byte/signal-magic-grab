@@ -60,11 +60,59 @@ function readStats() {
 function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifSignals, setNotifSignals] = useState<any[]>([]);
+  const bellRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setStats(readStats());
     const id = setInterval(() => setStats(readStats()), 60000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const read = () => {
+      if (typeof window === "undefined") return;
+      try {
+        const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+        const arr = Array.isArray(wins) ? wins : [];
+        setNotifSignals(arr.slice(-3).reverse());
+      } catch {
+        setNotifSignals([]);
+      }
+    };
+    read();
+    const id = setInterval(read, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notifOpen]);
+
+  const badgeColor = (result?: string) => {
+    if (result === "tuttu") return "#22c55e";
+    if (result === "tutmadi") return "#ef4444";
+    return "#f5b629";
+  };
+  const badgeText = (result?: string) => {
+    if (result === "tuttu") return "Tuttu";
+    if (result === "tutmadi") return "Tutmadı";
+    return "Bekliyor";
+  };
+  const signalTypeColor = (type?: string) => {
+    const t = (type || "").toUpperCase();
+    if (t.includes("BUY")) return "#22c55e";
+    if (t.includes("SELL")) return "#ef4444";
+    return "#8a93a3";
+  };
 
   const features = [
     { icon: "⚡", title: "Canlı Sinyal", desc: "RSI + EMA + MACD + Bollinger analizi" },
