@@ -147,6 +147,34 @@ function Landing() {
           <a href="#how">Nasıl</a>
           <a href="#pricing">Üyelik</a>
           <a href="/keltos.html" className="nav-cta">Panele Gir</a>
+          <div className="bell-wrap" ref={bellRef}>
+            <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
+              <Bell size={20} />
+              {notifSignals.length > 0 && <span className="bell-dot" />}
+            </button>
+            {notifOpen && (
+              <div className="bell-dropdown">
+                <div className="bell-header">Son Sinyaller</div>
+                {notifSignals.length === 0 ? (
+                  <div className="bell-empty">Henüz sinyal yok</div>
+                ) : (
+                  notifSignals.map((s, i) => (
+                    <div key={i} className="bell-item">
+                      <div className="bell-row">
+                        <span className="bell-coin">{s.coin || s.name || "—"}</span>
+                        <span className="bell-type" style={{ color: signalTypeColor(s.type || s.signal) }}>
+                          {(s.type || s.signal || "—").toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="bell-badge" style={{ background: badgeColor(s.result) + "22", color: badgeColor(s.result), border: "1px solid " + badgeColor(s.result) + "44" }}>
+                        {badgeText(s.result)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
