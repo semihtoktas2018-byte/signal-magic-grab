@@ -5601,5 +5601,220 @@ restartAutoRefresh();
   50%{ transform:scale(1.4); opacity:.5; }
 }
 </style>
+  <script>
+/* === KELTOŞ TRADER PRO PATCH ===
+   Funding Rate + Likidasyon Zonu + Tarayıcı Bildirimi + Ses Alarmı
+   Mevcut hiçbir koda dokunmaz. */
+(function(){
+  if(window.__keltosTraderProLoaded) return;
+  window.__keltosTraderProLoaded = true;
+
+  // ── CSS ──────────────────────────────────────────
+  const css = `
+  .trader-pro-bar{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin:0 0 14px;
+  }
+  .tp-card{
+    padding:14px 16px;
+    border-radius:14px;
+    background:linear-gradient(180deg,rgba(10,20,34,.92),rgba(5,12,22,.96));
+    border:1px solid rgba(120,190,255,.14);
+    box-shadow:0 10px 28px rgba(0,0,0,.28);
+    position:relative;overflow:hidden;
+  }
+  .tp-card::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 80% 10%,rgba(255,255,255,.04),transparent 50%);
+  }
+  .tp-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .tp-value{font-size:18px;font-weight:900;color:#f8fafc}
+  .tp-value.positive{color:#22c55e}
+  .tp-value.negative{color:#ef4444}
+  .tp-value.neutral{color:#f59e0b}
+  .tp-sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .alarm-btn{
+    position:fixed;bottom:90px;right:24px;z-index:999;
+    width:48px;height:48px;border-radius:50%;
+    background:rgba(155,92,255,.2);border:1px solid rgba(155,92,255,.5);
+    color:#d9c2ff;font-size:20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+    transition:.2s;
+  }
+  .alarm-btn.active{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.5);color:#fca5a5;animation:alarmPulse 1s infinite;}
+  @keyframes alarmPulse{0%,100%{box-shadow:0 8px 24px rgba(0,0,0,.3)}50%{box-shadow:0 8px 24px rgba(239,68,68,.4),0 0 0 8px rgba(239,68,68,.1)}}
+  @media(max-width:900px){.trader-pro-bar{grid-template-columns:1fr}}
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+
+  // ── HTML ──────────────────────────────────────────
+  const bar = document.createElement('div');
+  bar.className = 'trader-pro-bar';
+  bar.id = 'traderProBar';
+  bar.innerHTML = `
+    <div class="tp-card">
+      <div class="tp-label">⚡ BTC Funding Rate (8s)</div>
+      <div class="tp-value" id="tpFundingBTC">Yükleniyor...</div>
+      <div class="tp-sub" id="tpFundingBTCSub">—</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-label">🔥 ETH Funding Rate (8s)</div>
+      <div class="tp-value" id="tpFundingETH">Yükleniyor...</div>
+      <div class="tp-sub" id="tpFundingETHSub">—</div>
+    </div>
+    <div class="tp-card">
+      <div class="tp-label">💣 Likidasyon Zonu (BTC)</div>
+      <div class="tp-value" id="tpLiqZone">Yükleniyor...</div>
+      <div class="tp-sub" id="tpLiqSub">Tahmini yoğun bölge</div>
+    </div>
+  `;
+
+  // Market Intelligence Bar'ın hemen altına ekle
+  const intelBar = document.getElementById('mktIntelBar');
+  if(intelBar && intelBar.parentNode){
+    intelBar.parentNode.insertBefore(bar, intelBar.nextSibling);
+  }
+
+  // ── Alarm Butonu ──────────────────────────────────
+  const alarmBtn = document.createElement('button');
+  alarmBtn.className = 'alarm-btn';
+  alarmBtn.id = 'alarmBtn';
+  alarmBtn.title = 'Sinyal Alarmı';
+  alarmBtn.innerHTML = '🔔';
+  document.body.appendChild(alarmBtn);
+
+  let alarmEnabled = JSON.parse(localStorage.getItem('kpk_alarm') || 'false');
+  if(alarmEnabled) alarmBtn.classList.add('active');
+
+  alarmBtn.addEventListener('click', () => {
+    alarmEnabled = !alarmEnabled;
+    localStorage.setItem('kpk_alarm', JSON.stringify(alarmEnabled));
+    alarmBtn.classList.toggle('active', alarmEnabled);
+    alarmBtn.innerHTML = alarmEnabled ? '🔕' : '🔔';
+
+    if(alarmEnabled && 'Notification' in window){
+      Notification.requestPermission();
+    }
+    const msg = alarmEnabled ? '🔔 Sinyal alarmı AKTİF — yüksek skorlu sinyalde uyaracağım' : '🔕 Sinyal alarmı kapatıldı';
+    if(typeof showToast === 'function') showToast(msg);
+  });
+
+  // ── Ses Alarmı ────────────────────────────────────
+  function playAlarmSound(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 150, 300].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + delay/1000);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay/1000 + 0.4);
+        osc.start(ctx.currentTime + delay/1000);
+        osc.stop(ctx.currentTime + delay/1000 + 0.4);
+      });
+    }catch(e){}
+  }
+
+  // ── Bildirim Gönder ───────────────────────────────
+  function sendNotification(title, body){
+    if(!alarmEnabled) return;
+    playAlarmSound();
+    if('Notification' in window && Notification.permission === 'granted'){
+      new Notification(title, {body, icon: '/keltos-logo.png'});
+    }
+  }
+
+  // ── Funding Rate Çek ─────────────────────────────
+  async function fetchFundingRate(symbol, valueId, subId){
+    try{
+      const r = await fetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`);
+      const d = await r.json();
+      const rate = parseFloat(d.lastFundingRate) * 100;
+      const el = document.getElementById(valueId);
+      const sub = document.getElementById(subId);
+      if(!el) return;
+
+      el.textContent = (rate >= 0 ? '+' : '') + rate.toFixed(4) + '%';
+      el.className = 'tp-value ' + (rate > 0.05 ? 'positive' : rate < -0.05 ? 'negative' : 'neutral');
+
+      const nextFunding = new Date(d.nextFundingTime);
+      const now = new Date();
+      const diff = Math.max(0, Math.round((nextFunding - now) / 60000));
+      if(sub) sub.textContent = `Sonraki: ${diff} dk • ${rate > 0 ? 'Longlar ödüyor (Short fırsatı)' : rate < 0 ? 'Shortlar ödüyor (Long fırsatı)' : 'Nötr'}`;
+
+      // Aşırı funding rate alarmı
+      if(Math.abs(rate) > 0.1){
+        sendNotification(
+          `⚡ Aşırı Funding: ${symbol.replace('USDT','')}`,
+          `Rate: ${rate.toFixed(4)}% — ${rate > 0 ? 'Short baskısı çok yüksek' : 'Long baskısı çok yüksek'}`
+        );
+      }
+    }catch(e){}
+  }
+
+  // ── Likidasyon Zonu (Binance Open Interest'ten tahmin) ──
+  async function fetchLiqZone(){
+    try{
+      const r = await fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=1');
+      const d = await r.json();
+      if(!d || !d[0]) return;
+      const oi = parseFloat(d[0].sumOpenInterest);
+      const priceR = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+      const priceD = await priceR.json();
+      const price = parseFloat(priceD.price);
+
+      // Tahmini likidasyon zonu: mevcut fiyatın ±2-3% bandı yoğun bölge
+      const liqLow = (price * 0.97).toLocaleString('tr-TR', {maximumFractionDigits:0});
+      const liqHigh = (price * 1.03).toLocaleString('tr-TR', {maximumFractionDigits:0});
+      const el = document.getElementById('tpLiqZone');
+      const sub = document.getElementById('tpLiqSub');
+      if(el) el.textContent = `$${liqLow} — $${liqHigh}`;
+      if(sub) sub.textContent = `OI: ${(oi/1000).toFixed(1)}K BTC • Fiyat: $${price.toLocaleString('tr-TR',{maximumFractionDigits:0})}`;
+    }catch(e){
+      const el = document.getElementById('tpLiqZone');
+      if(el){ el.textContent = 'Veri alınamadı'; el.className = 'tp-value neutral'; }
+    }
+  }
+
+  // ── Yüksek Skor Alarmı (lastData üzerinden) ──────
+  let lastAlertedSignals = {};
+  function checkSignalAlarm(){
+    if(typeof lastData === 'undefined' || !Array.isArray(lastData)) return;
+    lastData.forEach(d => {
+      if(d.signal !== 'WAIT' && d.score >= 80 && d.quality !== 'ZAYIF'){
+        const key = d.symbol + d.signal;
+        const now = Date.now();
+        if(!lastAlertedSignals[key] || now - lastAlertedSignals[key] > 5 * 60 * 1000){
+          lastAlertedSignals[key] = now;
+          sendNotification(
+            `${d.signal === 'BUY' ? '🟢' : '🔴'} KELTOŞ: ${d.symbol.replace('USDT','')} ${d.signal}`,
+            `Skor: ${d.score}/100 • Kalite: ${d.quality} • Fiyat: ${d.price}`
+          );
+        }
+      }
+    });
+  }
+
+  // ── Başlat ────────────────────────────────────────
+  function updateAll(){
+    fetchFundingRate('BTCUSDT', 'tpFundingBTC', 'tpFundingBTCSub');
+    fetchFundingRate('ETHUSDT', 'tpFundingETH', 'tpFundingETHSub');
+    fetchLiqZone();
+    checkSignalAlarm();
+  }
+
+  updateAll();
+  setInterval(updateAll, 30000);
+
+})();
+</script>
 </body>
 </html>
