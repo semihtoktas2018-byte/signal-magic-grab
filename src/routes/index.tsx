@@ -114,9 +114,9 @@ function Landing() {
               <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-ghost">💬 VIP Üyelik</a>
             </div>
             <div className="hero-stats">
-              <div><b>%87</b><span>İsabet</span></div>
+              <div><b>%{stats.hit}</b><span>İsabet</span></div>
               <div><b>24/7</b><span>Canlı</span></div>
-              <div><b>50+</b><span>Coin</span></div>
+              <div><b>{stats.coins}+</b><span>Coin</span></div>
             </div>
           </div>
           <div className="hero-img">
