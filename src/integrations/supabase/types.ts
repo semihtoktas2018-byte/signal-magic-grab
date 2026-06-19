@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      kpk_signals: {
+        Row: {
+          closed_at: string | null
+          coin: string
+          created_at: string
+          id: string
+          price: number
+          quality: string | null
+          result: string
+          score: number
+          signal: string
+        }
+        Insert: {
+          closed_at?: string | null
+          coin: string
+          created_at?: string
+          id?: string
+          price: number
+          quality?: string | null
+          result?: string
+          score: number
+          signal: string
+        }
+        Update: {
+          closed_at?: string | null
+          coin?: string
+          created_at?: string
+          id?: string
+          price?: number
+          quality?: string | null
+          result?: string
+          score?: number
+          signal?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
