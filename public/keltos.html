@@ -5949,7 +5949,8 @@ restartAutoRefresh();
 
   // ── RENDER ──────────────────────────────────────
   function renderTutanlar(){
-    const wins = loadWins();
+    const localWins = loadWins();
+    const wins = getMergedWins();
     const total = wins.length;
     const done = wins.filter(w=>w.result !== 'bekliyor');
     const tuttu = wins.filter(w=>w.result === 'tuttu').length;
@@ -5965,9 +5966,9 @@ restartAutoRefresh();
       <div class="tutanlar-header">
         <div>
           <div style="font-size:20px;font-weight:900;color:#f5f7fb">🏆 Tutanlar & Performans</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">Gerçek tahmin geçmişin — 30 günlük isabet oranın</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Local + Cloud sinyaller — 30 günlük isabet oranın</div>
         </div>
-        <button onclick="window.clearAllWins()" style="border:1px solid rgba(239,68,68,.4);color:#ef4444;background:transparent;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:700">🗑 Tümünü Sil</button>
+        <button onclick="window.clearAllWins()" style="border:1px solid rgba(239,68,68,.4);color:#ef4444;background:transparent;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:700">🗑 Local Sil</button>
       </div>
 
       <div class="tutanlar-stats">
@@ -6007,24 +6008,27 @@ restartAutoRefresh();
           <div style="font-size:32px;margin-bottom:12px">📋</div>
           Henüz kayıt yok. Yukarıdan ilk tahmini ekle!<br>
           <span style="font-size:12px">Her gün sinyalleri kaydet → sonucu işaretle → 30 günde isabet oranın ortaya çıkar</span>
-        </div>` : wins.slice().reverse().map((w,ri)=>{
-          const i = total - 1 - ri;
+        </div>` : wins.slice().reverse().map((w)=>{
           const date = new Date(w.date).toLocaleDateString('tr-TR');
           const pending = w.result === 'bekliyor';
+          const isRemote = w._src === 'remote';
+          const localIdx = isRemote ? -1 : localWins.findIndex(lw =>
+            lw.coin===w.coin && lw.signal===w.signal && lw.date===w.date);
           return `
           <div class="t-item ${w.result === 'tuttu' ? 'win' : w.result === 'tutmadi' ? 'loss' : 'pending'}">
             <div class="t-item-info">
               <b>${w.coin.replace('USDT','')} / USDT</b>
-              <small>Giriş: $${w.price} • ${date} • Skor: ${w.score||'—'}</small>
+              <small>Giriş: $${w.price} • ${date} • Skor: ${w.score||'—'} ${isRemote?'• ☁️ Cloud':''}</small>
             </div>
             <span class="t-badge ${w.signal.toLowerCase()}">${w.signal}</span>
-            ${pending ? `
+            ${pending && !isRemote ? `
               <div style="display:flex;gap:6px">
-                <button class="t-result-btn tuttu" onclick="window.setWinResult(${i},'tuttu')">✅ Tuttu</button>
-                <button class="t-result-btn tutmadi" onclick="window.setWinResult(${i},'tutmadi')">❌ Tutmadı</button>
+                <button class="t-result-btn tuttu" onclick="window.setWinResult(${localIdx},'tuttu')">✅ Tuttu</button>
+                <button class="t-result-btn tutmadi" onclick="window.setWinResult(${localIdx},'tutmadi')">❌ Tutmadı</button>
               </div>
-            ` : `<span style="font-size:13px;font-weight:800;color:${w.result==='tuttu'?'#22c55e':'#ef4444'}">${w.result==='tuttu'?'✅ Tuttu':'❌ Tutmadı'}</span>`}
-            <button class="t-delete" onclick="window.deleteWin(${i})">×</button>
+            ` : pending ? `<span style="font-size:12px;font-weight:700;color:#f5b629">⏳ Bekliyor</span>`
+              : `<span style="font-size:13px;font-weight:800;color:${w.result==='tuttu'?'#22c55e':'#ef4444'}">${w.result==='tuttu'?'✅ Tuttu':'❌ Tutmadı'}</span>`}
+            ${isRemote ? '' : `<button class="t-delete" onclick="window.deleteWin(${localIdx})">×</button>`}
           </div>`;
         }).join('')}
       </div>
