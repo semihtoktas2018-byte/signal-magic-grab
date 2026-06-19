@@ -6182,6 +6182,8 @@ restartAutoRefresh();
   }, 5000);
   // ── BAŞLAT ──────────────────────────────────────
   setTimeout(buildTutanlarTab, 500);
+  setTimeout(fetchRemoteWins, 1500);
+  setInterval(fetchRemoteWins, 60000);
 
 })();
 </script>
