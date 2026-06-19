@@ -5865,12 +5865,54 @@ restartAutoRefresh();
   </style>`);
 
   // ── VERİ YÖNETİMİ ───────────────────────────────
+  const KPK_SB_URL = 'https://hnzjvcwbcfgfwpnfyhiz.supabase.co';
+  const KPK_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhuemp2Y3diY2ZnZndwbmZ5aGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTQ5NzcsImV4cCI6MjA5NzQzMDk3N30.YnbumW8oXeycMd2DNLTA5Qui52sWqRlQgrWyaMwKulI';
+  let remoteWins = [];
+
   function loadWins(){
     try{ return JSON.parse(localStorage.getItem('kpk_wins') || '[]'); }
     catch(e){ return []; }
   }
   function saveWins(wins){
     localStorage.setItem('kpk_wins', JSON.stringify(wins));
+  }
+
+  function dayKey(iso){
+    try { return new Date(iso).toISOString().slice(0,10); } catch(e){ return ''; }
+  }
+
+  // Local + remote birleşik liste — coin+signal+gün ile dedupe (local öncelikli)
+  function getMergedWins(){
+    const local = loadWins().map(w => ({ ...w, _src:'local' }));
+    const seen = new Set(local.map(w => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
+    const remote = remoteWins
+      .filter(r => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`))
+      .map(r => ({ ...r, _src:'remote' }));
+    return [...remote, ...local].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  }
+
+  async function fetchRemoteWins(){
+    try {
+      const r = await fetch(
+        `${KPK_SB_URL}/rest/v1/kpk_signals?select=*&order=created_at.asc&limit=500`,
+        { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
+      );
+      if(!r.ok) return;
+      const rows = await r.json();
+      remoteWins = (rows||[]).map(row => ({
+        coin: row.coin,
+        signal: row.signal,
+        price: String(row.price),
+        date: row.created_at,
+        result: row.result || 'bekliyor',
+        score: row.score,
+        auto: true,
+        _id: row.id
+      }));
+      if(document.getElementById('tab-tutanlar')?.classList.contains('active')){
+        renderTutanlar();
+      }
+    } catch(e){ /* sessiz geç */ }
   }
 
   // ── TUTANLAR SEKMESİ HTML ────────────────────────
