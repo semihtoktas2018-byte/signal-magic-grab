@@ -269,8 +269,10 @@ function Landing() {
               <ul>
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
-              <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-primary plan-cta">
-                💬 WhatsApp ile Al
+             <a href={p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662" : WHATSAPP}
+                target="_blank" rel="noreferrer" className="btn btn-primary plan-cta"
+              >
+                {p.name === "VIP Aylık" ? "💳 Hemen Satın Al" : "💬 WhatsApp ile Al"}
               </a>
             </div>
           ))}
