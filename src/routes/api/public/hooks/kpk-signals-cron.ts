@@ -173,13 +173,21 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
                   quality: a.quality, price: a.price,
                 })
                 if (error) errors.push(`${coin} insert: ${error.message}`)
-                else inserted.push(`${coin} ${a.signal} ${a.score}`)
+                else {
+                  inserted.push(`${coin} ${a.signal} ${a.score}`)
+                  try {
+                    await sendTelegram(coin, a.signal, a.quality, Math.round(a.score), a.price)
+                  } catch (te: any) {
+                    errors.push(`${coin} telegram: ${te.message}`)
+                  }
+                }
               }
             }
           } catch (e: any) {
             errors.push(`${coin}: ${e.message}`)
           }
         }
+
 
         // 2) Resolve open signals older than 1h
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
