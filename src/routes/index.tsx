@@ -57,6 +57,24 @@ function readStats() {
   }
 }
 
+function AnimatedBrand() {
+  const texts = ["KELTOŞ", "PARAYA KOŞ", "SİNYALE KOŞ"];
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % texts.length), 2500);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="brand">
+      {texts.map((t, i) => (
+        <span key={t} className={i === index ? "brand-text brand-text-active" : "brand-text"}>
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
@@ -141,7 +159,7 @@ function Landing() {
       <style>{css}</style>
 
       <nav className="nav">
-        <div className="brand">KELTOŞ</div>
+        <AnimatedBrand />
         <div className="nav-links">
           <a href="#features">Özellikler</a>
           <a href="#how">Nasıl</a>
@@ -275,7 +293,11 @@ const css = `
 [data-reveal].is-visible{opacity:1;transform:none}
 
 .nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(5,8,13,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.brand{font-weight:900;letter-spacing:.18em;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:18px}
+.brand{display:inline-grid;place-items:center;font-weight:900;letter-spacing:.18em;font-size:18px;cursor:pointer;transition:transform .3s ease,filter .3s ease;animation:brandGlow 3s ease-in-out infinite;position:relative}
+.brand:hover{transform:scale(1.06);animation:none;filter:drop-shadow(0 0 18px rgba(245,182,41,.7))}
+.brand-text{grid-area:1/1;opacity:0;transform:translateY(6px);transition:opacity 400ms ease,transform 400ms ease;white-space:nowrap;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-text-active{opacity:1;transform:translateY(0)}
+@keyframes brandGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(245,182,41,.35))}50%{filter:drop-shadow(0 0 14px rgba(245,182,41,.55))}}
 .nav-links{display:flex;gap:18px;align-items:center}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
 .nav-links a:hover{color:var(--gold)}
