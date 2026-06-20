@@ -139,7 +139,48 @@ function analyzeCoin(klines: any[][]) {
   return { ...sig, price }
 }
 
+const TELEGRAM_CHAT_ID = '-1003733127546'
+
+function fmtPrice(p: number): string {
+  if (p >= 100) return p.toFixed(2)
+  if (p >= 1) return p.toFixed(4)
+  return p.toFixed(6)
+}
+
+async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number) {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) throw new Error('TELEGRAM_BOT_TOKEN not configured')
+  const symbol = coin.replace(/USDT$/, '')
+  const isBuy = signal === 'BUY'
+  const emoji = isBuy ? '🟢' : '🔴'
+  const stop = isBuy ? price * 0.98 : price * 1.02
+  const target = isBuy ? price * 1.04 : price * 0.96
+  const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
+  const text =
+`${emoji} KELTOŞ SİNYAL · ${signal}
+━━━━━━━━━━━━━━
+💰 Coin: ${symbol}/USDT
+⭐ Kalite: ${quality} · Skor: ${score}/100
+━━━━━━━━━━━━━━
+🎯 Giriş: ${fmtPrice(price)}
+🛑 Stop: ${fmtPrice(stop)}
+✅ Hedef: ${fmtPrice(target)}
+━━━━━━━━━━━━━━
+⏰ ${time}
+⚠️ Yatırım tavsiyesi değildir.`
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+  })
+  if (!r.ok) {
+    const body = await r.text()
+    throw new Error(`telegram ${r.status}: ${body.slice(0, 200)}`)
+  }
+}
+
 export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
+
   server: {
     handlers: {
       POST: async () => {
