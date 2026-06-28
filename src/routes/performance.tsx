@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
@@ -11,11 +11,6 @@ export const Route = createFileRoute("/performance")({
   }),
   component: Performance,
 });
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
 
 interface Signal {
   id: string;
@@ -69,7 +64,6 @@ function Performance() {
   const buyRate = buyClosed.length > 0 ? Math.round((buySignals.filter((s) => s.result === "tuttu").length / buyClosed.length) * 100) : 0;
   const sellRate = sellClosed.length > 0 ? Math.round((sellSignals.filter((s) => s.result === "tuttu").length / sellClosed.length) * 100) : 0;
 
-  // Coin bazında istatistik
   const coinMap = new Map<string, CoinStat>();
   signals.forEach((s) => {
     const existing = coinMap.get(s.coin) || { coin: s.coin, total: 0, tuttu: 0, tutmadi: 0, bekliyor: 0, rate: 0 };
@@ -139,7 +133,6 @@ function Performance() {
       ) : (
         <div className="container">
 
-          {/* Ana istatistikler */}
           <div className="stat-grid">
             <div className="stat-card">
               <div className="stat-val" style={{ color: rateColor(rate) }}>{rate}%</div>
@@ -159,7 +152,6 @@ function Performance() {
             </div>
           </div>
 
-          {/* BUY / SELL ayrımı */}
           <div className="type-row">
             <div className="type-card" style={{ border: "1px solid rgba(34,197,94,.25)" }}>
               <div style={{ fontSize: 28, fontWeight: 900, color: "#22c55e", marginBottom: 4 }}>{buyRate}%</div>
@@ -173,7 +165,6 @@ function Performance() {
             </div>
           </div>
 
-          {/* Coin bazında */}
           {coinStats.length > 0 && (
             <>
               <div className="section-title">Coin Bazında Başarı</div>
@@ -193,7 +184,6 @@ function Performance() {
             </>
           )}
 
-          {/* Sinyal listesi */}
           <div className="section-title">Son Sinyaller (30 Gün)</div>
           <div className="filter-row">
             {(["hepsi", "BUY", "SELL"] as const).map((f) => (
