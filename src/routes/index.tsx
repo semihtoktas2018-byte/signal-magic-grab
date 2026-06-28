@@ -164,6 +164,7 @@ function Landing() {
           <a href="#features">Özellikler</a>
           <a href="#how">Nasıl</a>
           <a href="#pricing">Üyelik</a>
+          <a href="/performance">📊 Performans</a>
           <a href="/keltos.html" className="nav-cta">Panele Gir</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
