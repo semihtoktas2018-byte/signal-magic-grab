@@ -265,6 +265,13 @@ font-weight:700;
 .trade-item{padding:9px;border-bottom:1px solid var(--border);font-size:11px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px}
 .trade-item .close-date{font-size:10px;color:var(--muted)}
 
+/* POSITION PROGRESS BAR */
+.pos-bar{margin-top:8px}
+.pos-track{position:relative;height:8px;background:var(--panel2);border:1px solid var(--border);border-radius:99px;overflow:visible}
+.pos-fill{height:100%;border-radius:99px;transition:width .5s ease}
+.pos-marker-entry{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.6;transform:translateX(-50%)}
+.pos-labels{display:flex;justify-content:space-between;font-size:9px;font-weight:700;margin-top:4px}
+
 /* BACKTEST */
 .bt-section{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px}
 .bt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
@@ -4003,6 +4010,7 @@ video{
 
     <div class="panel" style="margin-bottom:14px">
       <h3>📊 Paper Trade Performans</h3>
+      <div id="riskConcWarning"></div>
       <div class="trade-stats">
         <button class="btn" onclick="clearTrades()" style="font-size:11px;padding:5px 10px;border-color:var(--red);color:var(--red)">Geçmişi Sil</button>
       </div>
@@ -5191,19 +5199,89 @@ function updateTradeStats(){
   if(pEl) pEl.innerHTML=`<span class="${totalPnL>=0?"green":"red"}">${totalPnL>=0?"+":""}${totalPnL.toFixed(2)} USDT</span>`;
 }
 
+function buildPositionBar(tr, currentPrice){
+  const entry = tr.entryPrice;
+  const stop = tr.stopLoss;
+  const target = tr.target;
+  if(!Number.isFinite(entry) || !Number.isFinite(stop) || !Number.isFinite(target)) return "";
+
+  let pct;
+  if(tr.side === "BUY"){
+    pct = ((currentPrice - stop) / (target - stop)) * 100;
+  } else {
+    pct = ((stop - currentPrice) / (stop - target)) * 100;
+  }
+  pct = Math.max(0, Math.min(100, pct));
+
+  const entryPct = tr.side === "BUY"
+    ? ((entry - stop) / (target - stop)) * 100
+    : ((stop - entry) / (stop - target)) * 100;
+
+  const nearTarget = pct >= 75;
+  const nearStop = pct <= 20;
+  const barColor = nearTarget ? "var(--green)" : nearStop ? "var(--red)" : "var(--yellow)";
+  const distLabel = tr.side === "BUY"
+    ? (currentPrice >= entry ? `Hedefe %${(100-pct).toFixed(0)} kaldı` : `Stop'a %${pct.toFixed(0)} kaldı`)
+    : (currentPrice <= entry ? `Hedefe %${(100-pct).toFixed(0)} kaldı` : `Stop'a %${pct.toFixed(0)} kaldı`);
+
+  return `
+    <div class="pos-bar">
+      <div class="pos-track">
+        <div class="pos-fill" style="width:${pct}%;background:${barColor}"></div>
+        <div class="pos-marker-entry" style="left:${entryPct}%"></div>
+      </div>
+      <div class="pos-labels">
+        <span style="color:var(--red)">SL ${fmt(stop)}</span>
+        <span style="color:var(--muted)">${distLabel}</span>
+        <span style="color:var(--green)">TP ${fmt(target)}</span>
+      </div>
+    </div>`;
+}
+
+function evaluateRiskConcentration(){
+  const el = document.getElementById("riskConcWarning");
+  if(!el) return;
+  const open = trades.filter(t => t.status === "OPEN");
+  if(open.length < 3){ el.innerHTML = ""; return; }
+
+  const buyCount = open.filter(t => t.side === "BUY").length;
+  const sellCount = open.filter(t => t.side === "SELL").length;
+  const coinCounts = {};
+  open.forEach(t => { coinCounts[t.symbol] = (coinCounts[t.symbol]||0) + 1; });
+  const maxCoinCount = Math.max(...Object.values(coinCounts));
+  const dominantCoin = Object.keys(coinCounts).find(k => coinCounts[k] === maxCoinCount);
+
+  let msg = "";
+  if(buyCount === open.length || sellCount === open.length){
+    const dir = buyCount === open.length ? "BUY" : "SELL";
+    msg = `⚠️ ${open.length} açık pozisyonun hepsi ${dir} yönünde — riskin tek yönde yoğunlaşmış olabilir, piyasa tersine dönerse hepsi aynı anda etkilenir.`;
+  } else if(maxCoinCount >= 3){
+    msg = `⚠️ ${dominantCoin.replace("USDT","")} üzerinde ${maxCoinCount} açık pozisyonun var — tek coin'e aşırı yoğunlaşma riski taşıyor.`;
+  }
+
+  el.innerHTML = msg
+    ? `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);color:var(--yellow);border-radius:10px;padding:9px 12px;font-size:11px;font-weight:600;margin-bottom:10px">${msg}</div>`
+    : "";
+}
+
 function renderTradeList(){
   const c=document.getElementById("tradeList");
   if(!c)return;
+  evaluateRiskConcentration();
   if(!trades.length){c.innerHTML="<div class='small' style='padding:10px'>Henüz paper trade yok. Sinyal kartlarından butonlara tıkla.</div>";return;}
   c.innerHTML=trades.slice().reverse().map(tr=>{
     const cd=lastData.find(x=>x.symbol===tr.symbol);
     const np=cd?cd.price:tr.entryPrice;
     const closeBtn=tr.status==="OPEN"?`<button class="btn" style="font-size:10px;padding:3px 8px" onclick="closeTrade(${tr.id},${np},'Manuel')">Kapat ${fmt(np)}</button>`:"";
     const statusColor=tr.status==="OPEN"?"green":"";
-    return`<div class="trade-item">
-      <div><b>${tr.symbol.replace("USDT","")}</b> ${tr.side} | Giriş: ${fmt(tr.entryPrice)}<br><span class="close-date">${new Date(tr.openDate).toLocaleString()}</span></div>
-      <div>${tr.status==="CLOSED"?`Çıkış: ${fmt(tr.exitPrice)}<br>PnL: <span class="${tr.pnl>=0?"green":"red"}">${tr.pnl>=0?"+":""}${tr.pnl.toFixed(2)} USDT (${tr.pnlPercent.toFixed(2)}%)</span>`:`Poz: ${tr.positionSize.toFixed(2)} USDT`}</div>
-      <div><span class="${statusColor}">${tr.status}</span> ${closeBtn}</div>
+    const posBar = tr.status==="OPEN" ? buildPositionBar(tr, np) : "";
+    return`<div class="trade-item" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px">
+        <div><b>${tr.symbol.replace("USDT","")}</b> ${tr.side} | Giriş: ${fmt(tr.entryPrice)}<br><span class="close-date">${new Date(tr.openDate).toLocaleString()}</span></div>
+        <div>${tr.status==="CLOSED"?`Çıkış: ${fmt(tr.exitPrice)}<br>PnL: <span class="${tr.pnl>=0?"green":"red"}">${tr.pnl>=0?"+":""}${tr.pnl.toFixed(2)} USDT (${tr.pnlPercent.toFixed(2)}%)</span>`:`Poz: ${tr.positionSize.toFixed(2)} USDT`}</div>
+        <div><span class="${statusColor}">${tr.status}</span> ${closeBtn}</div>
+      </div>
+      ${posBar}
     </div>`;
   }).join("");
 }
