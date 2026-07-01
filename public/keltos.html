@@ -5565,6 +5565,12 @@ restartAutoRefresh();
     <span class="bamir-dot"></span>
     A BAMIR ONLINE STORE'S PRODUCTION
   </div>
+  <div>
+    <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer"
+       style="display:inline-block;margin-top:12px;font-size:12px;color:#7dd3fc;text-decoration:none;font-weight:700;">
+      🛍️ E-ticaret mi yapıyorsun? KHELL AI'ya göz at →
+    </a>
+  </div>
 </footer>
 
 <style>
@@ -6185,6 +6191,86 @@ restartAutoRefresh();
   setTimeout(fetchRemoteWins, 1500);
   setInterval(fetchRemoteWins, 60000);
 
+})();
+</script>
+
+<script>
+/* === KELTOŞ VIP LOCK PATCH ===
+   9 coin'den 3'ü (BTC, ETH, SOL) ücretsiz kalır, kalanı VIP kilitli olur.
+   Mevcut sinyal motoruna, Telegram'a, Paper Trade'e dokunmaz — sadece görsel kilit ekler. */
+(function(){
+  if(window.__keltosVipLockLoaded) return;
+  window.__keltosVipLockLoaded = true;
+
+  const FREE_COINS = ['BTCUSDT','ETHUSDT','SOLUSDT'];
+
+  const css = `
+  .card.vip-locked > *:not(.vip-lock-overlay){
+    filter: blur(7px) !important;
+    pointer-events: none !important;
+    user-select: none !important;
+  }
+  .vip-lock-overlay{
+    position:absolute;
+    inset:0;
+    z-index:6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(5,8,13,.62);
+    border-radius: inherit;
+  }
+  .vip-lock-inner{
+    text-align:center;
+    font-size:12px;
+    font-weight:800;
+    color:#ffd347;
+    line-height:1.6;
+  }
+  .vip-lock-inner .lock-ic{ font-size:22px; display:block; margin-bottom:4px; }
+  .vip-lock-btn{
+    margin-top:8px;
+    padding:8px 16px;
+    border-radius:10px;
+    border:1px solid rgba(245,182,41,.55);
+    background:linear-gradient(180deg,#d39a13,#9a6a09);
+    color:#fff;
+    font-weight:900;
+    font-size:11px;
+    cursor:pointer;
+  }
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+
+  function applyVipLocks(){
+    const cardsEl = document.getElementById('cards');
+    if(!cardsEl) return;
+    const cards = cardsEl.querySelectorAll('.card[data-symbol]');
+    cards.forEach(card => {
+      const sn = card.getAttribute('data-symbol');
+      const full = sn + 'USDT';
+      if(FREE_COINS.includes(full)) return;
+      if(card.querySelector('.vip-lock-overlay')) return;
+      card.classList.add('vip-locked');
+      const overlay = document.createElement('div');
+      overlay.className = 'vip-lock-overlay';
+      overlay.innerHTML = '<div class="vip-lock-inner"><span class="lock-ic">🔒</span>VIP Sinyal<br><button class="vip-lock-btn" onclick="handleVipAccess()">VIP\'e Geç</button></div>';
+      card.appendChild(overlay);
+    });
+  }
+
+  if(typeof window.renderAll === 'function'){
+    const originalRenderAll = window.renderAll;
+    window.renderAll = function(){
+      originalRenderAll.apply(this, arguments);
+      applyVipLocks();
+    };
+  }
+
+  setInterval(applyVipLocks, 4000);
+  setTimeout(applyVipLocks, 3000);
 })();
 </script>
 </body>
