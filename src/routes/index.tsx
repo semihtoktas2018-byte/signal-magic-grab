@@ -18,6 +18,9 @@ export const Route = createFileRoute("/")({
 
 const WHATSAPP = "https://wa.me/905446452430";
 
+const KPK_SB_URL = "https://hnzjvcwbcfgfwpnfyhiz.supabase.co";
+const KPK_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhuemp2Y3diY2ZnZndwbmZ5aGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTQ5NzcsImV4cCI6MjA5NzQzMDk3N30.YnbumW8oXeycMd2DNLTA5Qui52sWqRlQgrWyaMwKulI";
+
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -41,20 +44,67 @@ function useReveal() {
   return ref;
 }
 
-function readStats() {
-  if (typeof window === "undefined") return { hit: "--", coins: 9 };
+function dayKey(iso: string) {
   try {
-    const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-    const arr = Array.isArray(wins) ? wins : [];
-    const w = arr.filter((x: any) => x?.result === "tuttu").length;
-    const total = arr.filter((x: any) => x?.result === "tuttu" || x?.result === "tutmadi").length;
-    const hit = total > 0 ? `${Math.round((w / total) * 100)}` : "--";
-    const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
-    const coins = Array.isArray(coinsRaw) && coinsRaw.length ? coinsRaw.length : 9;
-    return { hit, coins };
+    return new Date(iso).toISOString().slice(0, 10);
   } catch {
-    return { hit: "--", coins: 9 };
+    return "";
   }
+}
+
+interface MergedSignal {
+  coin: string;
+  signal: string;
+  price: string;
+  date: string;
+  result: string;
+  score?: number | null;
+  src: "local" | "remote";
+}
+
+async function fetchMergedSignals(): Promise<MergedSignal[]> {
+  let local: MergedSignal[] = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+    if (Array.isArray(raw)) {
+      local = raw.map((w: any) => ({ ...w, src: "local" as const }));
+    }
+  } catch {
+    local = [];
+  }
+
+  let remote: MergedSignal[] = [];
+  try {
+    const res = await fetch(
+      `${KPK_SB_URL}/rest/v1/kpk_signals?select=*&order=created_at.asc&limit=500`,
+      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      remote = (rows || []).map((row: any) => ({
+        coin: row.coin,
+        signal: row.signal,
+        price: String(row.price),
+        date: row.created_at,
+        result: row.result || "bekliyor",
+        score: row.score,
+        src: "remote" as const,
+      }));
+    }
+  } catch {
+    remote = [];
+  }
+
+  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
+  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`));
+  return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+function computeHitRate(signals: MergedSignal[]): string {
+  const done = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
+  if (done.length === 0) return "--";
+  const wins = done.filter((s) => s.result === "tuttu").length;
+  return String(Math.round((wins / done.length) * 100));
 }
 
 function AnimatedBrand() {
@@ -79,29 +129,34 @@ function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifSignals, setNotifSignals] = useState<any[]>([]);
+  const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
   const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setStats(readStats());
-    const id = setInterval(() => setStats(readStats()), 60000);
-    return () => clearInterval(id);
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
-    const read = () => {
-      if (typeof window === "undefined") return;
+    const load = async () => {
+      const merged = await fetchMergedSignals();
+      if (cancelled) return;
+
+      const hit = computeHitRate(merged);
+      let coins = 9;
       try {
-        const wins = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-        const arr = Array.isArray(wins) ? wins : [];
-        setNotifSignals(arr.slice(-3).reverse());
+        const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
+        if (Array.isArray(coinsRaw) && coinsRaw.length) coins = coinsRaw.length;
       } catch {
-        setNotifSignals([]);
+        coins = 9;
       }
+      setStats({ hit, coins });
+      setNotifSignals(merged.slice(-3).reverse());
     };
-    read();
-    const id = setInterval(read, 30000);
-    return () => clearInterval(id);
+
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -180,9 +235,9 @@ function Landing() {
                   notifSignals.map((s, i) => (
                     <div key={i} className="bell-item">
                       <div className="bell-row">
-                        <span className="bell-coin">{s.coin || s.name || "—"}</span>
-                        <span className="bell-type" style={{ color: signalTypeColor(s.type || s.signal) }}>
-                          {(s.type || s.signal || "—").toUpperCase()}
+                        <span className="bell-coin">{s.coin || "—"}</span>
+                        <span className="bell-type" style={{ color: signalTypeColor(s.signal) }}>
+                          {(s.signal || "—").toUpperCase()}
                         </span>
                       </div>
                       <span className="bell-badge" style={{ background: badgeColor(s.result) + "22", color: badgeColor(s.result), border: "1px solid " + badgeColor(s.result) + "44" }}>
