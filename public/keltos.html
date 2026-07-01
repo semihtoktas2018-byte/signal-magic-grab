@@ -1632,17 +1632,7 @@ body.light #cards.k-view-card .card,body.light #cards.k-view-radar .card{backgro
   .k-top-actions,.k-controls,.k-nav{overflow-x:auto!important;}
 }
 /* === KELTOS SAFE RESPONSIVE OVERFLOW PATCH === */
-html,
-body {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-* {
-  box-sizing: border-box;
-}
-
+/* html,body width/overflow reset ve *{box-sizing} kuralları dosyanın başında (satır 28) ve son patch'te (v5.1.1) zaten tanımlı — burada tekrar edilmiyor. */
 body {
   margin: 0;
 }
@@ -1985,12 +1975,7 @@ th {
 
 /* === KELTOŞ FINAL FIT LOCK PATCH - 18.05.2026 === */
 /* Sadece görünüm/taşma düzeltmesi. JS, API, Telegram, Paper Trade mantığına dokunmaz. */
-html,
-body{
-  width:100% !important;
-  max-width:100% !important;
-  overflow-x:hidden !important;
-}
+/* html,body width/overflow reset satır 28 ve v5.1.1 patch'inde zaten var, burada tekrar edilmiyor. */
 
 body{
   margin:0 !important;
@@ -2831,9 +2816,8 @@ body.k-view-card #signalHead,body.k-view-radar #signalHead{display:grid!importan
 
 
 /* === KELTOŞ v5.1 SALES-STABILITY PATCH === */
-#viewTabs button[data-view="card"],
-#viewTabs button[data-view="radar"]{display:none!important}
-#cards{width:100%!important;max-width:100%!important}
+/* #viewTabs card/radar gizleme kuralı satır 2515'te zaten tanımlı */
+/* #cards width/max-width reset satır 2516'da zaten tanımlı */
 .coin-avatar{
   color:#fff!important;
   background:linear-gradient(180deg,rgba(56,189,248,.18),rgba(155,92,255,.14))!important;
