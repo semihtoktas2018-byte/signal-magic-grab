@@ -58,9 +58,6 @@ function bollinger(values: number[], period = 20, mult = 2) {
 }
 
 // ---------- Whale Radar ----------
-// Binance'in ücretsiz aggTrades endpoint'inden son işlemleri tarar,
-// tek seferde büyük miktar (varsayılan $250k+) alım/satım olursa "whale hareketi" sayar.
-// Kimseyi hedef almaz, sadece büyük paranın nereye gittiğini takip eder.
 const WHALE_THRESHOLD_USD = 250_000
 
 interface WhaleActivity {
@@ -83,13 +80,23 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
     const price = parseFloat(t.price)
     const qty = parseFloat(t.size)
     const usd = price * qty
-    const isBuy = t.side === 'Buy' // Bybit'te "Buy" = agresif alıcı (taker buy), yani alım baskısı
+    const isBuy = t.side === 'Buy'
     if (usd >= WHALE_THRESHOLD_USD) {
       if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isBuy ? 'BUY' : 'SELL' }
       if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
   return { buyUsd, sellUsd, biggestUsd, biggestSide }
+}
+
+// ---------- Exchange comparison (Bybit vs OKX) ----------
+async function fetchOkxPrice(symbol: string): Promise<number> {
+  const instId = symbol.replace('USDT', '-USDT')
+  const r = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${instId}`)
+  if (!r.ok) throw new Error(`okx ${symbol} ${r.status}`)
+  const j = await r.json() as any
+  if (j.code !== '0' || !j.data?.[0]) throw new Error(`okx ${symbol} bad response`)
+  return parseFloat(j.data[0].last)
 }
 
 // ---------- signal logic (mirrors public/keltos.html signalLogic) ----------
@@ -151,7 +158,6 @@ async function fetchKlines(symbol: string) {
   const j = await r.json() as any
   if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
   const list = (j.result?.list ?? []) as string[][]
-  // Bybit en yeniyi en başa koyar, bizim hesaplamalar eskiden yeniye sıralama bekliyor.
   return list.slice().reverse()
 }
 
@@ -248,12 +254,26 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
         const closed: string[] = []
         const errors: string[] = []
         const whaleLogged: string[] = []
+        const exchangeCompared: string[] = []
 
         // 1) Generate new signals
         for (const coin of COINS) {
           try {
             const klines = await fetchKlines(coin)
             const a = await analyzeCoin(coin, klines)
+
+            // Bybit vs OKX fiyat karşılaştırması
+            try {
+              const okxPrice = await fetchOkxPrice(coin)
+              const diffPct = ((okxPrice - a.price) / a.price) * 100
+              const { error: exErr } = await supabase.from('exchange_prices').upsert({
+                coin, bybit_price: a.price, okx_price: okxPrice, diff_pct: diffPct, updated_at: new Date().toISOString(),
+              }, { onConflict: 'coin' })
+              if (exErr) errors.push(`${coin} exchange_prices: ${exErr.message}`)
+              else exchangeCompared.push(`${coin} diff ${diffPct.toFixed(3)}%`)
+            } catch (ee: any) {
+              errors.push(`${coin} okx: ${ee.message}`)
+            }
 
             if (a.whale.biggestUsd > 0 && a.whale.biggestSide) {
               const { error: whaleErr } = await supabase.from('whale_events').insert({
@@ -265,7 +285,6 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
             }
 
             if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 75) {
-              // dedupe: same coin+signal today
               const { data: dup } = await supabase
                 .from('kpk_signals')
                 .select('id')
@@ -293,7 +312,6 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
             errors.push(`${coin}: ${e.message}`)
           }
         }
-
 
         // 2) Resolve open signals older than 1h
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
@@ -333,8 +351,8 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           }
         }
 
-        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged }))
-        return Response.json({ ok: true, inserted, closed, errors, whaleLogged })
+        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged, exchangeCompared }))
+        return Response.json({ ok: true, inserted, closed, errors, whaleLogged, exchangeCompared })
       },
     },
   },
