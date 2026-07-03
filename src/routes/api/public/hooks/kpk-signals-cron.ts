@@ -57,6 +57,40 @@ function bollinger(values: number[], period = 20, mult = 2) {
   return { pct: upper === lower ? 0.5 : (price - lower) / (upper - lower) }
 }
 
+// ---------- Whale Radar ----------
+// Binance'in ücretsiz aggTrades endpoint'inden son işlemleri tarar,
+// tek seferde büyük miktar (varsayılan $250k+) alım/satım olursa "whale hareketi" sayar.
+// Kimseyi hedef almaz, sadece büyük paranın nereye gittiğini takip eder.
+const WHALE_THRESHOLD_USD = 250_000
+
+interface WhaleActivity {
+  buyUsd: number
+  sellUsd: number
+  biggestUsd: number
+  biggestSide: 'BUY' | 'SELL' | null
+}
+
+async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
+  const url = `https://api.binance.com/api/v3/aggTrades?symbol=${symbol}&limit=1000`
+  const r = await fetch(url)
+  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  const trades = (await r.json()) as any[]
+  let buyUsd = 0, sellUsd = 0, biggestUsd = 0
+  let biggestSide: 'BUY' | 'SELL' | null = null
+  for (const t of trades) {
+    const price = parseFloat(t.p)
+    const qty = parseFloat(t.q)
+    const usd = price * qty
+    // Binance'te isBuyerMaker=true demek satıcı piyasaya vurmuş (aslında satış baskısı), false ise alım baskısı
+    const isSell = t.m === true
+    if (usd >= WHALE_THRESHOLD_USD) {
+      if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isSell ? 'SELL' : 'BUY' }
+      if (isSell) sellUsd += usd; else buyUsd += usd
+    }
+  }
+  return { buyUsd, sellUsd, biggestUsd, biggestSide }
+}
+
 // ---------- signal logic (mirrors public/keltos.html signalLogic) ----------
 function signalLogic(
   price: number, prevPrice: number,
@@ -64,9 +98,10 @@ function signalLogic(
   e20: number, e50: number, e20Prev: number,
   macdData: { hist: number | null },
   bbData: { pct: number | null },
-  volData: { ratio: number | null }
+  volData: { ratio: number | null },
+  whale: WhaleActivity
 ) {
-  if (!rsiVal || !e20 || !e50) return { signal: 'WAIT', quality: 'ZAYIF', score: 0 }
+  if (!rsiVal || !e20 || !e50) return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
   const rsiTurn = prevRsi !== null && prevRsi < 30 && rsiVal >= 30
   const rsiOS = rsiVal < 30
   const above20 = price > e20
@@ -80,27 +115,31 @@ function signalLogic(
   const bbOS = bbData.pct !== null && bbData.pct < 0.2
   const bbOB = bbData.pct !== null && bbData.pct > 0.8
   const highVol = volData.ratio !== null && volData.ratio > 1.3
+  const whaleBuy = whale.buyUsd > whale.sellUsd * 1.5 && whale.buyUsd > 0
+  const whaleSell = whale.sellUsd > whale.buyUsd * 1.5 && whale.sellUsd > 0
 
   let buy = 0
   if (rsiTurn) buy += 35; else if (rsiOS) buy += 22
   if (above20) buy += 22; if (crossed20) buy += 8
   if (trendOk) buy += 18; if (slopeUp) buy += 12
   if (macdBull) buy += 15; if (bbOS) buy += 10; if (highVol) buy += 8
+  if (whaleBuy) buy += 15
 
   let sell = 0
   if (overbought) sell += 40; if (below20) sell += 35
   if (e20 < e50) sell += 10; if (macdBear) sell += 12; if (bbOB) sell += 8
+  if (whaleSell) sell += 15
 
   const ultra = rsiTurn && above20 && trendOk && slopeUp && macdBull && buy >= 85
   if (sell >= 75) {
     const q = sell >= 90 ? 'ULTRA' : sell >= 70 ? 'GÜÇLÜ' : 'ORTA'
-    return { signal: 'SELL', quality: q, score: Math.min(100, sell) }
+    return { signal: 'SELL', quality: q, score: Math.min(100, sell), whale }
   }
-  if (ultra) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy) }
-  if (buy >= 70) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy) }
-  if (buy >= 50) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy) }
-  if (sell >= 55) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell) }
-  return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell) }
+  if (ultra) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy), whale }
+  if (buy >= 70) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy), whale }
+  if (buy >= 50) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy), whale }
+  if (sell >= 55) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell), whale }
+  return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
 // ---------- Binance fetchers ----------
@@ -118,7 +157,7 @@ async function fetchPrice(symbol: string): Promise<number> {
   return parseFloat(j.price)
 }
 
-function analyzeCoin(klines: any[][]) {
+async function analyzeCoin(symbol: string, klines: any[][]) {
   const closes = klines.map(k => parseFloat(k[4]))
   const volumes = klines.map(k => parseFloat(k[5]))
   const price = closes[closes.length - 1]
@@ -135,7 +174,8 @@ function analyzeCoin(klines: any[][]) {
   const bbData = bollinger(closes)
   const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
   const volData = { ratio: avgVol ? volumes[volumes.length - 1] / avgVol : null }
-  const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData)
+  const whale = await fetchWhaleActivity(symbol)
+  const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
   return { ...sig, price }
 }
 
@@ -147,7 +187,12 @@ function fmtPrice(p: number): string {
   return p.toFixed(6)
 }
 
-async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number) {
+function fmtUsd(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  return `$${(n / 1000).toFixed(0)}K`
+}
+
+async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number, whale: WhaleActivity) {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN not configured')
   const symbol = coin.replace(/USDT$/, '')
@@ -156,11 +201,14 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const stop = isBuy ? price * 0.98 : price * 1.02
   const target = isBuy ? price * 1.04 : price * 0.96
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
+  const whaleLine = whale.biggestUsd > 0
+    ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
+    : ''
   const text =
 `${emoji} KELTOŞ SİNYAL · ${signal}
 ━━━━━━━━━━━━━━
 💰 Coin: ${symbol}/USDT
-⭐ Kalite: ${quality} · Skor: ${score}/100
+⭐ Kalite: ${quality} · Skor: ${score}/100${whaleLine}
 ━━━━━━━━━━━━━━
 🎯 Giriş: ${fmtPrice(price)}
 🛑 Stop: ${fmtPrice(stop)}
@@ -198,7 +246,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
         for (const coin of COINS) {
           try {
             const klines = await fetchKlines(coin)
-            const a = analyzeCoin(klines)
+            const a = await analyzeCoin(coin, klines)
             if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 75) {
               // dedupe: same coin+signal today
               const { data: dup } = await supabase
@@ -217,7 +265,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
                 else {
                   inserted.push(`${coin} ${a.signal} ${a.score}`)
                   try {
-                    await sendTelegram(coin, a.signal, a.quality, Math.round(a.score), a.price)
+                    await sendTelegram(coin, a.signal, a.quality, Math.round(a.score), a.price, a.whale)
                   } catch (te: any) {
                     errors.push(`${coin} telegram: ${te.message}`)
                   }
