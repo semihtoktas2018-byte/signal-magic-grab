@@ -316,6 +316,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           }
         }
 
+        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors }))
         return Response.json({ ok: true, inserted, closed, errors })
       },
     },
