@@ -71,21 +71,22 @@ interface WhaleActivity {
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
-  const url = `https://data-api.binance.vision/api/v3/aggTrades?symbol=${symbol}&limit=1000`
+  const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
   const r = await fetch(url)
   if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
-  const trades = (await r.json()) as any[]
+  const j = await r.json() as any
+  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
   let biggestSide: 'BUY' | 'SELL' | null = null
   for (const t of trades) {
-    const price = parseFloat(t.p)
-    const qty = parseFloat(t.q)
+    const price = parseFloat(t.price)
+    const qty = parseFloat(t.size)
     const usd = price * qty
-    // Binance'te isBuyerMaker=true demek satıcı piyasaya vurmuş (aslında satış baskısı), false ise alım baskısı
-    const isSell = t.m === true
+    const isBuy = t.side === 'Buy' // Bybit'te "Buy" = agresif alıcı (taker buy), yani alım baskısı
     if (usd >= WHALE_THRESHOLD_USD) {
-      if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isSell ? 'SELL' : 'BUY' }
-      if (isSell) sellUsd += usd; else buyUsd += usd
+      if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isBuy ? 'BUY' : 'SELL' }
+      if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
   return { buyUsd, sellUsd, biggestUsd, biggestSide }
@@ -144,17 +145,22 @@ function signalLogic(
 
 // ---------- Binance fetchers ----------
 async function fetchKlines(symbol: string) {
-  const url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=15m&limit=100`
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&limit=100`
   const r = await fetch(url)
   if (!r.ok) throw new Error(`klines ${symbol} ${r.status}`)
-  return (await r.json()) as any[][]
+  const j = await r.json() as any
+  if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
+  const list = (j.result?.list ?? []) as string[][]
+  // Bybit en yeniyi en başa koyar, bizim hesaplamalar eskiden yeniye sıralama bekliyor.
+  return list.slice().reverse()
 }
 
 async function fetchPrice(symbol: string): Promise<number> {
-  const r = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${symbol}`)
+  const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
   if (!r.ok) throw new Error(`price ${symbol} ${r.status}`)
-  const j = await r.json() as { price: string }
-  return parseFloat(j.price)
+  const j = await r.json() as any
+  if (j.retCode !== 0) throw new Error(`price ${symbol} retCode ${j.retCode}`)
+  return parseFloat(j.result.list[0].lastPrice)
 }
 
 async function analyzeCoin(symbol: string, klines: any[][]) {
