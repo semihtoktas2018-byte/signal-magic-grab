@@ -247,12 +247,23 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
         const inserted: string[] = []
         const closed: string[] = []
         const errors: string[] = []
+        const whaleLogged: string[] = []
 
         // 1) Generate new signals
         for (const coin of COINS) {
           try {
             const klines = await fetchKlines(coin)
             const a = await analyzeCoin(coin, klines)
+
+            if (a.whale.biggestUsd > 0 && a.whale.biggestSide) {
+              const { error: whaleErr } = await supabase.from('whale_events').insert({
+                coin, side: a.whale.biggestSide,
+                amount_usd: a.whale.biggestUsd, price: a.price,
+              })
+              if (whaleErr) errors.push(`${coin} whale insert: ${whaleErr.message}`)
+              else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
+            }
+
             if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 75) {
               // dedupe: same coin+signal today
               const { data: dup } = await supabase
@@ -322,8 +333,8 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           }
         }
 
-        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors }))
-        return Response.json({ ok: true, inserted, closed, errors })
+        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged }))
+        return Response.json({ ok: true, inserted, closed, errors, whaleLogged })
       },
     },
   },
