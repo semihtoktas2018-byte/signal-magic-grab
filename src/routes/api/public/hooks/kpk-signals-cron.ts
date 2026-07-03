@@ -71,7 +71,7 @@ interface WhaleActivity {
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
-  const url = `https://api.binance.com/api/v3/aggTrades?symbol=${symbol}&limit=1000`
+  const url = `https://data-api.binance.vision/api/v3/aggTrades?symbol=${symbol}&limit=1000`
   const r = await fetch(url)
   if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
   const trades = (await r.json()) as any[]
@@ -144,14 +144,14 @@ function signalLogic(
 
 // ---------- Binance fetchers ----------
 async function fetchKlines(symbol: string) {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=100`
+  const url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=15m&limit=100`
   const r = await fetch(url)
   if (!r.ok) throw new Error(`klines ${symbol} ${r.status}`)
   return (await r.json()) as any[][]
 }
 
 async function fetchPrice(symbol: string): Promise<number> {
-  const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`)
+  const r = await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${symbol}`)
   if (!r.ok) throw new Error(`price ${symbol} ${r.status}`)
   const j = await r.json() as { price: string }
   return parseFloat(j.price)
