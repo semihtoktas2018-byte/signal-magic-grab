@@ -3279,12 +3279,11 @@ video{
     grid-column:1 / -1 !important;
   }
 }
-/* === YENİ HEADER TASARIMI === */
+/* === YENİ HEADER TASARIMI v2 (güvenli, sadece renk/gölge) === */
 .k-topbar{
-  background:linear-gradient(180deg,rgba(10,20,34,.7),rgba(5,12,22,.7)) !important;
+  background:linear-gradient(180deg,rgba(10,20,34,.75),rgba(5,12,22,.75)) !important;
   border:1px solid rgba(56,189,248,.18) !important;
   border-radius:18px !important;
-  padding:14px 18px !important;
   backdrop-filter:blur(10px);
   box-shadow:0 10px 30px rgba(0,0,0,.35);
 }
@@ -3292,43 +3291,19 @@ video{
   border-radius:14px;
   box-shadow:0 0 18px rgba(34,197,94,.25);
 }
-.k-nav{
-  background:rgba(255,255,255,.02);
-  border-radius:14px;
-  padding:6px 10px !important;
-}
-.k-nav .tab-btn{
-  flex-direction:column !important;
-  gap:4px !important;
-  padding:8px 12px !important;
-  font-size:11px !important;
-  color:#cbd5e1 !important;
-  border-radius:10px !important;
-}
-.k-nav .tab-btn::before{
-  content:"";
-  display:block;
-  font-size:16px;
-}
 .k-nav .tab-btn.active{
-  background:rgba(34,197,94,.08) !important;
-  border:1px solid rgba(34,197,94,.4) !important;
+  background:rgba(34,197,94,.10) !important;
+  border-color:rgba(34,197,94,.4) !important;
   color:#22c55e !important;
-  box-shadow:0 0 14px rgba(34,197,94,.25);
+  box-shadow:0 0 14px rgba(34,197,94,.20);
 }
 .telegram-btn{
   background:linear-gradient(135deg,#2196f3,#0d6dbb) !important;
-  border-radius:12px !important;
 }
 .vip-btn{
   background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(88,28,135,.35)) !important;
-  border:1px solid rgba(168,85,247,.5) !important;
-  border-radius:12px !important;
+  border-color:rgba(168,85,247,.5) !important;
   color:#e9d5ff !important;
-}
-.icon-btn{
-  border-radius:12px !important;
-  background:rgba(56,189,248,.08) !important;
 }
 </style>
 </head>
@@ -3354,6 +3329,7 @@ video{
       <button class="tab-btn" onclick="switchTab('settings',this)">⚙ Ayarlar</button>
       <a href="/performance" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">📊 Performans</a>
     <a href="/whale" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">🐋 Whale Radar</a>
+    <a href="/exchange" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⚖️ Borsa Karşılaştır</a>
     </nav>
     
 
