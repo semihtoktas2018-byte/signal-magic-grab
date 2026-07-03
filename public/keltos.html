@@ -3279,72 +3279,53 @@ video{
     grid-column:1 / -1 !important;
   }
 }
-/* === YENİ HEADER TASARIMI v2 (güvenli, sadece renk/gölge) === */
 .k-topbar{
-  background:linear-gradient(180deg,rgba(10,20,34,.75),rgba(5,12,22,.75)) !important;
-  border:1px solid rgba(56,189,248,.18) !important;
-  border-radius:18px !important;
-  backdrop-filter:blur(10px);
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-}
-.k-logo{
-  border-radius:14px;
-  box-shadow:0 0 18px rgba(34,197,94,.25);
-}
-.k-nav .tab-btn.active{
-  background:rgba(34,197,94,.10) !important;
-  border-color:rgba(34,197,94,.4) !important;
-  color:#22c55e !important;
-  box-shadow:0 0 14px rgba(34,197,94,.20);
-}
-.telegram-btn{
-  background:linear-gradient(135deg,#2196f3,#0d6dbb) !important;
-}
-.vip-btn{
-  background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(88,28,135,.35)) !important;
-  border-color:rgba(168,85,247,.5) !important;
-  color:#e9d5ff !important;
-}
-.k-topbar{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:10px!important;
+  padding:14px 16px!important;
+  position:relative!important;
   background:linear-gradient(180deg,rgba(8,15,26,.92),rgba(4,9,16,.92))!important;
   border:1px solid rgba(56,189,248,.16)!important;
   border-radius:16px!important;
   backdrop-filter:blur(8px);
 }
+.k-brand{order:1!important}
+.k-top-actions{
+  order:2!important;
+  position:absolute!important;
+  top:14px!important;
+  right:16px!important;
+}
 .k-nav{
+  order:3!important;
+  width:100%!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
   background:rgba(255,255,255,.02)!important;
   border-radius:12px!important;
   padding:5px 8px!important;
 }
 .k-nav .tab-btn{
+  padding:7px 10px!important;
+  font-size:11px!important;
   border-radius:10px!important;
 }
 .k-nav .tab-btn.active{
-  background:rgba(34,197,94,.08)!important;
-  border:1px solid rgba(34,197,94,.45)!important;
+  background:rgba(34,197,94,.10)!important;
+  border:1px solid rgba(34,197,94,.4)!important;
   color:#22c55e!important;
-  box-shadow:0 0 12px rgba(34,197,94,.25)!important;
+  box-shadow:0 0 14px rgba(34,197,94,.20);
 }
-.telegram-btn{
-  background:linear-gradient(135deg,#2196f3,#0d6dbb)!important;
-}
+.telegram-btn{background:linear-gradient(135deg,#2196f3,#0d6dbb)!important}
 .vip-btn{
   background:linear-gradient(135deg,rgba(168,85,247,.28),rgba(88,28,135,.4))!important;
   border-color:rgba(168,85,247,.55)!important;
   color:#f3e8ff!important;
 }
-.icon-btn{
-  background:rgba(56,189,248,.08)!important;
-  border-radius:12px!important;
-}
-.k-nav{
-  justify-content:flex-start!important;
-  gap:4px!important;
-}
-.k-nav .tab-btn{
-  padding:7px 9px!important;
-  font-size:11px!important;
-}
+.icon-btn{background:rgba(56,189,248,.08)!important;border-radius:12px!important}
 </style>
 </head>
 <body>
