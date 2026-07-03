@@ -138,8 +138,41 @@ function WhaleRadar() {
           </div>
         )}
 
-        <div style={{ textAlign: "center", marginTop: 40, color: "#8a93a3", fontSize: 11, letterSpacing: "0.1em" }}>
-          A BAMIR ONLINE STORE'S PRODUCTION
+        <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" style={{
+          display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", marginTop: 32,
+          borderRadius: 18, textDecoration: "none",
+          background: "linear-gradient(135deg, rgba(56,189,248,.14), rgba(34,197,94,.10))",
+          border: "1px solid rgba(56,189,248,.30)",
+        }}>
+          <div style={{ fontSize: 30, flexShrink: 0 }}>🛍️</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#fff", marginBottom: 3 }}>E-ticaret / Dropshipping mi yapıyorsun?</div>
+            <div style={{ fontSize: 12, color: "#9db3c9", lineHeight: 1.4 }}>KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
+          </div>
+          <div style={{
+            flexShrink: 0, padding: "10px 18px", borderRadius: 12, fontSize: 12, fontWeight: 900,
+            whiteSpace: "nowrap", color: "#04121f", background: "linear-gradient(135deg,#7dd3fc,#4ade80)",
+          }}>KHELL AI'ya Göz At →</div>
+        </a>
+
+        <div style={{ textAlign: "center", marginTop: 24 }}>
+          <style>{`
+            @keyframes whaleShine { to { background-position: 200% center; } }
+            @keyframes whalePulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: .5; } }
+          `}</style>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            fontSize: 11, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase",
+            background: "linear-gradient(90deg,#7dd3fc,#a78bfa,#7dd3fc)", backgroundSize: "200% auto",
+            WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent",
+            animation: "whaleShine 4s linear infinite",
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: "50%", background: "#22c55e",
+              boxShadow: "0 0 8px #22c55e", animation: "whalePulse 1.6s infinite", flexShrink: 0,
+            }} />
+            A BAMIR ONLINE STORE'S PRODUCTION
+          </span>
         </div>
       </div>
     </div>
