@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      exchange_prices: {
+        Row: {
+          bybit_price: number
+          coin: string
+          diff_pct: number
+          okx_price: number
+          updated_at: string
+        }
+        Insert: {
+          bybit_price: number
+          coin: string
+          diff_pct: number
+          okx_price: number
+          updated_at?: string
+        }
+        Update: {
+          bybit_price?: number
+          coin?: string
+          diff_pct?: number
+          okx_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      feedback_submissions: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          status: string
+          telegram_user_id: string | null
+          telegram_username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+        }
+        Relationships: []
+      }
       kpk_signals: {
         Row: {
           closed_at: string | null
@@ -47,6 +98,33 @@ export type Database = {
           result?: string
           score?: number
           signal?: string
+        }
+        Relationships: []
+      }
+      whale_events: {
+        Row: {
+          amount_usd: number
+          coin: string
+          created_at: string
+          id: string
+          price: number
+          side: string
+        }
+        Insert: {
+          amount_usd: number
+          coin: string
+          created_at?: string
+          id?: string
+          price: number
+          side: string
+        }
+        Update: {
+          amount_usd?: number
+          coin?: string
+          created_at?: string
+          id?: string
+          price?: number
+          side?: string
         }
         Relationships: []
       }
