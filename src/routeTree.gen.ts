@@ -9,9 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WhaleRouteImport } from './routes/whale'
+import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as ExchangeRouteImport } from './routes/exchange'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicHooksKpkSignalsCronRouteImport } from './routes/api/public/hooks/kpk-signals-cron'
 
+const WhaleRoute = WhaleRouteImport.update({
+  id: '/whale',
+  path: '/whale',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExchangeRoute = ExchangeRouteImport.update({
+  id: '/exchange',
+  path: '/exchange',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -26,32 +44,81 @@ const ApiPublicHooksKpkSignalsCronRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/exchange': typeof ExchangeRoute
+  '/performance': typeof PerformanceRoute
+  '/whale': typeof WhaleRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/exchange': typeof ExchangeRoute
+  '/performance': typeof PerformanceRoute
+  '/whale': typeof WhaleRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/exchange': typeof ExchangeRoute
+  '/performance': typeof PerformanceRoute
+  '/whale': typeof WhaleRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/hooks/kpk-signals-cron'
+  fullPaths:
+    | '/'
+    | '/exchange'
+    | '/performance'
+    | '/whale'
+    | '/api/public/hooks/kpk-signals-cron'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/hooks/kpk-signals-cron'
-  id: '__root__' | '/' | '/api/public/hooks/kpk-signals-cron'
+  to:
+    | '/'
+    | '/exchange'
+    | '/performance'
+    | '/whale'
+    | '/api/public/hooks/kpk-signals-cron'
+  id:
+    | '__root__'
+    | '/'
+    | '/exchange'
+    | '/performance'
+    | '/whale'
+    | '/api/public/hooks/kpk-signals-cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExchangeRoute: typeof ExchangeRoute
+  PerformanceRoute: typeof PerformanceRoute
+  WhaleRoute: typeof WhaleRoute
   ApiPublicHooksKpkSignalsCronRoute: typeof ApiPublicHooksKpkSignalsCronRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/whale': {
+      id: '/whale'
+      path: '/whale'
+      fullPath: '/whale'
+      preLoaderRoute: typeof WhaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exchange': {
+      id: '/exchange'
+      path: '/exchange'
+      fullPath: '/exchange'
+      preLoaderRoute: typeof ExchangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -71,6 +138,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExchangeRoute: ExchangeRoute,
+  PerformanceRoute: PerformanceRoute,
+  WhaleRoute: WhaleRoute,
   ApiPublicHooksKpkSignalsCronRoute: ApiPublicHooksKpkSignalsCronRoute,
 }
 export const routeTree = rootRouteImport
