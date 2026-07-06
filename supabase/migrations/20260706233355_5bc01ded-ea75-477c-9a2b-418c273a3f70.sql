@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "Authenticated can read feedback" ON public.feedback_submissions;
+CREATE POLICY "Authenticated can read feedback" ON public.feedback_submissions FOR SELECT TO authenticated USING (true);
