@@ -339,13 +339,17 @@ function Landing() {
       </section>
 
       {/* CANLI TAKİP */}
-      {openSignals.length > 0 && (
-        <section id="live" className="section live-section" data-reveal>
+      <section id="live" className="section live-section" data-reveal>
           <div className="live-head-row">
             <span className="live-dot-lg"></span>
             <h2 className="live-h2">Canlı Sinyal Takibi</h2>
             <span className="live-count">{openSignals.length} açık pozisyon</span>
           </div>
+          {openSignals.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "28px", color: "var(--muted)", fontSize: "14px", background: "rgba(255,255,255,.02)", border: "1px dashed rgba(245,182,41,.15)", borderRadius: "16px" }}>
+              Şu an açık sinyal yok. Yeni sinyal geldiğinde canlı durumu burada görünecek.
+            </div>
+          ) : (
           <div className="live-grid-l">
             {openSignals.map((s, i) => {
               const cur = livePrices[s.coin];
@@ -387,11 +391,11 @@ function Landing() {
               );
             })}
           </div>
+          )}
           <div className="live-foot">
             <a href="/performance" className="btn btn-ghost">📊 Tüm Performans & Geçmiş →</a>
           </div>
         </section>
-      )}
 
       {/* FEATURES */}
       <section id="features" className="section">
