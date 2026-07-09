@@ -126,27 +126,62 @@ function signalLogic(
   const whaleBuy = whale.buyUsd > whale.sellUsd * 1.5 && whale.buyUsd > 0
   const whaleSell = whale.sellUsd > whale.buyUsd * 1.5 && whale.sellUsd > 0
 
+  // --- ek trend güç ölçütleri ---
+  const trendDown = e20 < e50            // düşen trend
+  const slopeDown = e20Prev ? e20 < e20Prev : false
+
+  // ============ BUY puanı ============
+  // Not: BUY yalnızca YÜKSELEN trendde anlam taşır (trende karşı long açma).
   let buy = 0
-  if (rsiTurn) buy += 35; else if (rsiOS) buy += 22
-  if (above20) buy += 22; if (crossed20) buy += 8
-  if (trendOk) buy += 18; if (slopeUp) buy += 12
-  if (macdBull) buy += 15; if (bbOS) buy += 10; if (highVol) buy += 8
-  if (whaleBuy) buy += 15
+  if (rsiTurn) buy += 32; else if (rsiOS) buy += 20
+  if (above20) buy += 20
+  if (crossed20) buy += 10
+  if (trendOk) buy += 15
+  if (slopeUp) buy += 12
+  if (macdBull) buy += 14
+  if (bbOS) buy += 8
+  if (highVol) buy += 6
+  if (whaleBuy) buy += 14
+  // Trend filtresi: yükselen trend + momentum yoksa BUY'ı ağır cezalandır
+  if (!trendOk || !slopeUp) buy -= 30
+  // Whale satış baskısı varken BUY riskli
+  if (whaleSell) buy -= 15
 
+  // ============ SELL puanı ============
+  // SELL yalnızca DÜŞEN trendde anlam taşır.
   let sell = 0
-  if (overbought) sell += 40; if (below20) sell += 35
-  if (e20 < e50) sell += 10; if (macdBear) sell += 12; if (bbOB) sell += 8
-  if (whaleSell) sell += 15
+  if (below20) sell += 28
+  if (overbought) sell += 24
+  if (trendDown) sell += 18
+  if (slopeDown) sell += 12
+  if (macdBear) sell += 14
+  if (bbOB) sell += 8
+  if (highVol) sell += 6
+  if (whaleSell) sell += 14
+  // Trend filtresi: düşen trend + momentum yoksa SELL'i ağır cezalandır
+  if (!trendDown || !slopeDown) sell -= 30
+  // Whale alım baskısı varken SELL riskli
+  if (whaleBuy) sell -= 15
 
-  const ultra = rsiTurn && above20 && trendOk && slopeUp && macdBull && buy >= 85
-  if (sell >= 75) {
-    const q = sell >= 90 ? 'ULTRA' : sell >= 70 ? 'GÜÇLÜ' : 'ORTA'
-    return { signal: 'SELL', quality: q, score: Math.min(100, sell), whale }
+  buy = Math.max(0, buy)
+  sell = Math.max(0, sell)
+
+  // ============ Karar ============
+  // Kayıt eşiği (82) cron tarafında; burada kaliteyi netleştiriyoruz.
+  // Aynı anda hem buy hem sell yüksekse, kararsız piyasa → WAIT.
+  if (buy >= 50 && sell >= 50) {
+    return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
   }
-  if (ultra) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy), whale }
-  if (buy >= 70) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy), whale }
-  if (buy >= 50) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy), whale }
-  if (sell >= 55) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell), whale }
+
+  const ultraBuy = rsiTurn && above20 && trendOk && slopeUp && macdBull && whaleBuy && buy >= 88
+  const ultraSell = below20 && overbought && trendDown && slopeDown && macdBear && whaleSell && sell >= 88
+
+  if (ultraBuy) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy), whale }
+  if (ultraSell) return { signal: 'SELL', quality: 'ULTRA', score: Math.min(100, sell), whale }
+  if (buy >= 82) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy), whale }
+  if (sell >= 82) return { signal: 'SELL', quality: 'GÜÇLÜ', score: Math.min(100, sell), whale }
+  if (buy >= 65) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy), whale }
+  if (sell >= 65) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell), whale }
   return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
@@ -211,7 +246,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const isBuy = signal === 'BUY'
   const emoji = isBuy ? '🟢' : '🔴'
   const stop = isBuy ? price * 0.98 : price * 1.02
-  const target = isBuy ? price * 1.04 : price * 0.96
+  const target = isBuy ? price * 1.025 : price * 0.975
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
   const whaleLine = whale.biggestUsd > 0
     ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
@@ -284,7 +319,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
               else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
             }
 
-            if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 75) {
+            if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 82) {
               const { data: dup } = await supabase
                 .from('kpk_signals')
                 .select('id')
@@ -332,10 +367,10 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
             const entry = Number(row.price)
             let result: 'tuttu' | 'tutmadi' | null = null
             if (row.signal === 'BUY') {
-              if (cur >= entry * 1.04) result = 'tuttu'
+              if (cur >= entry * 1.025) result = 'tuttu'
               else if (cur <= entry * 0.98) result = 'tutmadi'
             } else if (row.signal === 'SELL') {
-              if (cur <= entry * 0.96) result = 'tuttu'
+              if (cur <= entry * 0.975) result = 'tuttu'
               else if (cur >= entry * 1.02) result = 'tutmadi'
             }
             if (result) {
