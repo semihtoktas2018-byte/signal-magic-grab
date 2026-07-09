@@ -3529,7 +3529,7 @@ video{
         <input type="text" id="coinSearch" placeholder="Coin ara... (BTC, XRP, DOGE)" class="coin-search-input"/>
         <button id="addCoinBtn" class="btn">Ekle</button>
       </div>
-      <select class="pill" id="lang"><option value="tr">🇹🇷 TR</option><option value="en">🇬🇧 EN</option></select>
+      <select class="pill" id="lang"><option value="tr">🇹🇷 TR</option><option value="en">🇬🇧 EN</option><option value="fr">🇫🇷 FR</option></select>
       <div class="status-wrap"><span class="dot"></span><span id="liveText">Başlatılıyor...</span><br><span id="lastUpdate">--</span></div>
     </div>
   </div>
@@ -4202,9 +4202,20 @@ const EN = {
   noRisk:"No clear signal. Position not recommended.",reasonWait:"No clear setup. Waiting is safer.",
   active:"Live tracking active",updated:"Last update"
 };
+const FR = {
+  title:"KELTOS COURS À L'ARGENT",subtitle:"v5.0 Final · RSI + EMA + MACD + Bollinger + Volume + Multi-TF + Backtest + Paper Trade",
+  warning:"Ce panneau n'exécute aucune transaction réelle. Analyse technique, calcul de risque et simulation paper-trade uniquement.",
+  tf:"Intervalle",balance:"Capital (USDT)",risk:"Risque (%)",mode:"Mode d'alerte",
+  ultraTitle:"🔥 Signaux Ultra",logs:"Journal des Signaux",guideTitle:"Note d'utilisation",
+  guide:`<b>Signal ultra :</b> retournement RSI + au-dessus EMA20 + tendance + volume + MACD positif + BB survendu → BUY<br><br>Ne risquez jamais plus de 1-2% par transaction. Utilisez toujours un stop loss.`,
+  entry:"Entrée",stop:"Stop",target:"Objectif",riskAmount:"Montant du Risque",position:"Position",coinAmount:"Quantité",
+  noRisk:"Aucun signal clair. Position non recommandée.",reasonWait:"Aucune configuration claire. Attendre est plus sûr.",
+  active:"Suivi en direct actif",updated:"Dernière mise à jour"
+};
 
 function getLang(){ return document.getElementById("lang").value; }
-function t(k){ return (getLang()==="tr"?TR:EN)[k]||k; }
+function langDict(){ const l=getLang(); return l==="tr"?TR:l==="fr"?FR:EN; }
+function t(k){ return langDict()[k]||k; }
 
 /* ══════════════════════
    UI HELPERS
@@ -4524,7 +4535,8 @@ function updateMarketStatus(data){
 
 function applyLang(){
   const lang=getLang();
-  const dict=(lang==="tr"?TR:EN);
+  const dict=langDict();
+  const pick=(tr,en,fr)=>lang==="tr"?tr:lang==="fr"?fr:en;
   document.querySelectorAll("[data-i]").forEach(el=>{
     const k=el.dataset.i;
     if(dict[k]) el.innerHTML=dict[k];
@@ -4533,14 +4545,14 @@ function applyLang(){
   if(gt) gt.innerHTML=t("guide");
   const warning=document.querySelector('[data-i="warning"]');
   if(warning) warning.innerHTML=dict.warning;
-  const addBtn=document.getElementById('addCoinBtn'); if(addBtn) addBtn.textContent=lang==='tr'?'Ekle':'Add';
-  const coinSearch=document.getElementById('coinSearch'); if(coinSearch) coinSearch.placeholder=lang==='tr'?'Coin ara... (BTC, XRP, DOGE)':'Search coin... (BTC, XRP, DOGE)';
-  const visualSearch=document.getElementById('visualCoinSearch'); if(visualSearch) visualSearch.placeholder=lang==='tr'?'Coin ara...':'Search coin...';
+  const addBtn=document.getElementById('addCoinBtn'); if(addBtn) addBtn.textContent=pick('Ekle','Add','Ajouter');
+  const coinSearch=document.getElementById('coinSearch'); if(coinSearch) coinSearch.placeholder=pick('Coin ara... (BTC, XRP, DOGE)','Search coin... (BTC, XRP, DOGE)','Chercher coin... (BTC, XRP, DOGE)');
+  const visualSearch=document.getElementById('visualCoinSearch'); if(visualSearch) visualSearch.placeholder=pick('Coin ara...','Search coin...','Chercher coin...');
   const vt=document.querySelectorAll('.view-tabs button');
-  if(vt[0]) vt[0].textContent=lang==='tr'?'▦ Tablo':'▦ Table';
-  if(vt[1]) vt[1].textContent=lang==='tr'?'▣ Kart':'▣ Card';
-  if(vt[2]) vt[2].textContent=lang==='tr'?'▧ Radar':'▧ Radar';
-  document.querySelectorAll('.detail-btn').forEach(btn=>{ if(!btn.closest('.card')?.querySelector('.extra-details')?.classList.contains('show')) btn.textContent=lang==='tr'?'▼ Detay':'▼ Detail'; });
+  if(vt[0]) vt[0].textContent=pick('▦ Tablo','▦ Table','▦ Tableau');
+  if(vt[1]) vt[1].textContent=pick('▣ Kart','▣ Card','▣ Carte');
+  if(vt[2]) vt[2].textContent=pick('▧ Radar','▧ Radar','▧ Radar');
+  document.querySelectorAll('.detail-btn').forEach(btn=>{ if(!btn.closest('.card')?.querySelector('.extra-details')?.classList.contains('show')) btn.textContent=pick('▼ Detay','▼ Detail','▼ Détail'); });
   document.documentElement.lang=lang;
 }
 
