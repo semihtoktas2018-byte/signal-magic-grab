@@ -107,6 +107,51 @@ function computeHitRate(signals: MergedSignal[]): string {
   return String(Math.round((wins / done.length) * 100));
 }
 
+// Cron ile aynı TP/SL oranları
+const TP_PCT = 0.025; // hedef +%2.5
+const SL_PCT = 0.02;  // stop -%2
+
+function fmtNum(p: number): string {
+  if (!p) return "0";
+  if (p >= 100) return p.toFixed(2);
+  if (p >= 1) return p.toFixed(4);
+  return p.toFixed(6);
+}
+
+// exchange_prices tablosundan güncel (neredeyse canlı) fiyatlar
+async function fetchLivePrices(): Promise<Record<string, number>> {
+  try {
+    const res = await fetch(
+      `${KPK_SB_URL}/rest/v1/exchange_prices?select=coin,bybit_price`,
+      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
+    );
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const map: Record<string, number> = {};
+    (rows || []).forEach((r: any) => {
+      if (r.coin && r.bybit_price != null) map[r.coin] = Number(r.bybit_price);
+    });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+// Açık sinyal için canlı kâr/zarar ve hedef/stop ilerlemesi
+function computeLive(sig: MergedSignal, curPrice: number) {
+  const entry = parseFloat(sig.price);
+  if (!entry || !curPrice) return null;
+  const isBuy = sig.signal === "BUY";
+  const pnlPct = isBuy ? ((curPrice - entry) / entry) * 100 : ((entry - curPrice) / entry) * 100;
+  const target = isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT);
+  const stop = isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT);
+  const lo = Math.min(stop, target), hi = Math.max(stop, target);
+  let progress = ((curPrice - lo) / (hi - lo)) * 100;
+  progress = Math.max(0, Math.min(100, progress));
+  const toTarget = isBuy ? progress : 100 - progress;
+  return { pnlPct, target, stop, progress: toTarget, entry };
+}
+
 function AnimatedBrand() {
   const texts = ["KELTOŞ", "PARAYA KOŞ", "SİNYALE KOŞ"];
   const [index, setIndex] = useState(0);
@@ -130,6 +175,8 @@ function Landing() {
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
+  const [openSignals, setOpenSignals] = useState<MergedSignal[]>([]);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,6 +196,12 @@ function Landing() {
       }
       setStats({ hit, coins });
       setNotifSignals(merged.slice(-3).reverse());
+      // Açık (bekleyen) sinyaller, en yeni önce, en fazla 6 tane
+      const open = merged
+        .filter((s) => (s.result || "bekliyor") === "bekliyor")
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 6);
+      setOpenSignals(open);
     };
 
     load();
@@ -157,6 +210,15 @@ function Landing() {
       cancelled = true;
       clearInterval(id);
     };
+  }, []);
+
+  // Canlı fiyatları yükle ve 60 sn'de bir yenile
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   useEffect(() => {
@@ -275,6 +337,61 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      {/* CANLI TAKİP */}
+      {openSignals.length > 0 && (
+        <section id="live" className="section live-section" data-reveal>
+          <div className="live-head-row">
+            <span className="live-dot-lg"></span>
+            <h2 className="live-h2">Canlı Sinyal Takibi</h2>
+            <span className="live-count">{openSignals.length} açık pozisyon</span>
+          </div>
+          <div className="live-grid-l">
+            {openSignals.map((s, i) => {
+              const cur = livePrices[s.coin];
+              const live = cur ? computeLive(s, cur) : null;
+              const isBuy = s.signal === "BUY";
+              const pnl = live?.pnlPct ?? 0;
+              const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+              return (
+                <div key={`${s.coin}-${s.date}-${i}`} className="live-card-l">
+                  <div className="live-top-l">
+                    <span className="live-coin-l">{s.coin.replace("USDT", "")}/USDT</span>
+                    <span className="live-side-l" style={{
+                      background: isBuy ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
+                      color: isBuy ? "#22c55e" : "#ef4444",
+                    }}>
+                      {isBuy ? "🟢 BUY" : "🔴 SELL"}
+                    </span>
+                    {live ? (
+                      <span className="live-pnl-l" style={{ color: pnlColor }}>
+                        {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
+                      </span>
+                    ) : (
+                      <span className="live-pnl-l" style={{ color: "#8a93a3", fontSize: 12 }}>—</span>
+                    )}
+                  </div>
+                  {live && (
+                    <>
+                      <div className="live-bar-wrap-l">
+                        <div className="live-bar-l" style={{ width: `${live.progress}%`, background: pnlColor }}></div>
+                      </div>
+                      <div className="live-meta-l">
+                        <span>🛑 {fmtNum(live.stop)}</span>
+                        <span>Giriş {fmtNum(live.entry)}</span>
+                        <span>🎯 {fmtNum(live.target)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="live-foot">
+            <a href="/performance" className="btn btn-ghost">📊 Tüm Performans & Geçmiş →</a>
+          </div>
+        </section>
+      )}
 
       {/* FEATURES */}
       <section id="features" className="section">
@@ -441,4 +558,23 @@ const css = `
 .bell-type{font-size:11px;font-weight:700;letter-spacing:.06em}
 .bell-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em;white-space:nowrap}
 @media(max-width:640px){.bell-dropdown{width:220px;right:-40px}}
+
+.live-section{max-width:1200px;margin:0 auto;padding:40px 24px 20px}
+.live-head-row{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.live-dot-lg{width:11px;height:11px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:livepulse 1.6s infinite;flex:none}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 9px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.live-h2{font-size:clamp(20px,3vw,28px);font-weight:900;margin:0;color:var(--gold);letter-spacing:-.01em}
+.live-count{margin-left:auto;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.live-grid-l{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:860px){.live-grid-l{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.live-grid-l{grid-template-columns:1fr}}
+.live-card-l{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border:1px solid rgba(245,182,41,.18);border-radius:16px;padding:15px 16px}
+.live-top-l{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.live-coin-l{font-weight:800;font-size:14px;color:var(--text)}
+.live-side-l{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.live-pnl-l{margin-left:auto;font-size:17px;font-weight:900}
+.live-bar-wrap-l{position:relative;height:7px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;margin:8px 0 7px}
+.live-bar-l{position:absolute;top:0;left:0;height:100%;border-radius:999px;transition:width .4s ease}
+.live-meta-l{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted)}
+.live-foot{text-align:center;margin-top:22px}
 `;
