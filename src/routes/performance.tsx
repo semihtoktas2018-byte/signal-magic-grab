@@ -92,12 +92,14 @@ function Performance() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
+  const [days, setDays] = useState<7 | 30>(7);
 
   useEffect(() => {
     let cancelled = false;
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    setLoading(true);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    loadMergedSignals(thirtyDaysAgo).then((merged) => {
+    loadMergedSignals(since).then((merged) => {
       if (cancelled) return;
       setSignals(merged);
       setLoading(false);
@@ -106,7 +108,7 @@ function Performance() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [days]);
 
   const closed = signals.filter((s) => s.result !== "bekliyor");
   const tuttu = signals.filter((s) => s.result === "tuttu").length;
@@ -151,6 +153,10 @@ function Performance() {
         .perf-back:hover { background:rgba(245,182,41,.1); }
         .container { max-width:1100px; margin:0 auto; padding:32px 20px; }
         .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:32px; }
+        .period-row { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+        .period-label { font-size:12px; color:#8a93a3; letter-spacing:.08em; text-transform:uppercase; }
+        .period-btn { padding:6px 18px; border-radius:999px; border:1px solid rgba(245,182,41,.25); background:transparent; color:#8a93a3; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+        .period-btn.active { background:rgba(245,182,41,.15); color:#f5b629; border-color:rgba(245,182,41,.5); }
         @media(max-width:700px){ .stat-grid { grid-template-columns:repeat(2,1fr); } }
         .stat-card { background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)); border:1px solid rgba(245,182,41,.18); border-radius:18px; padding:20px; text-align:center; }
         .stat-val { font-size:36px; font-weight:900; margin-bottom:4px; }
@@ -189,6 +195,19 @@ function Performance() {
         <div className="loading">⏳ Yükleniyor...</div>
       ) : (
         <div className="container">
+
+          <div className="period-row">
+            <span className="period-label">Dönem:</span>
+            {([7, 30] as const).map((d) => (
+              <button
+                key={d}
+                className={`period-btn ${days === d ? "active" : ""}`}
+                onClick={() => setDays(d)}
+              >
+                Son {d} Gün
+              </button>
+            ))}
+          </div>
 
           <div className="stat-grid">
             <div className="stat-card">
@@ -241,7 +260,7 @@ function Performance() {
             </>
           )}
 
-          <div className="section-title">Son Sinyaller (30 Gün)</div>
+          <div className="section-title">Son Sinyaller ({days} Gün)</div>
           <div className="filter-row">
             {(["hepsi", "BUY", "SELL"] as const).map((f) => (
               <button key={f} className={`filter-btn ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
