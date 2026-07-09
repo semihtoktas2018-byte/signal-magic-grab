@@ -325,10 +325,14 @@ function Landing() {
               <ul>
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
-             <a href={p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662" : WHATSAPP}
+             <a href={
+                p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662"
+                : p.name === "VIP Günlük" ? "https://www.shopier.com/bamironlinestore/48843519"
+                : WHATSAPP
+              }
                 target="_blank" rel="noreferrer" className="btn btn-primary plan-cta"
               >
-                {p.name === "VIP Aylık" ? "💳 Hemen Satın Al" : "💬 WhatsApp ile Al"}
+                {p.name === "Ücretsiz" ? "💬 WhatsApp ile Al" : "💳 Hemen Satın Al"}
               </a>
             </div>
           ))}
