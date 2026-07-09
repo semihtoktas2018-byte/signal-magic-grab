@@ -48,6 +48,56 @@ function qualityFromScore(score: number): string {
   return "ZAYIF";
 }
 
+// Cron ile aynı TP/SL oranları
+const TP_PCT = 0.025; // hedef +%2.5
+const SL_PCT = 0.02;  // stop -%2
+
+// Fiyatı okunur formatta göster
+function fmtNum(p: number): string {
+  if (!p) return "0";
+  if (p >= 100) return p.toFixed(2);
+  if (p >= 1) return p.toFixed(4);
+  return p.toFixed(6);
+}
+
+// exchange_prices tablosundan güncel (neredeyse canlı) fiyatları çeker
+async function fetchLivePrices(): Promise<Record<string, number>> {
+  try {
+    const { data } = await supabase
+      .from("exchange_prices")
+      .select("coin, bybit_price");
+    const map: Record<string, number> = {};
+    (data || []).forEach((r: any) => {
+      if (r.coin && r.bybit_price != null) map[r.coin] = Number(r.bybit_price);
+    });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+// Açık bir sinyal için canlı kâr/zarar ve hedef/stop uzaklığını hesaplar
+function computeLive(signal: Signal, curPrice: number) {
+  const entry = Number(signal.price);
+  if (!entry || !curPrice) return null;
+  const isBuy = signal.signal === "BUY";
+  // Anlık kâr/zarar yüzdesi (yön dikkate alınarak)
+  const pnlPct = isBuy
+    ? ((curPrice - entry) / entry) * 100
+    : ((entry - curPrice) / entry) * 100;
+  // Hedef ve stop fiyatları
+  const target = isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT);
+  const stop = isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT);
+  // İlerleme: stop (0) -> hedef (100) arası konum
+  const lo = Math.min(stop, target);
+  const hi = Math.max(stop, target);
+  let progress = ((curPrice - lo) / (hi - lo)) * 100;
+  progress = Math.max(0, Math.min(100, progress));
+  // BUY'da hedef üstte, SELL'de hedef altta olduğu için ilerlemeyi yöne göre çevir
+  const toTarget = isBuy ? progress : 100 - progress;
+  return { pnlPct, target, stop, progress: toTarget };
+}
+
 async function loadMergedSignals(thirtyDaysAgo: Date): Promise<Signal[]> {
   const { data } = await supabase
     .from("kpk_signals")
@@ -93,6 +143,7 @@ function Performance() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [days, setDays] = useState<7 | 30>(7);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -110,11 +161,25 @@ function Performance() {
     };
   }, [days]);
 
+  // Canlı fiyatları yükle ve 60 saniyede bir yenile
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   const closed = signals.filter((s) => s.result !== "bekliyor");
   const tuttu = signals.filter((s) => s.result === "tuttu").length;
   const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
   const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
   const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
+
+  // Canlı takip: açık (bekleyen) sinyaller, en yeni önce
+  const openSignals = signals
+    .filter((s) => s.result === "bekliyor")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const buySignals = signals.filter((s) => s.signal === "BUY");
   const sellSignals = signals.filter((s) => s.signal === "SELL");
@@ -157,6 +222,20 @@ function Performance() {
         .period-label { font-size:12px; color:#8a93a3; letter-spacing:.08em; text-transform:uppercase; }
         .period-btn { padding:6px 18px; border-radius:999px; border:1px solid rgba(245,182,41,.25); background:transparent; color:#8a93a3; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
         .period-btn.active { background:rgba(245,182,41,.15); color:#f5b629; border-color:rgba(245,182,41,.5); }
+        .live-head { display:flex; align-items:center; gap:10px; margin:8px 0 16px; }
+        .live-dot { width:9px; height:9px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.6); animation:livepulse 1.6s infinite; }
+        @keyframes livepulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 8px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+        .live-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:32px; }
+        @media(max-width:700px){ .live-grid { grid-template-columns:1fr; } }
+        .live-card { background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)); border:1px solid rgba(245,182,41,.18); border-radius:16px; padding:16px 18px; }
+        .live-top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+        .live-coin { font-weight:800; font-size:15px; }
+        .live-side { font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; }
+        .live-pnl { margin-left:auto; font-size:18px; font-weight:900; }
+        .live-bar-wrap { position:relative; height:8px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; margin:10px 0 8px; }
+        .live-bar { position:absolute; top:0; left:0; height:100%; border-radius:999px; transition:width .4s ease; }
+        .live-meta { display:flex; justify-content:space-between; font-size:11px; color:#8a93a3; }
+        .live-empty { text-align:center; padding:28px; color:#8a93a3; font-size:14px; background:rgba(255,255,255,.02); border:1px dashed rgba(245,182,41,.15); border-radius:16px; margin-bottom:32px; }
         @media(max-width:700px){ .stat-grid { grid-template-columns:repeat(2,1fr); } }
         .stat-card { background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)); border:1px solid rgba(245,182,41,.18); border-radius:18px; padding:20px; text-align:center; }
         .stat-val { font-size:36px; font-weight:900; margin-bottom:4px; }
@@ -208,6 +287,66 @@ function Performance() {
               </button>
             ))}
           </div>
+
+          <div className="live-head">
+            <span className="live-dot"></span>
+            <span className="section-title" style={{ margin: 0 }}>Canlı Sinyal Takibi</span>
+            <span style={{ fontSize: 12, color: "#8a93a3", marginLeft: "auto" }}>{openSignals.length} açık pozisyon</span>
+          </div>
+
+          {openSignals.length === 0 ? (
+            <div className="live-empty">Şu an açık sinyal yok. Yeni sinyal geldiğinde canlı durumu burada görünecek.</div>
+          ) : (
+            <div className="live-grid">
+              {openSignals.map((s) => {
+                const cur = livePrices[s.coin];
+                const live = cur ? computeLive(s, cur) : null;
+                const isBuy = s.signal === "BUY";
+                const pnl = live?.pnlPct ?? 0;
+                const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+                const barColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+                return (
+                  <div key={s.id} className="live-card">
+                    <div className="live-top">
+                      <span className="live-coin">{s.coin.replace("USDT", "")}/USDT</span>
+                      <span className="live-side" style={{
+                        background: isBuy ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
+                        color: isBuy ? "#22c55e" : "#ef4444",
+                        border: `1px solid ${isBuy ? "rgba(34,197,94,.3)" : "rgba(239,68,68,.3)"}`,
+                      }}>
+                        {isBuy ? "🟢 BUY" : "🔴 SELL"}
+                      </span>
+                      {live ? (
+                        <span className="live-pnl" style={{ color: pnlColor }}>
+                          {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="live-pnl" style={{ color: "#8a93a3", fontSize: 13 }}>fiyat bekleniyor</span>
+                      )}
+                    </div>
+
+                    {live && (
+                      <>
+                        <div className="live-bar-wrap">
+                          <div className="live-bar" style={{ width: `${live.progress}%`, background: barColor }}></div>
+                        </div>
+                        <div className="live-meta">
+                          <span>🛑 Stop: ${fmtNum(live.stop)}</span>
+                          <span>Giriş: ${fmtNum(Number(s.price))}</span>
+                          <span>🎯 Hedef: ${fmtNum(live.target)}</span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="live-meta" style={{ marginTop: 8 }}>
+                      <span>⭐ Skor {s.score}/100 · {s.quality}</span>
+                      <span>{new Date(s.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="stat-grid">
             <div className="stat-card">
