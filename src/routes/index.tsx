@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
+
+const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligence"));
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -345,6 +347,11 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      {/* AI SIGNAL INTELLIGENCE CENTER */}
+      <Suspense fallback={<div style={{ minHeight: 400 }} />}>
+        <AISignalIntelligence />
+      </Suspense>
 
       {/* FEATURES */}
       <section id="features" className="section">
