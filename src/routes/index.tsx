@@ -348,6 +348,11 @@ function Landing() {
         </div>
       </section>
 
+      {/* AI SIGNAL INTELLIGENCE CENTER */}
+      <Suspense fallback={<div style={{ minHeight: 400 }} />}>
+        <AISignalIntelligence />
+      </Suspense>
+
       {/* FEATURES */}
       <section id="features" className="section">
         <div className="sec-head" data-reveal>
