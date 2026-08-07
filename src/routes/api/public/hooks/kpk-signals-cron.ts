@@ -225,7 +225,11 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
   const volData = { ratio: avgVol ? volumes[volumes.length - 1] / avgVol : null }
   const whale = await fetchWhaleActivity(symbol)
   const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
-  // Signal Engine V2: ağırlıklı puanlama (yalnızca ek bilgi, V1 kararını değiştirmez)
+  // Signal Engine V2 (Phase 1): ağırlıklı puanlama (yalnızca ek bilgi, V1 kararını değiştirmez)
+  const recent = closes.slice(-15)
+  const volatilityPct = recent.length > 1 && price
+    ? (Math.sqrt(recent.reduce((a, c) => a + (c - recent.reduce((x, y) => x + y, 0) / recent.length) ** 2, 0) / recent.length) / price) * 100
+    : null
   const v2 = scoreSignalV2({
     price, prevPrice,
     rsi: rsiVal, prevRsi,
@@ -235,8 +239,16 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
     volRatio: volData.ratio,
     whaleBuyUsd: whale.buyUsd,
     whaleSellUsd: whale.sellUsd,
+    volatilityPct,
+    // funding / fear & greed henüz yok → ağırlıkları otomatik normalize edilir
+    funding: null,
+    fearGreed: null,
   })
-  return { ...sig, price, v2, v2Agreement: agreementWithV1(sig.signal, v2) }
+  return {
+    ...sig, price, v2,
+    v2Agreement: agreementWithV1(sig.signal, v2),
+    v2Comparison: compareScores(Math.round(sig.score), v2.score),
+  }
 }
 
 
