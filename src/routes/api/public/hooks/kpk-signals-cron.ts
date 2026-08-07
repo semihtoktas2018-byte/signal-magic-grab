@@ -407,8 +407,9 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           }
         }
 
-        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged, exchangeCompared }))
-        return Response.json({ ok: true, inserted, closed, errors, whaleLogged, exchangeCompared })
+        console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged, exchangeCompared, v2Report }))
+        return Response.json({ ok: true, inserted, closed, errors, whaleLogged, exchangeCompared, engineV2: v2Report })
+
       },
     },
   },
