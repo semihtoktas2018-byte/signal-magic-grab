@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
-import { scoreSignalV2, agreementWithV1 } from '@/lib/signal-engine-v2'
+import { scoreSignalV2, agreementWithV1, compareScores } from '@/lib/signal-engine-v2'
 
 
 const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT']
