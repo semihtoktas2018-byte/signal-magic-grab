@@ -327,6 +327,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
               coin, v1: a.signal, v1Score: Math.round(a.score),
               v2: a.v2.direction, v2Score: a.v2.score, v2Bias: a.v2.bias,
               v2Quality: a.v2.quality, agreement: a.v2Agreement,
+              v2Coverage: a.v2.coverage, comparison: a.v2Comparison,
             })
 
 
