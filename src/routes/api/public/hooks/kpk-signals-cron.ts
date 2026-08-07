@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
+import { scoreSignalV2, agreementWithV1 } from '@/lib/signal-engine-v2'
+
 
 const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT']
 
@@ -223,8 +225,20 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
   const volData = { ratio: avgVol ? volumes[volumes.length - 1] / avgVol : null }
   const whale = await fetchWhaleActivity(symbol)
   const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
-  return { ...sig, price }
+  // Signal Engine V2: ağırlıklı puanlama (yalnızca ek bilgi, V1 kararını değiştirmez)
+  const v2 = scoreSignalV2({
+    price, prevPrice,
+    rsi: rsiVal, prevRsi,
+    ema20: e20, ema20Prev: e20Prev, ema50: e50,
+    macdHist: macdData.hist,
+    bbPct: bbData.pct,
+    volRatio: volData.ratio,
+    whaleBuyUsd: whale.buyUsd,
+    whaleSellUsd: whale.sellUsd,
+  })
+  return { ...sig, price, v2, v2Agreement: agreementWithV1(sig.signal, v2) }
 }
+
 
 const TELEGRAM_CHAT_ID = '-1003733127546'
 
