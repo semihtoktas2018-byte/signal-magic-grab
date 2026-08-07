@@ -4942,9 +4942,82 @@ function renderCard(d){
       </div>
       ${detailHtml}
       ${buildSignalReasons(d)}
+      ${buildV2Scores(d)}
       ${buildAIForecast(d)}
     </div>
   </div>`;
+}
+
+/* ── Signal Engine V2 (Phase 1) — ağırlıklı skor katmanı.
+   V1 skorunu ve BUY/SELL/WAIT kararını DEĞİŞTİRMEZ, sadece ek skor gösterir. ── */
+const V2_W = { trend:0.30, momentum:0.25, volume:0.15, whale:0.15, sentiment:0.10, volatility:0.05 };
+function v2clamp(n,lo,hi){lo=lo===undefined?-1:lo;hi=hi===undefined?1:hi;return Math.max(lo,Math.min(hi,n));}
+function computeV2(d){
+  try{
+    const price=Number(d.price)||0;
+    // Trend
+    let trend=null;
+    if(d.e20&&d.e50){
+      const spread=(d.e20-d.e50)/d.e50;
+      const slope=d.e20Prev?(d.e20-d.e20Prev)/d.e20Prev:0;
+      const pos=d.e20?(price-d.e20)/d.e20:0;
+      trend=v2clamp(0.5*v2clamp(spread/0.015)+0.3*v2clamp(slope/0.004)+0.2*v2clamp(pos/0.01));
+    }
+    // Momentum (RSI + MACD + BB teyidi)
+    const mp=[];
+    if(d.rsi) mp.push(v2clamp((50-d.rsi)/20));
+    if(d.macdHist!==null&&d.macdHist!==undefined&&price) mp.push(v2clamp((d.macdHist/price)/0.003));
+    if(d.bbPct!==null&&d.bbPct!==undefined) mp.push(v2clamp((0.5-d.bbPct)*2)*0.5);
+    const momentum=mp.length?v2clamp(mp.reduce((a,b)=>a+b,0)/mp.length):null;
+    // Çekirdek yön (teyit faktörleri için)
+    const core=[[V2_W.trend,trend],[V2_W.momentum,momentum]].filter(x=>x[1]!==null);
+    const coreW=core.reduce((a,x)=>a+x[0],0);
+    const coreBias=coreW?core.reduce((a,x)=>a+x[0]*x[1],0)/coreW:1;
+    // Hacim / likidite
+    let volume=null;
+    if(d.volRatio!==null&&d.volRatio!==undefined){
+      volume=v2clamp(v2clamp((d.volRatio-1)/0.6,0,1)*(coreBias>=0?1:-1));
+    }
+    // Whale ve funding/F&G panelde mevcut değil → ağırlıkları normalize edilir
+    const whale=null, sentiment=null;
+    // Oynaklık (BB genişliği varsa)
+    let volatility=null;
+    if(d.bbUpper&&d.bbLower&&d.bbMid){
+      const width=((d.bbUpper-d.bbLower)/d.bbMid)*100;
+      const penalty=v2clamp((width-3)/6,0,1);
+      volatility=v2clamp((1-2*penalty)*(coreBias>=0?1:-1));
+    }
+    const raw=[[V2_W.trend,trend],[V2_W.momentum,momentum],[V2_W.volume,volume],[V2_W.whale,whale],[V2_W.sentiment,sentiment],[V2_W.volatility,volatility]];
+    const coverage=raw.filter(x=>x[1]!==null).reduce((a,x)=>a+x[0],0);
+    if(!coverage) return null;
+    const norm=1/coverage;
+    const bias=v2clamp(raw.filter(x=>x[1]!==null).reduce((a,x)=>a+x[0]*norm*x[1],0))*100;
+    return { score:Math.round(Math.abs(bias)), bias:Math.round(bias), coverage:Math.round(coverage*100) };
+  }catch(e){ return null; }
+}
+function buildV2Scores(d){
+  try{
+    const v1=Math.round(Number(d.score)||0);
+    const v2=computeV2(d);
+    if(!v2) return "";
+    const diff=v2.score-v1;
+    const cmp=Math.abs(diff)<=3?{t:"V2 Same",c:"#f5b629"}:(diff>0?{t:"V2 Better",c:"#00ff66"}:{t:"V2 Lower",c:"#ff5b5b"});
+    const dirTxt=v2.bias>0?"Boğa":(v2.bias<0?"Ayı":"Nötr");
+    return `
+    <div style="margin-top:10px;padding:10px 12px;border:1px solid rgba(245,182,41,.22);border-radius:12px;background:linear-gradient(135deg,rgba(245,182,41,.06),rgba(5,8,13,.6))">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;letter-spacing:.08em;font-weight:900;color:#f5b629">⚖️ SIGNAL ENGINE V2</span>
+        <span style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:99px;color:${cmp.c};border:1px solid ${cmp.c}33;background:${cmp.c}14">${cmp.t}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px">
+        <div><div style="font-size:9px;color:#94a3b8">Signal Score (V1)</div><div style="font-size:16px;font-weight:900">${v1}<span style="font-size:10px;color:#94a3b8">/100</span></div></div>
+        <div><div style="font-size:9px;color:#94a3b8">Signal Score (V2)</div><div style="font-size:16px;font-weight:900;color:#f5b629">${v2.score}<span style="font-size:10px;color:#94a3b8">/100</span></div></div>
+        <div><div style="font-size:9px;color:#94a3b8">V2 Eğilim</div><div style="font-size:12px;font-weight:800">${dirTxt} (${v2.bias>0?"+":""}${v2.bias})</div></div>
+        <div><div style="font-size:9px;color:#94a3b8">Gösterge Kapsamı</div><div style="font-size:12px;font-weight:800">${v2.coverage}%</div></div>
+      </div>
+      <div style="margin-top:6px;font-size:9px;color:#64748b">V2 yalnızca bilgi amaçlıdır · karar V1 motorundadır</div>
+    </div>`;
+  }catch(e){ return ""; }
 }
 
 function buildSignalReasons(d){
