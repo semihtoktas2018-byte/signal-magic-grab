@@ -4843,7 +4843,7 @@ async function fetchCoin(symbol){
   const c5=Array.isArray(k5)?k5.map(k=>parseFloat(k[4])):[];
   const c15=Array.isArray(k15)?k15.map(k=>parseFloat(k[4])):[];
   return{
-    symbol,price,prevPrice,rsi:rsiVal,e20,e50,change,risk,
+    symbol,price,prevPrice,rsi:rsiVal,e20,e50,e20Prev,change,risk,
     macdHist:macdData?macdData.hist:null,
     bbPct:bbData?bbData.pct:null,bbUpper:bbData?bbData.upper:null,bbMid:bbData?bbData.mid:null,bbLower:bbData?bbData.lower:null,
     volTrend:volData?volData.trend:"--",volRatio:volData?volData.ratio:null,
