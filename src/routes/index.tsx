@@ -322,31 +322,33 @@ function Landing() {
         </div>
       </nav>
 
-      {/* HERO */}
-      <section className="hero">
+      {/* HERO — kompakt tanıtım */}
+      <section className="hero hero-compact">
         <div className="hero-bg" />
         <div className="hero-inner" data-reveal>
           <div className="hero-text">
-            <span className="eyebrow">◆ PROFESYONEL KRİPTO SİNYAL</span>
-            <h1 className="hero-title">KELTOŞ<br/><span className="hero-title-gold">PARAYA KOŞ!</span></h1>
-            <p className="hero-slogan">Balinalar hareket eder.<br/><b>KELTOŞ önceden görür.</b></p>
-            <p className="hero-sub">Kripto piyasasını yapay zeka destekli sinyal sistemiyle senin yerine analiz eder, fırsatları önden yakalar.</p>
+            <div className="hero-head-row">
+              <img className="hero-mark" src="/keltos-hero.png" alt="Keltoş" loading="eager" />
+              <div>
+                <span className="eyebrow">◆ PROFESYONEL KRİPTO SİNYAL</span>
+                <h1 className="hero-title">KELTOŞ <span className="hero-title-gold">PARAYA KOŞ</span></h1>
+              </div>
+            </div>
+            <p className="hero-sub">Balinalar hareket eder, <b>KELTOŞ önceden görür.</b> Kripto piyasasını yapay zeka destekli sinyal sistemiyle senin yerine analiz eder.</p>
             <div className="hero-cta">
-              <a href="/keltos.html" className="btn btn-primary">⚡ PARAYA KOŞ</a>
-              <a href="/performance" className="btn btn-ghost">📊 SONUÇLARI GÖR</a>
+              <a href="/keltos.html" className="btn btn-primary">⚡ SİNYAL TERMİNALİNE GİR</a>
+              <a href="/performance" className="btn btn-ghost">📊 Performans</a>
             </div>
             <div className="hero-stats">
-              <div><b>9</b><span>Coin Takip</span></div>
+              <div><b>{stats.coins}</b><span>Coin Takip</span></div>
+              <div><b>%{stats.hit}</b><span>İsabet</span></div>
               <div><b>Canlı</b><span>Bybit Verisi</span></div>
-              <div><b>3 Dil</b><span>TR · EN · FR</span></div>
               <div><b>Şeffaf</b><span>Açık Geçmiş</span></div>
             </div>
           </div>
-          <div className="hero-img">
-            <img src="/keltos-hero.png" alt="Keltoş Paraya Koş" loading="eager" />
-          </div>
         </div>
       </section>
+
 
       {/* AI SIGNAL INTELLIGENCE CENTER */}
       <Suspense fallback={<div style={{ minHeight: 400 }} />}>
