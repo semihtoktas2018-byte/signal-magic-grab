@@ -3343,7 +3343,7 @@ video{
 
     <nav class="k-nav" aria-label="Keltoş navigasyon">
       <a href="/" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⌂ Ana Sayfa</a>
-      <button class="tab-btn active" onclick="switchTab('signals',this)">◈ Sinyaller</button>
+      <button class="tab-btn active" id="navSignalsBtn" onclick="switchTab('signals',this)">◈ Sinyaller</button>
       <button class="tab-btn" onclick="switchTab('signals',this);setTimeout(()=>document.getElementById('paperTradePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),80)">▣ Paper Trade</button>
       <button class="tab-btn" onclick="switchTab('backtest',this)">↗ Backtest</button>
       <a href="/performance" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">📊 Performans</a>
@@ -3877,7 +3877,7 @@ video{
   <div class="error-bar" id="errorBar"></div>
 
 
-  <div class="tabs legacy-tabs">
+  <div class="tabs legacy-tabs" style="display:none">
     <button class="tab-btn active" onclick="switchTab('signals',this)">📊 Sinyaller</button>
     <button class="tab-btn" onclick="switchTab('backtest',this)">🧪 Backtest</button>
     <button class="tab-btn" onclick="switchTab('settings',this)">⚙️ Ayarlar</button>
@@ -5099,7 +5099,7 @@ x.signal !== "WAIT"
   const box=document.getElementById("ultraBox");
   if(!box)return;
   box.classList.toggle("show",ul.length>0);
-  document.getElementById("ultraList").innerHTML=ul.map(x=>`<div class="ultra-chip" onclick="switchTab('signals',document.querySelector('.tab-btn'))">${x.symbol.replace("USDT","")} · ${x.score}/100 · ${fmt(x.price)}</div>`).join("");
+  document.getElementById("ultraList").innerHTML=ul.map(x=>`<div class="ultra-chip" onclick="switchTab('signals',document.getElementById('navSignalsBtn'))">${x.symbol.replace("USDT","")} · ${x.score}/100 · ${fmt(x.price)}</div>`).join("");
 }
 
 function renderOpportunitySummary(){
