@@ -281,13 +281,13 @@ function Landing() {
           <span className="crown">♛</span> KELTOŞ
         </div>
         <div className="nav-links">
-          <a href="#features">Özellikler</a>
-          <a href="#how">Nasıl Çalışır?</a>
-          <a href="#live">Sinyaller</a>
-          <a href="/performance">Sonuçlar</a>
+          <a href="/keltos.html">Sinyal Terminali</a>
+          <a href="/performance">Performans</a>
+          <a href="/whale">Whale Radar</a>
+          <a href="/exchange">Borsa Karşılaştır</a>
           <a href="#pricing">Fiyatlandırma</a>
-          <a href="/whale">🐋 Whale Radar</a>
         </div>
+
         <div className="nav-right">
           <a href="/keltos.html" className="nav-login">Giriş Yap</a>
           <a href="/keltos.html" className="nav-cta">Paraya Koş ⚡</a>
