@@ -587,6 +587,7 @@ const aicCss = `
 .aic-pulse-trend{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800}
 .aic-pulse-conf{display:flex;align-items:center;gap:8px;min-width:0}
 .aic-pulse-conf span{font-size:11px;font-weight:800;color:#f5b629;min-width:32px;text-align:right}
+@media(max-width:560px){.aic-pulse-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.aic-pulse-coin{min-width:46px}.aic-pulse-conf{order:3;flex:1 1 100%}}
 .aic-conf-bar{position:relative;flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
 .aic-conf-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,#f5b629,#ffd76a);box-shadow:0 0 8px rgba(245,182,41,.6)}
 .aic-chip{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.04em;border:1px solid transparent;white-space:nowrap}

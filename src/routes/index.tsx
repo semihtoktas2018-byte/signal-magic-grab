@@ -521,6 +521,7 @@ const css = `
 .nav-cta{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000!important;padding:9px 18px;border-radius:999px;font-weight:800;text-decoration:none;font-size:14px;white-space:nowrap;box-shadow:0 8px 24px -8px rgba(245,182,41,.6);transition:transform .2s}
 .nav-cta:hover{transform:translateY(-2px)}
 @media(max-width:1100px){.nav-links{display:none}}
+@media(max-width:560px){.nav{padding:12px 16px;gap:10px}.nav-login{display:none}.brand-logo{font-size:20px}.nav-cta{padding:9px 14px;font-size:13px}}
 
 .hero{position:relative;padding:70px 32px 50px;overflow:hidden}
 .hero-bg{position:absolute;inset:0;background:radial-gradient(55% 50% at 65% 35%,rgba(245,182,41,.12),transparent 60%);pointer-events:none}
