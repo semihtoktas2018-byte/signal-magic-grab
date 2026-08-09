@@ -16,6 +16,18 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: Landing,
+    // KELTOŞ CANLI BYBIT OTOMASYON MOTORU
+  loader: async () => {
+    try {
+    const res = await fetch('https://bybit.com');
+      const json = await res.json();
+      return { liveTickers: json?.result?.list || [] };
+    } catch (e) {
+      console.error("Bybit bağlantı hatası:", e);
+      return { liveTickers: [] };
+    }
+  },
+
 });
 
 const WHATSAPP = "https://wa.me/905446452430";
