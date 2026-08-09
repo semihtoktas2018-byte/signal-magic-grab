@@ -379,7 +379,7 @@ function Landing() {
         <div className="live-head-row">
           <span className="live-dot-lg"></span>
           <h2 className="live-h2">Canlı Sinyal Takibi</h2>
-          <span className="live-count">{openSignals.length} açık pozisyon</span>
+          <span className="live-count">{openSignals.length} açık pozisyon · özet</span>
         </div>
         {openSignals.length === 0 ? (
           <div className="live-empty">Şu an açık sinyal yok. Yeni sinyal geldiğinde canlı durumu burada görünecek.</div>
@@ -427,7 +427,7 @@ function Landing() {
           </div>
         )}
         <div className="live-foot">
-          <a href="/performance" className="btn btn-ghost">📊 Tüm Sinyalleri & Geçmişi Görüntüle →</a>
+          <a href="/keltos.html" className="btn btn-primary">⚡ Tüm Sinyaller & Detaylar Terminalde →</a>
         </div>
       </section>
 

@@ -3342,15 +3342,14 @@ video{
     </div>
 
     <nav class="k-nav" aria-label="Keltoş navigasyon">
-      <button class="tab-btn active" onclick="switchTab('signals',this)">⌂ Panel</button>
-      <button class="tab-btn" onclick="switchTab('signals',this)">◈ Sinyaller</button>
+      <a href="/" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⌂ Ana Sayfa</a>
+      <button class="tab-btn active" onclick="switchTab('signals',this)">◈ Sinyaller</button>
       <button class="tab-btn" onclick="switchTab('signals',this);setTimeout(()=>document.getElementById('paperTradePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),80)">▣ Paper Trade</button>
       <button class="tab-btn" onclick="switchTab('backtest',this)">↗ Backtest</button>
-      <button class="tab-btn" onclick="switchTab('signals',this);showToast('İzleme listesi favori yıldızlarıyla yönetilir ⭐')">⬡ İzleme Listem</button>
-      <button class="tab-btn" onclick="switchTab('settings',this)">⚙ Ayarlar</button>
       <a href="/performance" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">📊 Performans</a>
-    <a href="/whale" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">🐋 Whale Radar</a>
-    <a href="/exchange" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⚖️ Borsa Karşılaştır</a>
+      <a href="/whale" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">🐋 Whale Radar</a>
+      <a href="/exchange" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⚖️ Borsa Karşılaştır</a>
+      <button class="tab-btn" onclick="switchTab('settings',this)">⚙ Ayarlar</button>
     </nav>
     
 
