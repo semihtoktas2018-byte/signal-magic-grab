@@ -3326,6 +3326,17 @@ video{
   color:#f3e8ff!important;
 }
 .icon-btn{background:rgba(56,189,248,.08)!important;border-radius:12px!important}
+/* mobil başlık düzeni: aksiyon butonları artık üst üste binmiyor */
+@media(max-width:900px){
+  .k-top-actions{
+    position:static!important;order:2!important;width:100%!important;
+    display:flex!important;flex-wrap:wrap!important;gap:8px!important;
+    justify-content:flex-start!important;
+  }
+  .k-top-actions>*{flex:1 1 calc(50% - 4px)!important;min-width:0!important;width:auto!important;justify-content:center}
+  .k-brand{order:1!important}
+  .k-nav{order:3!important}
+}
 </style>
 </head>
 <body>
@@ -3342,15 +3353,14 @@ video{
     </div>
 
     <nav class="k-nav" aria-label="Keltoş navigasyon">
-      <button class="tab-btn active" onclick="switchTab('signals',this)">⌂ Panel</button>
-      <button class="tab-btn" onclick="switchTab('signals',this)">◈ Sinyaller</button>
+      <a href="/" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⌂ Ana Sayfa</a>
+      <button class="tab-btn active" id="navSignalsBtn" onclick="switchTab('signals',this)">◈ Sinyaller</button>
       <button class="tab-btn" onclick="switchTab('signals',this);setTimeout(()=>document.getElementById('paperTradePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),80)">▣ Paper Trade</button>
       <button class="tab-btn" onclick="switchTab('backtest',this)">↗ Backtest</button>
-      <button class="tab-btn" onclick="switchTab('signals',this);showToast('İzleme listesi favori yıldızlarıyla yönetilir ⭐')">⬡ İzleme Listem</button>
-      <button class="tab-btn" onclick="switchTab('settings',this)">⚙ Ayarlar</button>
       <a href="/performance" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">📊 Performans</a>
-    <a href="/whale" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">🐋 Whale Radar</a>
-    <a href="/exchange" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⚖️ Borsa Karşılaştır</a>
+      <a href="/whale" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">🐋 Whale Radar</a>
+      <a href="/exchange" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center">⚖️ Borsa Karşılaştır</a>
+      <button class="tab-btn" onclick="switchTab('settings',this)">⚙ Ayarlar</button>
     </nav>
     
 
@@ -3878,7 +3888,7 @@ video{
   <div class="error-bar" id="errorBar"></div>
 
 
-  <div class="tabs legacy-tabs">
+  <div class="tabs legacy-tabs" style="display:none">
     <button class="tab-btn active" onclick="switchTab('signals',this)">📊 Sinyaller</button>
     <button class="tab-btn" onclick="switchTab('backtest',this)">🧪 Backtest</button>
     <button class="tab-btn" onclick="switchTab('settings',this)">⚙️ Ayarlar</button>
@@ -5100,7 +5110,7 @@ x.signal !== "WAIT"
   const box=document.getElementById("ultraBox");
   if(!box)return;
   box.classList.toggle("show",ul.length>0);
-  document.getElementById("ultraList").innerHTML=ul.map(x=>`<div class="ultra-chip" onclick="switchTab('signals',document.querySelector('.tab-btn'))">${x.symbol.replace("USDT","")} · ${x.score}/100 · ${fmt(x.price)}</div>`).join("");
+  document.getElementById("ultraList").innerHTML=ul.map(x=>`<div class="ultra-chip" onclick="switchTab('signals',document.getElementById('navSignalsBtn'))">${x.symbol.replace("USDT","")} · ${x.score}/100 · ${fmt(x.price)}</div>`).join("");
 }
 
 function renderOpportunitySummary(){
