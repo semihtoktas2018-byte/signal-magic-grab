@@ -3326,6 +3326,17 @@ video{
   color:#f3e8ff!important;
 }
 .icon-btn{background:rgba(56,189,248,.08)!important;border-radius:12px!important}
+/* mobil başlık düzeni: aksiyon butonları artık üst üste binmiyor */
+@media(max-width:900px){
+  .k-top-actions{
+    position:static!important;order:2!important;width:100%!important;
+    display:flex!important;flex-wrap:wrap!important;gap:8px!important;
+    justify-content:flex-start!important;
+  }
+  .k-top-actions>*{flex:0 1 auto}
+  .k-brand{order:1!important}
+  .k-nav{order:3!important}
+}
 </style>
 </head>
 <body>
