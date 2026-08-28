@@ -368,28 +368,29 @@ export default function AISignalIntelligence() {
                 <tbody>
                   {SIGNALS.map((s, i) => (
                     <motion.tr key={s.coin + i} custom={i} variants={fadeUp}>
-                      <td className="aic-td-coin">{s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span></td>
-                      <td>
+                      <td className="aic-td-coin" data-label="Coin">{s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span></td>
+                      <td data-label="Dir">
                         <span className="aic-dir" style={{
                           background: s.dir === "LONG" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
                           color: s.dir === "LONG" ? "#22c55e" : "#ef4444",
                         }}>{s.dir}</span>
                       </td>
-                      <td>{fmt(s.entry)}</td>
-                      <td style={{ color: "#22c55e" }}>{fmt(s.tp)}</td>
-                      <td style={{ color: "#ef4444" }}>{fmt(s.sl)}</td>
-                      <td><span className="aic-risk" style={{ color: riskColor(s.risk) }}>{s.risk}</span></td>
-                      <td>
+                      <td data-label="Entry">{fmt(s.entry)}</td>
+                      <td data-label="TP" style={{ color: "#22c55e" }}>{fmt(s.tp)}</td>
+                      <td data-label="SL" style={{ color: "#ef4444" }}>{fmt(s.sl)}</td>
+                      <td data-label="Risk"><span className="aic-risk" style={{ color: riskColor(s.risk) }}>{s.risk}</span></td>
+                      <td data-label="Conf">
                         <div className="aic-conf-mini">
                           <div className="aic-conf-mini-fill" style={{ width: `${s.confidence}%` }} />
                           <span>{s.confidence}%</span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <span className="aic-status" style={{ color: statusColor(s.status), borderColor: statusColor(s.status) + "44", background: statusColor(s.status) + "18" }}>
                           {statusIcon(s.status)} {s.status}
                         </span>
                       </td>
+
                     </motion.tr>
                   ))}
                 </tbody>
