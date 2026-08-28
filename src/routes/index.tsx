@@ -558,11 +558,26 @@ const css = `
 .hero-stats div{display:flex;flex-direction:column;gap:3px}
 .hero-stats b{font-size:22px;color:var(--gold);font-weight:900}
 .hero-stats span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-@media(max-width:900px){.hero-compact{padding:22px 16px 20px}.hero-head-row{gap:12px}.hero-mark{width:58px;height:58px;border-radius:14px}.hero-stats{gap:14px}.hero-cta .btn{flex:1 1 100%;padding:14px 18px}}
-@media(max-width:420px){.hero-stats b{font-size:19px}.hero-stats{gap:12px}}
+@media(max-width:900px){.hero-compact{padding:22px 16px 20px}.hero-head-row{gap:12px}.hero-mark{width:58px;height:58px;border-radius:14px}.hero-stats{gap:14px}}
+@media(max-width:640px){
+  .hero-compact{padding:14px 14px 14px}
+  .hero-mark{display:none}
+  .hero-head-row{margin-bottom:10px;gap:0}
+  .eyebrow{font-size:10px;padding:4px 10px;letter-spacing:.14em}
+  .hero-title{font-size:26px;margin-top:8px}
+  .hero-sub{font-size:13px;line-height:1.5;margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .hero-cta{gap:8px;margin-bottom:14px}
+  .hero-cta .btn-primary{flex:1 1 100%;padding:13px 16px;font-size:14px}
+  .hero-cta .btn-ghost{flex:0 0 auto;padding:9px 14px;font-size:12.5px;border-radius:10px}
+  .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+  .hero-stats div{gap:1px;align-items:center}
+  .hero-stats b{font-size:16px}
+  .hero-stats span{font-size:9px;letter-spacing:.06em}
+}
+
 
 .section{max-width:1320px;margin:0 auto;padding:44px 28px}
-@media(max-width:640px){.section{padding:40px 18px}}
+@media(max-width:640px){.section{padding:26px 14px}.sec-head{margin-bottom:18px}.sec-head h2{font-size:22px}.sec-head p{font-size:13px}}
 .sec-head{text-align:center;margin-bottom:40px}
 .sec-head h2{font-size:clamp(26px,4vw,40px);font-weight:900;margin:0 0 10px;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .sec-head p{color:var(--muted);font-size:15px;margin:0}

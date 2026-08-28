@@ -368,28 +368,29 @@ export default function AISignalIntelligence() {
                 <tbody>
                   {SIGNALS.map((s, i) => (
                     <motion.tr key={s.coin + i} custom={i} variants={fadeUp}>
-                      <td className="aic-td-coin">{s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span></td>
-                      <td>
+                      <td className="aic-td-coin" data-label="Coin">{s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span></td>
+                      <td data-label="Dir">
                         <span className="aic-dir" style={{
                           background: s.dir === "LONG" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
                           color: s.dir === "LONG" ? "#22c55e" : "#ef4444",
                         }}>{s.dir}</span>
                       </td>
-                      <td>{fmt(s.entry)}</td>
-                      <td style={{ color: "#22c55e" }}>{fmt(s.tp)}</td>
-                      <td style={{ color: "#ef4444" }}>{fmt(s.sl)}</td>
-                      <td><span className="aic-risk" style={{ color: riskColor(s.risk) }}>{s.risk}</span></td>
-                      <td>
+                      <td data-label="Entry">{fmt(s.entry)}</td>
+                      <td data-label="TP" style={{ color: "#22c55e" }}>{fmt(s.tp)}</td>
+                      <td data-label="SL" style={{ color: "#ef4444" }}>{fmt(s.sl)}</td>
+                      <td data-label="Risk"><span className="aic-risk" style={{ color: riskColor(s.risk) }}>{s.risk}</span></td>
+                      <td data-label="Conf">
                         <div className="aic-conf-mini">
                           <div className="aic-conf-mini-fill" style={{ width: `${s.confidence}%` }} />
                           <span>{s.confidence}%</span>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <span className="aic-status" style={{ color: statusColor(s.status), borderColor: statusColor(s.status) + "44", background: statusColor(s.status) + "18" }}>
                           {statusIcon(s.status)} {s.status}
                         </span>
                       </td>
+
                     </motion.tr>
                   ))}
                 </tbody>
@@ -552,7 +553,7 @@ export default function AISignalIntelligence() {
  * Scoped CSS — gold + glass premium
  * ============================================================ */
 const aicCss = `
-.aic{position:relative;padding:60px 24px 72px;overflow:hidden}
+.aic{position:relative;padding:28px 24px 60px;overflow:hidden}
 .aic *{box-sizing:border-box}
 .aic-bg{position:absolute;inset:0;pointer-events:none;background:
   radial-gradient(45% 40% at 15% 20%,rgba(245,182,41,.10),transparent 60%),
@@ -667,4 +668,44 @@ const aicCss = `
 .aic-gauge-val{font-size:36px;font-weight:900;background:linear-gradient(135deg,#f5b629,#ffd76a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:-14px}
 .aic-gauge-lbl{font-size:11.5px;letter-spacing:.18em;font-weight:800;text-transform:uppercase;margin-top:2px}
 .aic-sent-foot{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(245,182,41,.2);font-size:12.5px;color:#8a93a3;text-align:center}
+
+/* ===== mobile polish: less vertical space, no overflow ===== */
+@media(max-width:640px){
+  .aic{padding:18px 14px 34px}
+  .aic-head{margin-bottom:16px;text-align:left}
+  .aic-eyebrow{margin-bottom:10px;font-size:10px;padding:5px 10px}
+  .aic-head h2{font-size:21px;margin-bottom:6px}
+  .aic-head p{font-size:12.5px;line-height:1.5;margin-inline:0}
+  .aic-top{gap:12px;margin-bottom:14px}
+  .glass{padding:13px;border-radius:16px}
+  .glass::before{border-radius:16px}
+  .glass:hover{transform:none}
+  .aic-title{margin-bottom:10px;font-size:11.5px}
+  .aic-pulse-list{gap:6px}
+  .aic-pulse-row{padding:9px 10px}
+  .aic-perf-head{margin:2px 2px 10px}
+  .aic-perf-grid{gap:10px;margin-bottom:14px}
+  .aic-stat{padding:11px;gap:10px}
+  .aic-stat-icon{width:30px;height:30px}
+  .aic-stat-val{font-size:17px}
+  .aic-chart-card{margin-bottom:14px}
+  .aic-chart{height:170px}
+  .aic-bottom{gap:12px}
+  .aic-analysis-val{font-size:17px}
+  .aic-gauge-val{font-size:30px}
+}
+/* Live Signals: table -> card list on small screens */
+@media(max-width:600px){
+  .aic-table-scroll{overflow:visible;margin:0;padding:0}
+  .aic-table{display:block;min-width:0;border-spacing:0;font-size:12px}
+  .aic-table thead{display:none}
+  .aic-table tbody{display:block}
+  .aic-table tbody tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:10px 11px;margin-bottom:8px;border:1px solid rgba(255,255,255,.06);border-radius:12px}
+  .aic-table tbody tr:hover{transform:none;box-shadow:none;background:rgba(245,182,41,.05)}
+  .aic-table tbody td{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0;border:0;border-radius:0;min-width:0}
+  .aic-table tbody td::before{content:attr(data-label);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#8a93a3;font-weight:800;flex:none}
+  .aic-table tbody td:first-child,.aic-table tbody td:last-child{grid-column:1 / -1}
+  .aic-conf-mini{min-width:64px;flex:1}
+}
 `;
+
