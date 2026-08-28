@@ -671,9 +671,9 @@ const aicCss = `
 
 /* ===== mobile polish: less vertical space, no overflow ===== */
 @media(max-width:640px){
-  .aic{padding:18px 14px 34px}
-  .aic-head{margin-bottom:16px;text-align:left}
-  .aic-eyebrow{margin-bottom:10px;font-size:10px;padding:5px 10px}
+  .aic{padding:8px 14px 34px}
+  .aic-head{margin-bottom:14px;text-align:left}
+  .aic-eyebrow{margin-bottom:8px;font-size:10px;padding:4px 10px}
   .aic-head h2{font-size:21px;margin-bottom:6px}
   .aic-head p{font-size:12.5px;line-height:1.5;margin-inline:0}
   .aic-top{gap:12px;margin-bottom:14px}
