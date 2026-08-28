@@ -577,7 +577,7 @@ const css = `
 
 
 .section{max-width:1320px;margin:0 auto;padding:44px 28px}
-@media(max-width:640px){.section{padding:40px 18px}}
+@media(max-width:640px){.section{padding:26px 14px}.sec-head{margin-bottom:18px}.sec-head h2{font-size:22px}.sec-head p{font-size:13px}}
 .sec-head{text-align:center;margin-bottom:40px}
 .sec-head h2{font-size:clamp(26px,4vw,40px);font-weight:900;margin:0 0 10px;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .sec-head p{color:var(--muted);font-size:15px;margin:0}
