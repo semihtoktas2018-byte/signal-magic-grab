@@ -340,7 +340,6 @@ function Landing() {
         <div className="hero-inner" data-reveal>
           <div className="hero-text">
             <div className="hero-head-row">
-              <img className="hero-mark" src="/keltos-hero.png" alt="Keltoş" loading="eager" />
               <div>
                 <span className="eyebrow">◆ PROFESYONEL KRİPTO SİNYAL</span>
                 <h1 className="hero-title">KELTOŞ <span className="hero-title-gold">PARAYA KOŞ</span></h1>
@@ -540,7 +539,6 @@ const css = `
 .hero-inner{position:relative;max-width:1320px;margin:0 auto;display:block}
 .hero-compact{padding:30px 28px 26px}
 .hero-head-row{display:flex;align-items:center;gap:18px;margin-bottom:14px}
-.hero-mark{width:88px;height:88px;object-fit:contain;border-radius:18px;flex:none;filter:drop-shadow(0 10px 26px rgba(245,182,41,.25))}
 .eyebrow{display:inline-block;font-size:11px;letter-spacing:.18em;color:var(--gold);padding:5px 12px;border:1px solid var(--line);border-radius:999px;margin:0;font-weight:700}
 .hero-title{font-size:clamp(26px,4.4vw,46px);line-height:1.05;font-weight:900;margin:6px 0 0;letter-spacing:-.02em;color:#fff}
 .hero-title-gold{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 60px rgba(245,182,41,.3)}
@@ -558,20 +556,19 @@ const css = `
 .hero-stats div{display:flex;flex-direction:column;gap:3px}
 .hero-stats b{font-size:22px;color:var(--gold);font-weight:900}
 .hero-stats span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-@media(max-width:900px){.hero-compact{padding:22px 16px 20px}.hero-head-row{gap:12px}.hero-mark{width:58px;height:58px;border-radius:14px}.hero-stats{gap:14px}}
+@media(max-width:900px){.hero-compact{padding:22px 16px 20px}.hero-head-row{gap:12px}.hero-stats{gap:14px}}
 @media(max-width:640px){
-  .hero-compact{padding:14px 14px 14px}
-  .hero-mark{display:none}
-  .hero-head-row{margin-bottom:10px;gap:0}
+  .hero-compact{padding:12px 14px 10px}
+  .hero-head-row{margin-bottom:8px;gap:0}
   .eyebrow{font-size:10px;padding:4px 10px;letter-spacing:.14em}
-  .hero-title{font-size:26px;margin-top:8px}
-  .hero-sub{font-size:13px;line-height:1.5;margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .hero-cta{gap:8px;margin-bottom:14px}
-  .hero-cta .btn-primary{flex:1 1 100%;padding:13px 16px;font-size:14px}
-  .hero-cta .btn-ghost{flex:0 0 auto;padding:9px 14px;font-size:12.5px;border-radius:10px}
-  .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+  .hero-title{font-size:24px;margin-top:6px}
+  .hero-sub{font-size:12.5px;line-height:1.45;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .hero-cta{gap:8px;margin-bottom:10px}
+  .hero-cta .btn-primary{flex:1 1 100%;padding:12px 16px;font-size:14px}
+  .hero-cta .btn-ghost{flex:0 0 auto;padding:8px 14px;font-size:12.5px;border-radius:10px}
+  .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
   .hero-stats div{gap:1px;align-items:center}
-  .hero-stats b{font-size:16px}
+  .hero-stats b{font-size:15px}
   .hero-stats span{font-size:9px;letter-spacing:.06em}
 }
 
