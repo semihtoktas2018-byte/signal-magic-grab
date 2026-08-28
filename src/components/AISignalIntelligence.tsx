@@ -553,7 +553,7 @@ export default function AISignalIntelligence() {
  * Scoped CSS — gold + glass premium
  * ============================================================ */
 const aicCss = `
-.aic{position:relative;padding:60px 24px 72px;overflow:hidden}
+.aic{position:relative;padding:28px 24px 60px;overflow:hidden}
 .aic *{box-sizing:border-box}
 .aic-bg{position:absolute;inset:0;pointer-events:none;background:
   radial-gradient(45% 40% at 15% 20%,rgba(245,182,41,.10),transparent 60%),
