@@ -340,7 +340,6 @@ function Landing() {
         <div className="hero-inner" data-reveal>
           <div className="hero-text">
             <div className="hero-head-row">
-              <img className="hero-mark" src="/keltos-hero.png" alt="Keltoş" loading="eager" />
               <div>
                 <span className="eyebrow">◆ PROFESYONEL KRİPTO SİNYAL</span>
                 <h1 className="hero-title">KELTOŞ <span className="hero-title-gold">PARAYA KOŞ</span></h1>
@@ -540,7 +539,6 @@ const css = `
 .hero-inner{position:relative;max-width:1320px;margin:0 auto;display:block}
 .hero-compact{padding:30px 28px 26px}
 .hero-head-row{display:flex;align-items:center;gap:18px;margin-bottom:14px}
-.hero-mark{width:88px;height:88px;object-fit:contain;border-radius:18px;flex:none;filter:drop-shadow(0 10px 26px rgba(245,182,41,.25))}
 .eyebrow{display:inline-block;font-size:11px;letter-spacing:.18em;color:var(--gold);padding:5px 12px;border:1px solid var(--line);border-radius:999px;margin:0;font-weight:700}
 .hero-title{font-size:clamp(26px,4.4vw,46px);line-height:1.05;font-weight:900;margin:6px 0 0;letter-spacing:-.02em;color:#fff}
 .hero-title-gold{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 60px rgba(245,182,41,.3)}
