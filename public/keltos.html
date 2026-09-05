@@ -6559,5 +6559,88 @@ restartAutoRefresh();
   setTimeout(applyVipLocks, 3000);
 })();
 </script>
+<script>
+/* ===== GERÇEK VERİ BAĞLAMA: Top Opportunities + Smart Money ===== */
+(function(){
+  if(window.__keltosRealDataPanels) return;
+  window.__keltosRealDataPanels = true;
+
+  var SB_URL = "https://hnzjvcwbcfgfwpnfyhiz.supabase.co";
+  var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhuemp2Y3diY2ZnZndwbmZ5aGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTQ5NzcsImV4cCI6MjA5NzQzMDk3N30.YnbumW8oXeycMd2DNLTA5Qui52sWqRlQgrWyaMwKulI";
+
+  function setTxt(id, txt, color){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = txt;
+    if(color) el.style.color = color;
+  }
+
+  /* --- Top Opportunities: terminalin kendi gerçek skor verisinden (lastData) --- */
+  function fillOpportunities(){
+    var data = (typeof lastData !== 'undefined' && Array.isArray(lastData)) ? lastData.slice() : [];
+    var active = data.filter(function(d){ return d && d.signal && d.signal !== 'WAIT' && typeof d.score === 'number'; });
+    if(!active.length){
+      setTxt('topOppBest','Veri mevcut değil','#8a93a3');
+      setTxt('topOppStrong','Veri mevcut değil','#8a93a3');
+      setTxt('topOppMomentum','Veri mevcut değil','#8a93a3');
+      return;
+    }
+    active.sort(function(a,b){ return b.score - a.score; });
+    var best = active[0];
+    var buys = active.filter(function(d){ return d.signal === 'BUY'; });
+    var strong = buys[0];
+    var byChange = active.slice().sort(function(a,b){
+      return Math.abs(parseFloat(b.change24h||b.chg||0)) - Math.abs(parseFloat(a.change24h||a.chg||0));
+    });
+    var mom = byChange[0];
+    setTxt('topOppBest', best.symbol + ' · ' + best.score + '/100', '#f5b629');
+    setTxt('topOppStrong', strong ? (strong.symbol + ' · ' + strong.score + '/100') : 'BUY sinyali yok', strong ? '#22c55e' : '#8a93a3');
+    setTxt('topOppMomentum', mom ? (mom.symbol + ' · ' + mom.score + '/100') : 'Veri mevcut değil', mom ? '#60a5fa' : '#8a93a3');
+  }
+
+  /* --- Smart Money: whale_events tablosundaki gerçek kayıtlardan --- */
+  function fillSmartMoney(){
+    var panel = document.getElementById('smartMoneyPanel');
+    if(!panel) return;
+    var body = panel.querySelector('.sm-body');
+    fetch(SB_URL + '/rest/v1/whale_events?select=coin,side,amount_usd,created_at&order=created_at.desc&limit=40', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    }).then(function(r){ return r.json(); }).then(function(rows){
+      if(!Array.isArray(rows) || !rows.length){
+        if(body) body.innerHTML = '<div class="sm-item" style="flex:1"><span class="sm-label">Durum</span><span class="sm-value" style="color:#8a93a3">Gerçek whale verisi bağlantısı mevcut değil</span></div>';
+        return;
+      }
+      var buys = {}, sells = {}, buyUsd = 0, sellUsd = 0;
+      rows.forEach(function(r){
+        var coin = String(r.coin||'').replace('USDT','');
+        var isBuy = String(r.side||'').toUpperCase().charAt(0) === 'B';
+        var usd = Math.abs(parseFloat(r.amount_usd)||0);
+        if(isBuy){ buys[coin] = (buys[coin]||0) + usd; buyUsd += usd; }
+        else { sells[coin] = (sells[coin]||0) + usd; sellUsd += usd; }
+      });
+      var top = function(o){
+        return Object.keys(o).sort(function(a,b){ return o[b]-o[a]; }).slice(0,2).join(' · ') || 'Kayıt yok';
+      };
+      var last = rows[0].created_at ? new Date(rows[0].created_at) : null;
+      var netTxt = ((buyUsd - sellUsd) >= 0 ? '+' : '-') + (Math.abs(buyUsd - sellUsd)/1e6).toFixed(2) + 'M';
+      if(body){
+        body.innerHTML =
+          '<div class="sm-item"><span class="sm-label">Kayıtlı İşlem</span><span class="sm-value" style="color:#f5b629">' + rows.length + '</span></div>' +
+          '<div class="sm-item"><span class="sm-label">Alım Yönü</span><span class="sm-value green">' + top(buys) + '</span></div>' +
+          '<div class="sm-item"><span class="sm-label">Satış Yönü</span><span class="sm-value red">' + top(sells) + '</span></div>' +
+          '<div class="sm-item"><span class="sm-label">Net Akış</span><span class="sm-value" style="color:' + ((buyUsd-sellUsd)>=0 ? '#22c55e' : '#ef4444') + '">' + netTxt + '</span></div>' +
+          '<div class="sm-item"><span class="sm-label">Son Kayıt</span><span class="sm-value" style="color:#8a93a3">' + (last ? last.toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—') + '</span></div>';
+      }
+    }).catch(function(){
+      if(body) body.innerHTML = '<div class="sm-item" style="flex:1"><span class="sm-label">Durum</span><span class="sm-value" style="color:#8a93a3">Gerçek whale verisi bağlantısı mevcut değil</span></div>';
+    });
+  }
+
+  fillOpportunities();
+  fillSmartMoney();
+  setInterval(fillOpportunities, 15000);
+  setInterval(fillSmartMoney, 120000);
+})();
+</script>
 </body>
 </html>
