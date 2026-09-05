@@ -394,19 +394,6 @@ export default function AISignalIntelligence() {
             )}
           </motion.div>
 
-          {/* AI yorumu — gerçek metin kaynağı yok */}
-          <motion.div
-            className="glass aic-analysis"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-            variants={fadeUp}
-          >
-            <div className="aic-title">
-              <Brain size={16} /> AI Piyasa Yorumu
-            </div>
-            <NoData text="Gerçek veri bağlantısı yok — yapay zeka yorum servisi bağlı olmadığı için burada metin üretilmez." />
-          </motion.div>
         </div>
 
         {/* Bugünkü performans — sadece kayıtlı sinyaller */}
