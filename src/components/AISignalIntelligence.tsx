@@ -297,7 +297,7 @@ export default function AISignalIntelligence() {
                     const diff = Number(p.diff_pct);
                     const col = diff >= 0 ? "#22c55e" : "#ef4444";
                     return (
-                      <motion.div key={p.coin} className="aic-pulse-row" custom={i} variants={fadeUp}>
+                      <div key={p.coin} className="aic-pulse-row">
                         <div className="aic-pulse-coin">{p.coin.replace("USDT", "")}</div>
                         <div className="aic-pulse-trend" style={{ color: "#f0f4fa" }}>
                           Bybit {fmt(Number(p.bybit_price))}
@@ -308,7 +308,7 @@ export default function AISignalIntelligence() {
                         <div className="aic-chip" style={{ color: col, background: col + "1f", borderColor: col + "4d" }}>
                           {diff >= 0 ? "+" : ""}{diff.toFixed(2)}%
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -357,7 +357,7 @@ export default function AISignalIntelligence() {
                         const tp = isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT);
                         const sl = isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT);
                         return (
-                          <motion.tr key={s.id} custom={i} variants={fadeUp}>
+                          <tr key={s.id}>
                             <td className="aic-td-coin" data-label="Coin">
                               {s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span>
                             </td>
@@ -381,7 +381,7 @@ export default function AISignalIntelligence() {
                                 {statusIcon(s.result)} {statusText(s.result)}
                               </span>
                             </td>
-                          </motion.tr>
+                          </tr>
                         );
                       })}
                     </tbody>
@@ -510,7 +510,7 @@ export default function AISignalIntelligence() {
                   const amt = Number(w.amount_usd);
                   const amtTxt = `${buy ? "+" : "-"}${(Math.abs(amt) / 1_000_000).toFixed(2)}M`;
                   return (
-                    <motion.div key={w.id} className="aic-whale" custom={i} variants={fadeUp}>
+                    <div key={w.id} className="aic-whale">
                       <span className="aic-whale-emoji">🐋</span>
                       <div className="aic-whale-txt">
                         <div className="aic-whale-line">
@@ -524,7 +524,7 @@ export default function AISignalIntelligence() {
                       <div className="aic-whale-amt" style={{ color: buy ? "#22c55e" : "#ef4444" }}>
                         {amtTxt}
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
