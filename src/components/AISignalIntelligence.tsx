@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Activity,
   Brain,
   Cpu,
   TrendingUp,
-  TrendingDown,
-  Minus,
   Target,
   Shield,
   Flame,
   Zap,
   BarChart3,
-  Gauge,
   Waves,
   Sparkles,
   CheckCircle2,
@@ -22,158 +20,158 @@ import {
 
 /* ============================================================
  * AI SIGNAL INTELLIGENCE CENTER
- * Self-contained premium dashboard (glassmorphism + gold)
- * Uses only demo data; does not touch existing logic.
+ * Tüm veriler gerçek kaynaklardan gelir:
+ *  - exchange_prices  (canlı Bybit/OKX fiyatları)
+ *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
+ *  - whale_events     (gerçek balina işlemleri)
+ * Gerçek kaynağı olmayan hiçbir kutuda uydurma değer gösterilmez.
+ * Sinyal motoru, skorlama ve trading mantığı bu dosyada YOKTUR.
  * ============================================================ */
 
-type Trend = "Bullish" | "Bearish" | "Neutral";
-type Vol = "Low" | "Medium" | "High";
-type Mom = "Weak" | "Normal" | "Strong";
-type Status = "OPEN" | "HIT TP" | "STOP" | "WAITING";
-
-interface PulseRow {
+interface SignalRow {
+  id: string;
   coin: string;
-  trend: Trend;
-  confidence: number;
-  volatility: Vol;
-  momentum: Mom;
+  signal: string;
+  score: number;
+  quality: string | null;
+  price: number;
+  result: string;
+  created_at: string;
+}
+interface PriceRow {
+  coin: string;
+  bybit_price: number;
+  okx_price: number;
+  diff_pct: number;
+  updated_at: string;
+}
+interface WhaleRow {
+  id: string;
+  coin: string;
+  side: string;
+  amount_usd: number;
+  created_at: string;
 }
 
-interface LiveSignal {
-  coin: string;
-  dir: "LONG" | "SHORT";
-  entry: number;
-  tp: number;
-  sl: number;
-  risk: "Low" | "Med" | "High";
-  confidence: number;
-  status: Status;
-}
-
-interface WhaleTx {
-  side: "Buy" | "Sell";
-  coin: string;
-  amount: string;
-  ago: string;
-}
-
-const PULSE: PulseRow[] = [
-  { coin: "BTC", trend: "Bullish", confidence: 92, volatility: "Medium", momentum: "Strong" },
-  { coin: "ETH", trend: "Bullish", confidence: 84, volatility: "Medium", momentum: "Normal" },
-  { coin: "SOL", trend: "Bullish", confidence: 88, volatility: "High", momentum: "Strong" },
-  { coin: "BNB", trend: "Neutral", confidence: 61, volatility: "Low", momentum: "Normal" },
-  { coin: "XRP", trend: "Bearish", confidence: 47, volatility: "Medium", momentum: "Weak" },
-];
-
-const SIGNALS: LiveSignal[] = [
-  { coin: "BTCUSDT", dir: "LONG", entry: 68420, tp: 71800, sl: 66900, risk: "Low", confidence: 92, status: "OPEN" },
-  { coin: "ETHUSDT", dir: "LONG", entry: 3542, tp: 3720, sl: 3465, risk: "Med", confidence: 84, status: "HIT TP" },
-  { coin: "SOLUSDT", dir: "LONG", entry: 168.2, tp: 178.5, sl: 163.1, risk: "Med", confidence: 88, status: "OPEN" },
-  { coin: "BNBUSDT", dir: "SHORT", entry: 612.4, tp: 592.0, sl: 622.9, risk: "Low", confidence: 71, status: "WAITING" },
-  { coin: "LINKUSDT", dir: "LONG", entry: 15.42, tp: 16.9, sl: 14.85, risk: "Med", confidence: 79, status: "OPEN" },
-  { coin: "AVAXUSDT", dir: "SHORT", entry: 34.2, tp: 32.5, sl: 35.4, risk: "High", confidence: 66, status: "STOP" },
-  { coin: "DOGEUSDT", dir: "LONG", entry: 0.164, tp: 0.178, sl: 0.157, risk: "High", confidence: 58, status: "WAITING" },
-  { coin: "XRPUSDT", dir: "SHORT", entry: 0.612, tp: 0.585, sl: 0.628, risk: "Med", confidence: 62, status: "OPEN" },
-  { coin: "ADAUSDT", dir: "LONG", entry: 0.482, tp: 0.512, sl: 0.468, risk: "Low", confidence: 74, status: "HIT TP" },
-  { coin: "MATICUSDT", dir: "LONG", entry: 0.712, tp: 0.755, sl: 0.688, risk: "Med", confidence: 69, status: "OPEN" },
-];
-
-const WHALES: WhaleTx[] = [
-  { side: "Buy", coin: "BTC", amount: "+18.4M", ago: "2 dk önce" },
-  { side: "Sell", coin: "ETH", amount: "-9.1M", ago: "5 dk önce" },
-  { side: "Buy", coin: "SOL", amount: "+6.3M", ago: "11 dk önce" },
-  { side: "Buy", coin: "LINK", amount: "+2.8M", ago: "17 dk önce" },
-  { side: "Sell", coin: "AVAX", amount: "-4.2M", ago: "24 dk önce" },
-];
-
-const AI_ANALYSIS = [
-  "Bitcoin momentum remains bullish.",
-  "RSI continues above 60.",
-  "Whale accumulation detected.",
-  "Funding rates remain healthy.",
-  "Expected upside: +4.8%",
-  "Confidence: 91%",
-];
+/* TP/SL oranları cron (sinyal motoru) ile aynıdır — türetilmiş, uydurma değil */
+const TP_PCT = 0.025;
+const SL_PCT = 0.02;
 
 /* ---------- helpers ---------- */
-function trendColor(t: Trend) {
-  return t === "Bullish" ? "#22c55e" : t === "Bearish" ? "#ef4444" : "#f5b629";
-}
-function TrendIcon({ t }: { t: Trend }) {
-  const c = trendColor(t);
-  if (t === "Bullish") return <TrendingUp size={14} color={c} />;
-  if (t === "Bearish") return <TrendingDown size={14} color={c} />;
-  return <Minus size={14} color={c} />;
-}
-function statusColor(s: Status) {
-  if (s === "OPEN") return "#22c55e";
-  if (s === "HIT TP") return "#f5b629";
-  if (s === "STOP") return "#ef4444";
-  return "#8a93a3";
-}
-function statusIcon(s: Status) {
-  const c = statusColor(s);
-  if (s === "OPEN") return <Activity size={12} color={c} />;
-  if (s === "HIT TP") return <CheckCircle2 size={12} color={c} />;
-  if (s === "STOP") return <XCircle size={12} color={c} />;
-  return <Clock size={12} color={c} />;
-}
-function riskColor(r: LiveSignal["risk"]) {
-  return r === "Low" ? "#22c55e" : r === "Med" ? "#f5b629" : "#ef4444";
-}
 function fmt(n: number) {
+  if (!Number.isFinite(n)) return "—";
   if (n >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 1 });
   if (n >= 1) return n.toFixed(2);
   return n.toFixed(4);
 }
-
-/* ---------- Typing analysis ---------- */
-function useTypingLines(lines: string[]) {
-  const [rendered, setRendered] = useState<string[]>([]);
-  const [current, setCurrent] = useState("");
-  useEffect(() => {
-    let li = 0;
-    let ci = 0;
-    let localRendered: string[] = [];
-    let raf: number;
-    const tick = () => {
-      if (li >= lines.length) return;
-      const line = lines[li];
-      ci++;
-      setCurrent(line.slice(0, ci));
-      if (ci >= line.length) {
-        localRendered = [...localRendered, line];
-        setRendered(localRendered);
-        setCurrent("");
-        li++;
-        ci = 0;
-        raf = window.setTimeout(tick, 380) as unknown as number;
-      } else {
-        raf = window.setTimeout(tick, 28) as unknown as number;
-      }
-    };
-    raf = window.setTimeout(tick, 400) as unknown as number;
-    return () => window.clearTimeout(raf);
-  }, [lines]);
-  return { rendered, current };
+function statusColor(s: string) {
+  if (s === "tuttu") return "#22c55e";
+  if (s === "tutmadi") return "#ef4444";
+  return "#8a93a3";
+}
+function statusIcon(s: string) {
+  const c = statusColor(s);
+  if (s === "tuttu") return <CheckCircle2 size={12} color={c} />;
+  if (s === "tutmadi") return <XCircle size={12} color={c} />;
+  return <Clock size={12} color={c} />;
+}
+function statusText(s: string) {
+  if (s === "tuttu") return "HEDEF";
+  if (s === "tutmadi") return "STOP";
+  return "BEKLİYOR";
+}
+function timeAgo(iso: string) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "az önce";
+  if (m < 60) return `${m} dk önce`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} sa önce`;
+  return `${Math.round(h / 24)} gün önce`;
+}
+function stamp(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-/* ---------- Performance chart (SVG stroke draw) ---------- */
-function PerfChart() {
+/* ---------- boş durum ---------- */
+function NoData({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        padding: "22px 16px",
+        textAlign: "center",
+        fontSize: 12.5,
+        lineHeight: 1.6,
+        color: "#8a93a3",
+        background: "rgba(255,255,255,.02)",
+        border: "1px dashed rgba(245,182,41,.18)",
+        borderRadius: 12,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+/* ---------- gerçek veri yükleyici ---------- */
+function useRealData() {
+  const [prices, setPrices] = useState<PriceRow[] | null>(null);
+  const [signals, setSignals] = useState<SignalRow[] | null>(null);
+  const [whales, setWhales] = useState<WhaleRow[] | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const [p, s, w] = await Promise.all([
+        supabase.from("exchange_prices").select("coin,bybit_price,okx_price,diff_pct,updated_at"),
+        supabase
+          .from("kpk_signals")
+          .select("id,coin,signal,score,quality,price,result,created_at")
+          .order("created_at", { ascending: false })
+          .limit(300),
+        supabase
+          .from("whale_events")
+          .select("id,coin,side,amount_usd,created_at")
+          .order("created_at", { ascending: false })
+          .limit(8),
+      ]);
+      if (cancelled) return;
+      setPrices((p.data as PriceRow[] | null) ?? []);
+      setSignals((s.data as SignalRow[] | null) ?? []);
+      setWhales((w.data as WhaleRow[] | null) ?? []);
+      setLoaded(true);
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { prices, signals, whales, loaded };
+}
+
+/* ---------- Performance chart: gerçek kapanmış sinyallerden kümülatif net ---------- */
+function PerfChart({ series }: { series: number[] }) {
   const ref = useRef<SVGSVGElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.3 });
   const points = useMemo(() => {
-    // demo cumulative ROI
-    const raw = [0, 1.2, 2.4, 2.1, 3.5, 4.8, 4.2, 5.6, 7.1, 6.8, 8.2, 9.5, 9.1, 10.6, 12.1, 11.7, 13.4, 14.8];
+    const raw = series;
     const w = 800, h = 220, pad = 20;
     const min = Math.min(...raw), max = Math.max(...raw);
-    const dx = (w - pad * 2) / (raw.length - 1);
+    const dx = (w - pad * 2) / Math.max(1, raw.length - 1);
     return raw.map((v, i) => {
       const x = pad + i * dx;
       const y = h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2);
       return [x, y] as const;
     });
-  }, []);
+  }, [series]);
   const d = points.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(" ");
   const area = `${d} L${points[points.length - 1][0]},220 L${points[0][0]},220 Z`;
   return (
@@ -213,52 +211,6 @@ function PerfChart() {
   );
 }
 
-/* ---------- Sentiment gauge ---------- */
-function SentimentGauge({ value }: { value: number }) {
-  // value 0..100
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    const start = performance.now();
-    const from = 0;
-    const dur = 1600;
-    let raf = 0;
-    const step = (t: number) => {
-      const p = Math.min(1, (t - start) / dur);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setDisplay(Math.round(from + (value - from) * eased));
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  const angle = -90 + (display / 100) * 180;
-  const label = display < 33 ? "Fear" : display < 66 ? "Neutral" : "Greed";
-  const labelColor = display < 33 ? "#ef4444" : display < 66 ? "#f5b629" : "#22c55e";
-  return (
-    <div className="aic-gauge">
-      <svg viewBox="0 0 220 130" className="aic-gauge-svg">
-        <defs>
-          <linearGradient id="aic-gauge-arc" x1="0" x2="1">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="50%" stopColor="#f5b629" />
-            <stop offset="100%" stopColor="#22c55e" />
-          </linearGradient>
-        </defs>
-        <path d="M20 110 A90 90 0 0 1 200 110" fill="none" stroke="url(#aic-gauge-arc)" strokeWidth="14" strokeLinecap="round" />
-        <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: "110px 110px", transition: "transform .12s linear" }}>
-          <line x1="110" y1="110" x2="110" y2="34" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-          <circle cx="110" cy="110" r="7" fill="#f5b629" stroke="#000" strokeWidth="2" />
-        </g>
-        <text x="30" y="128" fill="#8a93a3" fontSize="10" fontWeight="700">FEAR</text>
-        <text x="102" y="16" fill="#8a93a3" fontSize="10" fontWeight="700">NEUTRAL</text>
-        <text x="168" y="128" fill="#8a93a3" fontSize="10" fontWeight="700">GREED</text>
-      </svg>
-      <div className="aic-gauge-val">{display}</div>
-      <div className="aic-gauge-lbl" style={{ color: labelColor }}>{label}</div>
-    </div>
-  );
-}
-
 /* ---------- Section wrapper animation ---------- */
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -270,16 +222,36 @@ const fadeUp = {
 };
 
 export default function AISignalIntelligence() {
-  const { rendered, current } = useTypingLines(AI_ANALYSIS);
+  const { prices, signals, whales, loaded } = useRealData();
 
-  const perf = {
-    signals: 42,
-    wins: 31,
-    losses: 8,
-    avgRR: "1 : 2.4",
-    success: "79%",
-    roi: "+18.6%",
-  };
+  const priceRows = (prices ?? []).slice().sort((a, b) => Math.abs(Number(b.diff_pct)) - Math.abs(Number(a.diff_pct)));
+  const lastPriceUpdate = priceRows.length
+    ? priceRows.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), priceRows[0].updated_at)
+    : null;
+
+  const allSignals = signals ?? [];
+  const recentSignals = allSignals.slice(0, 10);
+  const lastSignalAt = allSignals.length ? allSignals[0].created_at : null;
+
+  /* Bugünkü performans — sadece kayıtlı gerçek sinyaller */
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = allSignals.filter((s) => s.created_at.slice(0, 10) === todayKey);
+  const tWin = today.filter((s) => s.result === "tuttu").length;
+  const tLoss = today.filter((s) => s.result === "tutmadi").length;
+  const tWait = today.filter((s) => s.result === "bekliyor").length;
+  const tClosed = tWin + tLoss;
+
+  /* Kümülatif net (tuttu -1/+1) — gerçek kapanmış sinyallerden */
+  const closedAsc = allSignals
+    .filter((s) => s.result === "tuttu" || s.result === "tutmadi")
+    .slice()
+    .reverse();
+  const series = useMemo(() => {
+    let acc = 0;
+    return [0, ...closedAsc.map((s) => (acc += s.result === "tuttu" ? 1 : -1))];
+  }, [closedAsc.length]);
+
+  const whaleRows = whales ?? [];
 
   return (
     <section className="aic" aria-label="AI Signal Intelligence Center">
@@ -297,12 +269,12 @@ export default function AISignalIntelligence() {
             <Sparkles size={12} /> AI SIGNAL INTELLIGENCE CENTER
           </span>
           <h2>Yapay Zeka Destekli Piyasa Kontrol Merkezi</h2>
-          <p>Canlı sinyaller, akıllı para akışı, momentum ve balina hareketleri tek bir premium terminalde.</p>
+          <p>Tüm veriler gerçek kaynaklardan gelir. Veri yoksa kutu boş kalır — tahmini sayı gösterilmez.</p>
         </motion.div>
 
-        {/* Top grid: pulse / signals / analysis */}
+        {/* Top grid: canlı fiyatlar / sinyaller / analiz */}
         <div className="aic-top">
-          {/* Market Pulse */}
+          {/* Canlı borsa fiyatları (exchange_prices) */}
           <motion.div
             className="glass aic-pulse"
             initial="hidden"
@@ -311,35 +283,43 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Waves size={16} /> Market Pulse
-              <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>
+              <Waves size={16} /> Canlı Fiyat / Fark
+              {priceRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>}
             </div>
-            <div className="aic-pulse-list">
-              {PULSE.map((p, i) => (
-                <motion.div
-                  key={p.coin}
-                  className="aic-pulse-row"
-                  custom={i}
-                  variants={fadeUp}
-                >
-                  <div className="aic-pulse-coin">{p.coin}</div>
-                  <div className="aic-pulse-trend" style={{ color: trendColor(p.trend) }}>
-                    <TrendIcon t={p.trend} /> {p.trend}
-                  </div>
-                  <div className="aic-pulse-conf">
-                    <div className="aic-conf-bar">
-                      <div className="aic-conf-fill" style={{ width: `${p.confidence}%` }} />
-                    </div>
-                    <span>{p.confidence}%</span>
-                  </div>
-                  <div className={`aic-chip vol-${p.volatility.toLowerCase()}`}>{p.volatility}</div>
-                  <div className={`aic-chip mom-${p.momentum.toLowerCase()}`}>{p.momentum}</div>
-                </motion.div>
-              ))}
-            </div>
+            {!loaded ? (
+              <NoData text="Yükleniyor..." />
+            ) : priceRows.length === 0 ? (
+              <NoData text="Veri mevcut değil — borsa fiyat kaydı bulunamadı." />
+            ) : (
+              <>
+                <div className="aic-pulse-list">
+                  {priceRows.slice(0, 6).map((p, i) => {
+                    const diff = Number(p.diff_pct);
+                    const col = diff >= 0 ? "#22c55e" : "#ef4444";
+                    return (
+                      <motion.div key={p.coin} className="aic-pulse-row" custom={i} variants={fadeUp}>
+                        <div className="aic-pulse-coin">{p.coin.replace("USDT", "")}</div>
+                        <div className="aic-pulse-trend" style={{ color: "#f0f4fa" }}>
+                          Bybit {fmt(Number(p.bybit_price))}
+                        </div>
+                        <div className="aic-pulse-conf">
+                          <span style={{ color: "#8a93a3", minWidth: 0 }}>OKX {fmt(Number(p.okx_price))}</span>
+                        </div>
+                        <div className="aic-chip" style={{ color: col, background: col + "1f", borderColor: col + "4d" }}>
+                          {diff >= 0 ? "+" : ""}{diff.toFixed(2)}%
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <div className="aic-sent-foot" style={{ marginTop: 10, paddingTop: 10 }}>
+                  Son güncelleme: {stamp(lastPriceUpdate)}
+                </div>
+              </>
+            )}
           </motion.div>
 
-          {/* Live Signals table */}
+          {/* Kayıtlı sinyaller (kpk_signals) */}
           <motion.div
             className="glass aic-signals"
             initial="hidden"
@@ -348,57 +328,73 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Zap size={16} /> Live Signals
-              <span className="aic-live"><span className="aic-live-dot" /> STREAMING</span>
+              <Zap size={16} /> Kayıtlı Sinyaller
+              {recentSignals.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> DB</span>}
             </div>
-            <div className="aic-table-scroll">
-              <table className="aic-table">
-                <thead>
-                  <tr>
-                    <th>Coin</th>
-                    <th>Dir</th>
-                    <th>Entry</th>
-                    <th>TP</th>
-                    <th>SL</th>
-                    <th>Risk</th>
-                    <th>Conf</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SIGNALS.map((s, i) => (
-                    <motion.tr key={s.coin + i} custom={i} variants={fadeUp}>
-                      <td className="aic-td-coin" data-label="Coin">{s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span></td>
-                      <td data-label="Dir">
-                        <span className="aic-dir" style={{
-                          background: s.dir === "LONG" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
-                          color: s.dir === "LONG" ? "#22c55e" : "#ef4444",
-                        }}>{s.dir}</span>
-                      </td>
-                      <td data-label="Entry">{fmt(s.entry)}</td>
-                      <td data-label="TP" style={{ color: "#22c55e" }}>{fmt(s.tp)}</td>
-                      <td data-label="SL" style={{ color: "#ef4444" }}>{fmt(s.sl)}</td>
-                      <td data-label="Risk"><span className="aic-risk" style={{ color: riskColor(s.risk) }}>{s.risk}</span></td>
-                      <td data-label="Conf">
-                        <div className="aic-conf-mini">
-                          <div className="aic-conf-mini-fill" style={{ width: `${s.confidence}%` }} />
-                          <span>{s.confidence}%</span>
-                        </div>
-                      </td>
-                      <td data-label="Status">
-                        <span className="aic-status" style={{ color: statusColor(s.status), borderColor: statusColor(s.status) + "44", background: statusColor(s.status) + "18" }}>
-                          {statusIcon(s.status)} {s.status}
-                        </span>
-                      </td>
-
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {!loaded ? (
+              <NoData text="Yükleniyor..." />
+            ) : recentSignals.length === 0 ? (
+              <NoData text="Veri mevcut değil — kayıtlı sinyal bulunamadı." />
+            ) : (
+              <>
+                <div className="aic-table-scroll">
+                  <table className="aic-table">
+                    <thead>
+                      <tr>
+                        <th>Coin</th>
+                        <th>Yön</th>
+                        <th>Giriş</th>
+                        <th>Hedef</th>
+                        <th>Stop</th>
+                        <th>Skor</th>
+                        <th>Durum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentSignals.map((s, i) => {
+                        const isBuy = s.signal === "BUY";
+                        const entry = Number(s.price);
+                        const tp = isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT);
+                        const sl = isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT);
+                        return (
+                          <motion.tr key={s.id} custom={i} variants={fadeUp}>
+                            <td className="aic-td-coin" data-label="Coin">
+                              {s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span>
+                            </td>
+                            <td data-label="Yön">
+                              <span className="aic-dir" style={{
+                                background: isBuy ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
+                                color: isBuy ? "#22c55e" : "#ef4444",
+                              }}>{s.signal}</span>
+                            </td>
+                            <td data-label="Giriş">{fmt(entry)}</td>
+                            <td data-label="Hedef" style={{ color: "#22c55e" }}>{fmt(tp)}</td>
+                            <td data-label="Stop" style={{ color: "#ef4444" }}>{fmt(sl)}</td>
+                            <td data-label="Skor">
+                              <div className="aic-conf-mini">
+                                <div className="aic-conf-mini-fill" style={{ width: `${Math.min(100, s.score)}%` }} />
+                                <span>{s.score}</span>
+                              </div>
+                            </td>
+                            <td data-label="Durum">
+                              <span className="aic-status" style={{ color: statusColor(s.result), borderColor: statusColor(s.result) + "44", background: statusColor(s.result) + "18" }}>
+                                {statusIcon(s.result)} {statusText(s.result)}
+                              </span>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="aic-sent-foot" style={{ marginTop: 8, paddingTop: 10 }}>
+                  En son sinyal: {stamp(lastSignalAt)}
+                </div>
+              </>
+            )}
           </motion.div>
 
-          {/* AI Market Analysis */}
+          {/* AI yorumu — gerçek metin kaynağı yok */}
           <motion.div
             className="glass aic-analysis"
             initial="hidden"
@@ -407,36 +403,13 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Brain size={16} /> AI Market Analysis
-              <span className="aic-live"><span className="aic-live-dot" /> AI</span>
+              <Brain size={16} /> AI Piyasa Yorumu
             </div>
-            <div className="aic-analysis-body">
-              {rendered.map((l, i) => (
-                <div key={i} className="aic-line">
-                  <span className="aic-line-dot" /> {l}
-                </div>
-              ))}
-              {current && (
-                <div className="aic-line">
-                  <span className="aic-line-dot" /> {current}
-                  <span className="aic-caret">▍</span>
-                </div>
-              )}
-              <div className="aic-analysis-foot">
-                <div>
-                  <span className="aic-analysis-lbl">Expected Upside</span>
-                  <span className="aic-analysis-val up">+4.8%</span>
-                </div>
-                <div>
-                  <span className="aic-analysis-lbl">Confidence</span>
-                  <span className="aic-analysis-val gold">91%</span>
-                </div>
-              </div>
-            </div>
+            <NoData text="Gerçek veri bağlantısı yok — yapay zeka yorum servisi bağlı olmadığı için burada metin üretilmez." />
           </motion.div>
         </div>
 
-        {/* Today's Performance */}
+        {/* Bugünkü performans — sadece kayıtlı sinyaller */}
         <motion.div
           className="aic-perf-head"
           initial="hidden"
@@ -444,38 +417,51 @@ export default function AISignalIntelligence() {
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeUp}
         >
-          <BarChart3 size={16} /> Today's Performance
+          <BarChart3 size={16} /> Bugünkü Performans
         </motion.div>
-        <div className="aic-perf-grid">
-          {[
-            { icon: <Activity size={16} />, label: "Today's Signals", value: perf.signals, color: "#f5b629" },
-            { icon: <CheckCircle2 size={16} />, label: "Winning Trades", value: perf.wins, color: "#22c55e" },
-            { icon: <XCircle size={16} />, label: "Losing Trades", value: perf.losses, color: "#ef4444" },
-            { icon: <Target size={16} />, label: "Average RR", value: perf.avgRR, color: "#8b5cf6" },
-            { icon: <Gauge size={16} />, label: "Success Rate", value: perf.success, color: "#22c55e" },
-            { icon: <TrendingUp size={16} />, label: "Net ROI", value: perf.roi, color: "#f5b629" },
-          ].map((s, i) => (
-            <motion.div
-              key={s.label}
-              className="glass aic-stat"
-              custom={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }}
-              variants={fadeUp}
-            >
-              <span className="aic-stat-icon" style={{ color: s.color, background: s.color + "18", borderColor: s.color + "33" }}>
-                {s.icon}
-              </span>
-              <div className="aic-stat-txt">
-                <div className="aic-stat-lbl">{s.label}</div>
-                <div className="aic-stat-val" style={{ color: s.color }}>{s.value}</div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {!loaded ? (
+          <div style={{ marginBottom: 22 }}><NoData text="Yükleniyor..." /></div>
+        ) : today.length === 0 ? (
+          <div style={{ marginBottom: 22 }}>
+            <NoData text="Bugün kayıtlı sinyal yok — performans hesaplanamaz." />
+          </div>
+        ) : (
+          <div className="aic-perf-grid">
+            {[
+              { icon: <Activity size={16} />, label: "Bugünkü Sinyal", value: String(today.length), color: "#f5b629" },
+              { icon: <CheckCircle2 size={16} />, label: "Hedefe Ulaşan", value: String(tWin), color: "#22c55e" },
+              { icon: <XCircle size={16} />, label: "Stop Olan", value: String(tLoss), color: "#ef4444" },
+              { icon: <Clock size={16} />, label: "Bekleyen", value: String(tWait), color: "#8a93a3" },
+              { icon: <Target size={16} />, label: "Sonuçlanan", value: String(tClosed), color: "#8b5cf6" },
+              {
+                icon: <TrendingUp size={16} />,
+                label: "İsabet Oranı",
+                value: tClosed > 0 ? `${Math.round((tWin / tClosed) * 100)}%` : "Yetersiz veri",
+                color: tClosed > 0 ? "#22c55e" : "#8a93a3",
+              },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                className="glass aic-stat"
+                custom={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                variants={fadeUp}
+              >
+                <span className="aic-stat-icon" style={{ color: s.color, background: s.color + "18", borderColor: s.color + "33" }}>
+                  {s.icon}
+                </span>
+                <div className="aic-stat-txt">
+                  <div className="aic-stat-lbl">{s.label}</div>
+                  <div className="aic-stat-val" style={{ color: s.color, fontSize: s.value === "Yetersiz veri" ? 13 : undefined }}>{s.value}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
-        {/* Performance Chart */}
+        {/* Kümülatif sonuç grafiği */}
         <motion.div
           className="glass aic-chart-card"
           initial="hidden"
@@ -484,16 +470,23 @@ export default function AISignalIntelligence() {
           variants={fadeUp}
         >
           <div className="aic-title">
-            <Cpu size={16} /> Performance Chart
-            <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>
+            <Cpu size={16} /> Kümülatif Sinyal Sonucu
           </div>
-          <PerfChart />
-          <div className="aic-chart-foot">
-            <span>7D</span><span>1M</span><span className="on">3M</span><span>YTD</span><span>ALL</span>
-          </div>
+          {!loaded ? (
+            <NoData text="Yükleniyor..." />
+          ) : closedAsc.length < 3 ? (
+            <NoData text="Yetersiz veri — grafik için en az 3 sonuçlanmış sinyal gerekiyor." />
+          ) : (
+            <>
+              <PerfChart series={series} />
+              <div className="aic-chart-foot">
+                <span>{closedAsc.length} sonuçlanmış sinyal · net {series[series.length - 1] >= 0 ? "+" : ""}{series[series.length - 1]}</span>
+              </div>
+            </>
+          )}
         </motion.div>
 
-        {/* Bottom: whales + sentiment */}
+        {/* Balina hareketleri + sentiment */}
         <div className="aic-bottom">
           <motion.div
             className="glass aic-whales"
@@ -503,28 +496,39 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Flame size={16} /> Whale Activity
-              <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>
+              <Flame size={16} /> Balina Hareketleri
+              {whaleRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> DB</span>}
             </div>
-            <div className="aic-whale-list">
-              {WHALES.map((w, i) => (
-                <motion.div key={i} className="aic-whale" custom={i} variants={fadeUp}>
-                  <span className="aic-whale-emoji">🐋</span>
-                  <div className="aic-whale-txt">
-                    <div className="aic-whale-line">
-                      <b style={{ color: w.side === "Buy" ? "#22c55e" : "#ef4444" }}>
-                        Whale {w.side}
-                      </b>
-                      <span className="aic-whale-coin">{w.coin}</span>
-                    </div>
-                    <div className="aic-whale-sub">{w.ago}</div>
-                  </div>
-                  <div className="aic-whale-amt" style={{ color: w.side === "Buy" ? "#22c55e" : "#ef4444" }}>
-                    {w.amount}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            {!loaded ? (
+              <NoData text="Yükleniyor..." />
+            ) : whaleRows.length === 0 ? (
+              <NoData text="Gerçek whale verisi bağlantısı mevcut değil." />
+            ) : (
+              <div className="aic-whale-list">
+                {whaleRows.map((w, i) => {
+                  const buy = String(w.side).toUpperCase().startsWith("B") || String(w.side).toLowerCase() === "alım";
+                  const amt = Number(w.amount_usd);
+                  const amtTxt = `${buy ? "+" : "-"}${(Math.abs(amt) / 1_000_000).toFixed(2)}M`;
+                  return (
+                    <motion.div key={w.id} className="aic-whale" custom={i} variants={fadeUp}>
+                      <span className="aic-whale-emoji">🐋</span>
+                      <div className="aic-whale-txt">
+                        <div className="aic-whale-line">
+                          <b style={{ color: buy ? "#22c55e" : "#ef4444" }}>
+                            Balina {buy ? "Alımı" : "Satışı"}
+                          </b>
+                          <span className="aic-whale-coin">{w.coin.replace("USDT", "")}</span>
+                        </div>
+                        <div className="aic-whale-sub">{timeAgo(w.created_at)} · {stamp(w.created_at)}</div>
+                      </div>
+                      <div className="aic-whale-amt" style={{ color: buy ? "#22c55e" : "#ef4444" }}>
+                        {amtTxt}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
 
           <motion.div
@@ -535,13 +539,9 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Shield size={16} /> AI Market Sentiment
-              <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>
+              <Shield size={16} /> Piyasa Duyarlılığı
             </div>
-            <SentimentGauge value={72} />
-            <div className="aic-sent-foot">
-              Piyasa şu an <b style={{ color: "#22c55e" }}>Greed</b> bölgesinde. AI temkinli iyimser.
-            </div>
+            <NoData text="Gerçek veri bağlantısı yok — duyarlılık endeksi kaynağı bağlı değil. Canlı Korku & Hırs endeksi sinyal terminalinde görüntülenir." />
           </motion.div>
         </div>
       </div>
