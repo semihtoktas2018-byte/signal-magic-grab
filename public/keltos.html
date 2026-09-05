@@ -3550,7 +3550,7 @@ video{
       <span class="top-opp-ic">🏆</span>
       <div class="top-opp-body">
         <span class="top-opp-label">Best Opportunity</span>
-        <span class="top-opp-value" id="topOppBest">BTCUSDT</span>
+        <span class="top-opp-value" id="topOppBest" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <span class="top-opp-badge">#1</span>
     </div>
@@ -3559,7 +3559,7 @@ video{
       <span class="top-opp-ic">🔥</span>
       <div class="top-opp-body">
         <span class="top-opp-label">Strong Buy</span>
-        <span class="top-opp-value" id="topOppStrong">SOLUSDT</span>
+        <span class="top-opp-value" id="topOppStrong" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <span class="top-opp-badge">HOT</span>
     </div>
@@ -3568,7 +3568,7 @@ video{
       <span class="top-opp-ic">⚡</span>
       <div class="top-opp-body">
         <span class="top-opp-label">Momentum Trade</span>
-        <span class="top-opp-value" id="topOppMomentum">LINKUSDT</span>
+        <span class="top-opp-value" id="topOppMomentum" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <span class="top-opp-badge">↑</span>
     </div>
@@ -3688,19 +3688,19 @@ video{
     <div class="sm-body">
       <div class="sm-item">
         <span class="sm-label">Whale Activity</span>
-        <span class="sm-value high">High</span>
+        <span class="sm-value high" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <div class="sm-item">
         <span class="sm-label">Accumulating</span>
-        <span class="sm-value green">BTC · SOL</span>
+        <span class="sm-value green" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <div class="sm-item">
         <span class="sm-label">Distribution</span>
-        <span class="sm-value red">DOGE</span>
+        <span class="sm-value red" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
       <div class="sm-item">
         <span class="sm-label">Risk Level</span>
-        <span class="sm-value yellow">Medium</span>
+        <span class="sm-value yellow" style="color:#8a93a3">Veri bekleniyor…</span>
       </div>
     </div>
   </div>
@@ -5824,9 +5824,10 @@ restartAutoRefresh();
     const momentum = data.filter(d=>d.volTrend==='HIGH').sort((a,b)=>Math.abs(b.change||0)-Math.abs(a.change||0))[0]
                      || [...data].sort((a,b)=>Math.abs(b.change||0)-Math.abs(a.change||0))[0];
 
-    if(best) setText('topOppBest', sym(best.symbol)+'USDT');
-    setText('topOppStrong', strong ? sym(strong.symbol)+'USDT' : '—');
-    if(momentum) setText('topOppMomentum', sym(momentum.symbol)+'USDT');
+    const oppSet = (id, txt) => { const el=document.getElementById(id); if(el){ el.textContent = txt; el.style.color=''; } };
+    if(best) oppSet('topOppBest', sym(best.symbol)+'USDT · '+(best.score||0)+'/100');
+    oppSet('topOppStrong', strong ? sym(strong.symbol)+'USDT · '+(strong.score||0)+'/100' : 'Veri mevcut değil');
+    if(momentum) oppSet('topOppMomentum', sym(momentum.symbol)+'USDT · '+(momentum.score||0)+'/100');
 
     // ---- Smart Money ----
     const accumulating = buys.slice(0,2).map(d=>sym(d.symbol)).join(' · ') || '—';
@@ -5836,10 +5837,11 @@ restartAutoRefresh();
     const riskLevel = riskRatio>0.35 ? 'Yüksek' : riskRatio>0.15 ? 'Orta' : 'Düşük';
 
     const smItems = document.querySelectorAll('#smartMoneyPanel .sm-value');
-    if(smItems[0]) smItems[0].textContent = whaleLabel;
-    if(smItems[1]) smItems[1].textContent = accumulating;
-    if(smItems[2]) smItems[2].textContent = distribution;
-    if(smItems[3]) smItems[3].textContent = riskLevel;
+    const smSet = (el, txt) => { if(el){ el.textContent = txt; el.style.color = ''; } };
+    smSet(smItems[0], whaleLabel);
+    smSet(smItems[1], accumulating);
+    smSet(smItems[2], distribution);
+    smSet(smItems[3], riskLevel);
   }
 
   setInterval(updateIntelPanels, 5000);
