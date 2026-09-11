@@ -5,6 +5,13 @@ import { scoreSignalV2, agreementWithV1, compareScores } from '@/lib/signal-engi
 
 const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT']
 
+// Sinyal kayıt kuralları:
+// - Skoru bu eşiğin altındaki BUY/SELL'ler kaydedilmez (ORTA ve üstü kaydolur).
+// - Aynı turda piyasa toptan aynı yöne gittiğinde 8-9 korele sinyali birden
+//   kaydetmemek için yalnızca en yüksek skorlu ilk N coin kaydedilir.
+const RECORD_THRESHOLD = 70
+const MAX_SIGNALS_PER_RUN = 2
+
 // ---------- indicator helpers ----------
 function ema(values: number[], period: number): number[] {
   const k = 2 / (period + 1)
@@ -92,13 +99,30 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
 }
 
 // ---------- Exchange comparison (Bybit vs OKX) ----------
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms))
+
+// OKX halka açık uçta agresif rate-limit uyguluyor (429). İstekleri sıraya
+// yayıp 429/5xx durumunda kısa bir backoff ile birkaç kez deniyoruz.
 async function fetchOkxPrice(symbol: string): Promise<number> {
   const instId = symbol.replace('USDT', '-USDT')
-  const r = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${instId}`)
-  if (!r.ok) throw new Error(`okx ${symbol} ${r.status}`)
-  const j = await r.json() as any
-  if (j.code !== '0' || !j.data?.[0]) throw new Error(`okx ${symbol} bad response`)
-  return parseFloat(j.data[0].last)
+  const maxAttempts = 3
+  let lastErr = ''
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const r = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${instId}`)
+    if (r.ok) {
+      const j = await r.json() as any
+      if (j.code !== '0' || !j.data?.[0]) throw new Error(`okx ${symbol} bad response`)
+      return parseFloat(j.data[0].last)
+    }
+    lastErr = `okx ${symbol} ${r.status}`
+    // 429 (rate limit) veya 5xx ise bekleyip tekrar dene; diğer hatalarda bırak
+    if (r.status === 429 || r.status >= 500) {
+      if (attempt < maxAttempts) await sleep(400 * attempt) // 400ms, 800ms
+      continue
+    }
+    throw new Error(lastErr)
+  }
+  throw new Error(lastErr)
 }
 
 // ---------- signal logic (mirrors public/keltos.html signalLogic) ----------
@@ -187,9 +211,10 @@ function signalLogic(
   return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
-// ---------- 1-minute kline fetcher ----------
-async function fetchMinuteKlines(symbol: string, startTime: number, endTime: number): Promise<Array<[string, string, string, string, string, string]>> {
-  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=1&start=${startTime}&end=${endTime}&limit=200`
+// ---------- 1-minute kline fetcher (belirli aralık) ----------
+// Bybit tek çağrıda en fazla 1000 mum döndürür → 1dk × 1000 = ~16.6 saat.
+async function fetchMinuteKlines(symbol: string, startMs: number, endMs: number): Promise<Array<[string, string, string, string, string, string]>> {
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=1&start=${startMs}&end=${endMs}&limit=1000`
   const r = await fetch(url)
   if (!r.ok) throw new Error(`minute klines ${symbol} ${r.status}`)
   const j = await r.json() as any
@@ -205,17 +230,25 @@ export interface TPSLResolution {
   error?: string
 }
 
+// Sinyale hedef/stop için tanınan süre. Bu süre içinde ne hedefe ne stopa
+// dokunulmazsa sinyal 'bekliyor' kalır (ve section 2'deki yaş filtresi sayesinde
+// bu süreyi geçince artık tekrar tekrar sorgulanmaz).
+const RESOLVE_WINDOW_HOURS = 24
+
 /**
- * Resolve TP/SL by checking 1-minute klines for 60 minutes after signal creation.
- * 
+ * TP/SL sonucunu, sinyal açıldıktan sonraki RESOLVE_WINDOW_HOURS saatlik
+ * 1 dakikalık mumlara bakarak belirler.
+ *
  * BUY: TP = entry * 1.025, SL = entry * 0.98
  * SELL: TP = entry * 0.975, SL = entry * 1.02
- * 
- * Chronologically checks candles. First hit wins.
- * If both hit in same candle: conservative → tutmadi (loss).
- * If no hit in 60 min: return null (keep pending).
- * 
- * @throws Error if fetchMinuteKlines fails (distinguishable from no-hit)
+ *
+ * Mumları kronolojik tarar, önce dokunulan kazanır. Aynı mumda ikisi de
+ * dokunulmuşsa (hangisi önce bilinemez) temkinli davranıp KAYIP sayar.
+ * Süre içinde hiç dokunulmazsa null döner (bekliyor kalır).
+ *
+ * 24 saati kapatmak için gerekirse ikinci sayfa çekilir (1dk × 1000 ≈ 16.6s).
+ *
+ * @throws fetchMinuteKlines başarısız olursa (no-hit'ten ayırt edilebilsin diye)
  */
 export async function resolveTPSLWithKlines(
   symbol: string,
@@ -224,63 +257,57 @@ export async function resolveTPSLWithKlines(
   createdAtISO: string
 ): Promise<TPSLResolution> {
   const createdAtMs = new Date(createdAtISO).getTime()
-  const createdAtSec = Math.floor(createdAtMs / 1000)
-  const endSec = createdAtSec + 60 * 60 // +1 hour (exactly 3600 seconds)
-  
-  // Fetch 1-minute klines for the 1-hour window
-  // This throws if API fails—caller catches it and logs
-  const klines = await fetchMinuteKlines(symbol, createdAtSec * 1000, endSec * 1000)
-  
-  if (!klines || klines.length === 0) {
+  const endMs = createdAtMs + RESOLVE_WINDOW_HOURS * 60 * 60 * 1000
+
+  // Pencere boyunca 1dk mumlarını topla (gerekirse sayfalı)
+  const parsed: Array<{ openTime: number; high: number; low: number }> = []
+  let cursor = createdAtMs
+  for (let page = 0; page < 2 && cursor < endMs; page++) {
+    const batch = await fetchMinuteKlines(symbol, cursor, endMs)
+    if (!batch || batch.length === 0) break
+    for (const k of batch) {
+      parsed.push({ openTime: parseInt(k[0], 10), high: parseFloat(k[2]), low: parseFloat(k[3]) })
+    }
+    // Bir sonraki sayfa için en yeni mumun ötesine geç
+    const maxOpen = batch.reduce((m, k) => Math.max(m, parseInt(k[0], 10)), 0)
+    if (maxOpen <= cursor) break // ilerleme yoksa kır
+    cursor = maxOpen + 60 * 1000
+  }
+
+  if (parsed.length === 0) {
     return { result: null, closedAt: null }
   }
 
-  // Parse and sort klines chronologically (API may return reverse order)
-  const parsed = klines.map((k) => ({
-    openTime: parseInt(k[0], 10),
-    high: parseFloat(k[2]),
-    low: parseFloat(k[3]),
-  })).sort((a, b) => a.openTime - b.openTime)
+  // Kronolojik sırala ve olası tekrar mumları at
+  parsed.sort((a, b) => a.openTime - b.openTime)
 
-  // Calculate TP/SL targets (exact ratios per spec)
   const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
   const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
 
-  // Check chronologically through candles
+  let prevOpen = -1
   for (const candle of parsed) {
-    // Skip candles before signal creation
-    if (candle.openTime < createdAtMs) continue
-    
-    // Skip candles outside 60-minute window (openTime > createdAtMs + 3600000ms)
-    if (candle.openTime >= createdAtMs + 60 * 60 * 1000) break
+    if (candle.openTime === prevOpen) continue // tekrar mumu atla
+    prevOpen = candle.openTime
+    if (candle.openTime < createdAtMs) continue // sinyalden önceki mumlar
+    if (candle.openTime >= endMs) break         // pencere dışına çıkıldı
 
     const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
     const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
 
     if (tpHit && slHit) {
-      // Both TP and SL in same candle: conservative approach → SL (tutmadi)
-      return {
-        result: 'tutmadi',
-        closedAt: new Date(candle.openTime).toISOString(),
-      }
+      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
     } else if (tpHit) {
-      return {
-        result: 'tuttu',
-        closedAt: new Date(candle.openTime).toISOString(),
-      }
+      return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
     } else if (slHit) {
-      return {
-        result: 'tutmadi',
-        closedAt: new Date(candle.openTime).toISOString(),
-      }
+      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
     }
   }
 
-  // No TP/SL hit in 60 minutes: return null (keep status quo, signal remains pending)
+  // Pencere içinde ne hedef ne stop dokunuldu → bekliyor kalır
   return { result: null, closedAt: null }
 }
 
-// ---------- Binance fetchers ----------
+// ---------- Bybit fetchers ----------
 async function fetchKlines(symbol: string) {
   const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&limit=100`
   const r = await fetch(url)
@@ -289,14 +316,6 @@ async function fetchKlines(symbol: string) {
   if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
   const list = (j.result?.list ?? []) as string[][]
   return list.slice().reverse()
-}
-
-async function fetchPrice(symbol: string): Promise<number> {
-  const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
-  if (!r.ok) throw new Error(`price ${symbol} ${r.status}`)
-  const j = await r.json() as any
-  if (j.retCode !== 0) throw new Error(`price ${symbol} retCode ${j.retCode}`)
-  return parseFloat(j.result.list[0].lastPrice)
 }
 
 async function analyzeCoin(symbol: string, klines: any[][]) {
@@ -410,6 +429,14 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
         const whaleLogged: string[] = []
         const exchangeCompared: string[] = []
         const v2Report: Array<Record<string, unknown>> = []
+        const candidates: Array<{
+          coin: string
+          signal: 'BUY' | 'SELL'
+          score: number
+          quality: string
+          price: number
+          whale: WhaleActivity
+        }> = []
 
         // 1) Generate new signals
         for (const coin of COINS) {
@@ -426,6 +453,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
 
             // Bybit vs OKX fiyat karşılaştırması
             try {
+              await sleep(150) // OKX'i patlatmamak için istekleri hafif aralıkla
               const okxPrice = await fetchOkxPrice(coin)
               const diffPct = ((okxPrice - a.price) / a.price) * 100
               const { error: exErr } = await supabase.from('exchange_prices').upsert({
@@ -446,42 +474,69 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
               else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
             }
 
-            if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= 82) {
-              const { data: dup } = await supabase
-                .from('kpk_signals')
-                .select('id')
-                .eq('coin', coin)
-                .eq('signal', a.signal)
-                .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
-                .limit(1)
-              if (!dup || dup.length === 0) {
-                const { error } = await supabase.from('kpk_signals').insert({
-                  coin, signal: a.signal, score: Math.round(a.score),
-                  quality: a.quality, price: a.price,
-                })
-                if (error) errors.push(`${coin} insert: ${error.message}`)
-                else {
-                  inserted.push(`${coin} ${a.signal} ${a.score}`)
-                  try {
-                    await sendTelegram(coin, a.signal, a.quality, Math.round(a.score), a.price, a.whale)
-                  } catch (te: any) {
-                    errors.push(`${coin} telegram: ${te.message}`)
-                  }
-                }
-              }
+            // Skoru eşiği geçen BUY/SELL'leri aday olarak topla; kayıt kararı
+            // tüm coinler tarandıktan sonra (en güçlü N tanesi) verilecek.
+            if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= RECORD_THRESHOLD) {
+              candidates.push({
+                coin,
+                signal: a.signal,
+                score: Math.round(a.score),
+                quality: a.quality,
+                price: a.price,
+                whale: a.whale,
+              })
             }
           } catch (e: any) {
             errors.push(`${coin}: ${e.message}`)
           }
         }
 
-        // 2) Resolve open signals older than 1h using historical klines
+        // 1b) Adaylar arasından en yüksek skorlu ilk N tanesini kaydet.
+        candidates.sort((x, y) => y.score - x.score)
+        for (const c of candidates.slice(0, MAX_SIGNALS_PER_RUN)) {
+          try {
+            // Aynı coin+yön için bugün zaten kayıt varsa tekrar ekleme
+            const { data: dup } = await supabase
+              .from('kpk_signals')
+              .select('id')
+              .eq('coin', c.coin)
+              .eq('signal', c.signal)
+              .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
+              .limit(1)
+            if (dup && dup.length > 0) continue
+            const { error } = await supabase.from('kpk_signals').insert({
+              coin: c.coin, signal: c.signal, score: c.score,
+              quality: c.quality, price: c.price,
+            })
+            if (error) {
+              errors.push(`${c.coin} insert: ${error.message}`)
+              continue
+            }
+            inserted.push(`${c.coin} ${c.signal} ${c.score}`)
+            try {
+              await sendTelegram(c.coin, c.signal, c.quality, c.score, c.price, c.whale)
+            } catch (te: any) {
+              errors.push(`${c.coin} telegram: ${te.message}`)
+            }
+          } catch (e: any) {
+            errors.push(`record ${c.coin}: ${e.message}`)
+          }
+        }
+
+        // 2) Açık sinyalleri geçmiş mumlarla kapat.
+        //    Yalnızca yaşı [1s, çözüm penceresi + 2s] aralığındaki sinyalleri
+        //    dene: 1 saatten yeniyse daha erken, penceresini (24s) çoktan
+        //    aşmışsa artık hiç sorgulama (boşuna API + sonsuz 'bekliyor' önlenir).
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        const resolveFloor = new Date(
+          Date.now() - (RESOLVE_WINDOW_HOURS + 2) * 60 * 60 * 1000
+        ).toISOString()
         const { data: openSigs } = await supabase
           .from('kpk_signals')
           .select('id, coin, signal, price, created_at')
           .eq('result', 'bekliyor')
           .lt('created_at', oneHourAgo)
+          .gte('created_at', resolveFloor)
 
         for (const row of openSigs ?? []) {
           try {
