@@ -202,10 +202,10 @@ async function fetchMinuteKlines(symbol: string, startTime: number, endTime: num
 interface TPSLResolution {
   result: 'tuttu' | 'tutmadi' | null
   closedAt: string | null
-  resolution: 'klines' | 'current_price' | null
 }
 
 async function resolveTPSLWithKlines(
+  symbol: string,
   signal: 'BUY' | 'SELL',
   entryPrice: number,
   createdAtISO: string
@@ -216,23 +216,17 @@ async function resolveTPSLWithKlines(
     const endSec = createdAtSec + 60 * 60 // +1 hour
     
     // Fetch 1-minute klines for the 1-hour window
-    const klines = await fetchMinuteKlines(
-      'BTCUSDT', // Placeholder: will be replaced with actual symbol in caller
-      createdAtSec * 1000,
-      endSec * 1000
-    )
+    const klines = await fetchMinuteKlines(symbol, createdAtSec * 1000, endSec * 1000)
     
     if (!klines || klines.length === 0) {
-      return { result: null, closedAt: null, resolution: null }
+      return { result: null, closedAt: null }
     }
 
     // Parse and sort klines chronologically (API may return reverse order)
     const parsed = klines.map((k) => ({
       openTime: parseInt(k[0], 10),
-      open: parseFloat(k[1]),
       high: parseFloat(k[2]),
       low: parseFloat(k[3]),
-      close: parseFloat(k[4]),
     })).sort((a, b) => a.openTime - b.openTime)
 
     // Calculate TP/SL targets
@@ -251,28 +245,25 @@ async function resolveTPSLWithKlines(
         return {
           result: 'tutmadi',
           closedAt: new Date(candle.openTime).toISOString(),
-          resolution: 'klines',
         }
       } else if (tpHit) {
         return {
           result: 'tuttu',
           closedAt: new Date(candle.openTime).toISOString(),
-          resolution: 'klines',
         }
       } else if (slHit) {
         return {
           result: 'tutmadi',
           closedAt: new Date(candle.openTime).toISOString(),
-          resolution: 'klines',
         }
       }
     }
 
     // No TP/SL hit in 60 minutes: return null (keep status quo)
-    return { result: null, closedAt: null, resolution: null }
+    return { result: null, closedAt: null }
   } catch (error: any) {
     // Error fetching/processing klines: return null, let caller log error
-    return { result: null, closedAt: null, resolution: null }
+    return { result: null, closedAt: null }
   }
 }
 
@@ -479,7 +470,6 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           .eq('result', 'bekliyor')
           .lt('created_at', oneHourAgo)
 
-        const klinesCache = new Map<string, Array<[string, string, string, string, string, string]>>()
         for (const row of openSigs ?? []) {
           try {
             const entry = Number(row.price)
@@ -487,7 +477,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
             const createdAt = row.created_at as string
 
             // Try to resolve using historical klines
-            const resolution = await resolveTPSLWithKlines(signal, entry, createdAt)
+            const resolution = await resolveTPSLWithKlines(row.coin, signal, entry, createdAt)
 
             if (resolution.result) {
               const { error } = await supabase
