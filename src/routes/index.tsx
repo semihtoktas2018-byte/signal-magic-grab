@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 
 const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligence"));
 
@@ -176,6 +176,7 @@ function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
   const [notifOpen, setNotifOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
   const [openSignals, setOpenSignals] = useState<MergedSignal[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -281,6 +282,7 @@ function Landing() {
           <span className="crown">♛</span> KELTOŞ
         </div>
         <div className="nav-links">
+          <a href="/" className="nav-active">Ana Sayfa</a>
           <a href="/keltos.html">Sinyal Terminali</a>
           <a href="/performance">Performans</a>
           <a href="/whale">Whale Radar</a>
@@ -289,7 +291,6 @@ function Landing() {
         </div>
 
         <div className="nav-right">
-          <a href="/keltos.html" className="nav-login">Giriş Yap</a>
           <a href="/keltos.html" className="nav-cta">Paraya Koş ⚡</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
@@ -319,8 +320,27 @@ function Landing() {
               </div>
             )}
           </div>
+          <button
+            className="menu-btn"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Menü"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+        {menuOpen && (
+          <div className="mobile-menu">
+            <a href="/" onClick={() => setMenuOpen(false)}>Ana Sayfa</a>
+            <a href="/keltos.html" onClick={() => setMenuOpen(false)}>Sinyal Terminali</a>
+            <a href="/performance" onClick={() => setMenuOpen(false)}>Performans</a>
+            <a href="/whale" onClick={() => setMenuOpen(false)}>Whale Radar</a>
+            <a href="/exchange" onClick={() => setMenuOpen(false)}>Borsa Karşılaştır</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)}>Fiyatlandırma</a>
+          </div>
+        )}
       </nav>
+
 
       {/* HERO — kompakt tanıtım */}
       <section className="hero hero-compact">
@@ -354,24 +374,6 @@ function Landing() {
         <AISignalIntelligence />
       </Suspense>
 
-      {/* FEATURES */}
-      <section id="features" className="section">
-        <div className="sec-head" data-reveal>
-          <h2>KELTOŞ Nasıl Çalışır?</h2>
-          <p>Tek bir panelde profesyonel kripto analiz cephaneliği.</p>
-        </div>
-        <div className="grid features">
-          {features.map((f, i) => (
-            <div key={i} className="card feature-card" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
-              <div className="f-icon">{f.icon}</div>
-              <div className="f-body">
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* CANLI TAKİP */}
       <section id="live" className="section live-section" data-reveal>
@@ -427,6 +429,25 @@ function Landing() {
         )}
         <div className="live-foot">
           <a href="/keltos.html" className="btn btn-primary">⚡ Tüm Sinyaller & Detaylar Terminalde →</a>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section id="features" className="section">
+        <div className="sec-head" data-reveal>
+          <h2>KELTOŞ Nasıl Çalışır?</h2>
+          <p>Tek bir panelde profesyonel kripto analiz cephaneliği.</p>
+        </div>
+        <div className="grid features">
+          {features.map((f, i) => (
+            <div key={i} className="card feature-card" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
+              <div className="f-icon">{f.icon}</div>
+              <div className="f-body">
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -517,10 +538,21 @@ const css = `
 .nav-right{display:flex;align-items:center;gap:12px}
 .nav-login{color:var(--text);text-decoration:none;font-size:14px;font-weight:600;padding:8px 16px;border:1px solid var(--line);border-radius:999px;transition:all .2s;white-space:nowrap}
 .nav-login:hover{border-color:var(--gold);color:var(--gold)}
-.nav-cta{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000!important;padding:9px 18px;border-radius:999px;font-weight:800;text-decoration:none;font-size:14px;white-space:nowrap;box-shadow:0 8px 24px -8px rgba(245,182,41,.6);transition:transform .2s}
+.nav-cta{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000!important;padding:9px 18px;border-radius:999px;font-weight:800;text-decoration:none;font-size:14px;white-space:nowrap;box-shadow:0 4px 14px -8px rgba(245,182,41,.45);transition:transform .2s}
 .nav-cta:hover{transform:translateY(-2px)}
-@media(max-width:1100px){.nav-links{display:none}}
-@media(max-width:560px){.nav{padding:12px 16px;gap:10px}.nav-login{display:none}.brand-logo{font-size:20px}.nav-cta{padding:9px 14px;font-size:13px}}
+.nav-links a.nav-active{color:var(--gold);position:relative}
+.nav-links a.nav-active::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;border-radius:2px;background:var(--gold)}
+.menu-btn{display:none;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--gold);border-radius:10px;padding:7px;cursor:pointer;place-items:center}
+.mobile-menu{display:none}
+@media(max-width:1100px){
+  .nav-links{display:none}
+  .nav{flex-wrap:wrap}
+  .menu-btn{display:grid}
+  .mobile-menu{display:flex;flex-direction:column;width:100%;gap:2px;padding:8px 0 4px;border-top:1px solid var(--line);margin-top:10px}
+  .mobile-menu a{color:var(--text);text-decoration:none;font-size:14px;font-weight:600;padding:11px 4px;border-radius:8px}
+  .mobile-menu a:active{background:rgba(245,182,41,.08)}
+}
+@media(max-width:560px){.nav{padding:12px 14px;gap:8px}.nav-login{display:none}.brand-logo{font-size:19px}.nav-cta{padding:8px 12px;font-size:12.5px}}
 
 .hero{position:relative;padding:70px 32px 50px;overflow:hidden}
 .hero-bg{position:absolute;inset:0;background:radial-gradient(55% 50% at 65% 35%,rgba(245,182,41,.12),transparent 60%);pointer-events:none}
@@ -529,15 +561,15 @@ const css = `
 .hero-head-row{display:flex;align-items:center;gap:18px;margin-bottom:14px}
 .eyebrow{display:inline-block;font-size:11px;letter-spacing:.18em;color:var(--gold);padding:5px 12px;border:1px solid var(--line);border-radius:999px;margin:0;font-weight:700}
 .hero-title{font-size:clamp(26px,4.4vw,46px);line-height:1.05;font-weight:900;margin:6px 0 0;letter-spacing:-.02em;color:#fff}
-.hero-title-gold{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 60px rgba(245,182,41,.3)}
+.hero-title-gold{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 28px rgba(245,182,41,.18)}
 .hero-slogan{font-size:clamp(18px,2.2vw,24px);color:var(--text);line-height:1.4;margin:0 0 16px}
 .hero-slogan b{color:var(--gold)}
 .hero-sub{font-size:clamp(13.5px,1.4vw,15.5px);color:var(--muted);max-width:720px;line-height:1.6;margin:0 0 18px}
 .hero-sub b{color:var(--gold)}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border-radius:14px;font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;border:none;transition:transform .2s,box-shadow .2s;white-space:nowrap}
-.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;box-shadow:0 12px 32px -10px rgba(245,182,41,.6)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 40px -10px rgba(245,182,41,.7)}
+.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;box-shadow:0 6px 18px -10px rgba(245,182,41,.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 24px -10px rgba(245,182,41,.5)}
 .btn-ghost{background:rgba(255,255,255,.04);color:var(--text);border:1px solid var(--line)}
 .btn-ghost:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px)}
 .hero-stats{display:flex;gap:28px;flex-wrap:wrap}
@@ -568,7 +600,7 @@ const css = `
 .sec-head p{color:var(--muted);font-size:15px;margin:0}
 .grid{display:grid;gap:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;transition:transform .25s,border-color .25s,box-shadow .25s}
-.card:hover{transform:translateY(-4px);border-color:rgba(245,182,41,.4);box-shadow:0 20px 50px -20px rgba(245,182,41,.3)}
+.card:hover{transform:translateY(-4px);border-color:rgba(245,182,41,.4);box-shadow:0 10px 26px -20px rgba(245,182,41,.22)}
 
 .features{grid-template-columns:repeat(2,1fr)}
 @media(max-width:760px){.features{grid-template-columns:1fr}}
@@ -608,7 +640,7 @@ const css = `
 .pricing{grid-template-columns:repeat(3,1fr)}
 @media(max-width:820px){.pricing{grid-template-columns:1fr;max-width:420px;margin:0 auto}}
 .plan{padding:28px 24px;text-align:center;position:relative}
-.plan-pop{border-color:rgba(245,182,41,.5);background:linear-gradient(180deg,rgba(245,182,41,.08),var(--card));box-shadow:0 20px 60px -25px rgba(245,182,41,.5)}
+.plan-pop{border-color:rgba(245,182,41,.5);background:linear-gradient(180deg,rgba(245,182,41,.08),var(--card));box-shadow:0 12px 32px -25px rgba(245,182,41,.35)}
 .plan-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:rgba(245,182,41,.12);padding:5px 14px;border-radius:999px;margin-bottom:14px}
 .plan h3{margin:0 0 4px;font-size:19px;color:var(--text);font-weight:800}
 .plan-price{font-size:44px;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:18px}
