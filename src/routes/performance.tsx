@@ -33,21 +33,6 @@ interface CoinStat {
   rate: number;
 }
 
-function dayKey(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return "";
-  }
-}
-
-function qualityFromScore(score: number): string {
-  if (score >= 90) return "ULTRA";
-  if (score >= 70) return "GÜÇLÜ";
-  if (score >= 50) return "ORTA";
-  return "ZAYIF";
-}
-
 // Cron ile aynı TP/SL oranları
 const TP_PCT = 0.025; // hedef +%2.5
 const SL_PCT = 0.02;  // stop -%2
@@ -98,44 +83,14 @@ function computeLive(signal: Signal, curPrice: number) {
   return { pnlPct, target, stop, progress: toTarget };
 }
 
-async function loadMergedSignals(thirtyDaysAgo: Date): Promise<Signal[]> {
+async function loadSignals(thirtyDaysAgo: Date): Promise<Signal[]> {
   const { data } = await supabase
     .from("kpk_signals")
     .select("*")
     .gte("created_at", thirtyDaysAgo.toISOString())
     .order("created_at", { ascending: false });
-  const remote: Signal[] = (data as Signal[]) || [];
 
-  let local: Signal[] = [];
-  try {
-    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-    if (Array.isArray(raw)) {
-      local = raw
-        .filter((w: any) => {
-          const t = new Date(w.date).getTime();
-          return Number.isFinite(t) && t >= thirtyDaysAgo.getTime();
-        })
-        .map((w: any, i: number) => ({
-          id: `local-${w.coin}-${w.signal}-${w.date}-${i}`,
-          coin: w.coin,
-          signal: (w.signal || "BUY") as "BUY" | "SELL",
-          score: w.score ?? 0,
-          quality: qualityFromScore(w.score ?? 0),
-          price: parseFloat(w.price) || 0,
-          result: (w.result || "bekliyor") as "tuttu" | "tutmadi" | "bekliyor",
-          created_at: w.date,
-        }));
-    }
-  } catch {
-    local = [];
-  }
-
-  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.created_at)}`));
-  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.created_at)}`));
-
-  return [...local, ...remoteFiltered].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  return (data as Signal[]) || [];
 }
 
 function Performance() {
@@ -150,9 +105,9 @@ function Performance() {
     setLoading(true);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    loadMergedSignals(since).then((merged) => {
+    loadSignals(since).then((loaded) => {
       if (cancelled) return;
-      setSignals(merged);
+      setSignals(loaded);
       setLoading(false);
     });
 
