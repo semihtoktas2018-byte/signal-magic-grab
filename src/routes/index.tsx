@@ -432,6 +432,25 @@ function Landing() {
         </div>
       </section>
 
+      {/* FEATURES */}
+      <section id="features" className="section">
+        <div className="sec-head" data-reveal>
+          <h2>KELTOŞ Nasıl Çalışır?</h2>
+          <p>Tek bir panelde profesyonel kripto analiz cephaneliği.</p>
+        </div>
+        <div className="grid features">
+          {features.map((f, i) => (
+            <div key={i} className="card feature-card" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
+              <div className="f-icon">{f.icon}</div>
+              <div className="f-body">
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* HOW / TRUST */}
       <section id="how" className="section">
         <div className="sec-head" data-reveal>
