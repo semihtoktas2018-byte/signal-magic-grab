@@ -176,6 +176,7 @@ function Landing() {
   const ref = useReveal();
   const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
   const [notifOpen, setNotifOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
   const [openSignals, setOpenSignals] = useState<MergedSignal[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
