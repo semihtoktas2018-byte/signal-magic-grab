@@ -187,6 +187,95 @@ function signalLogic(
   return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
+// ---------- 1-minute kline fetcher ----------
+async function fetchMinuteKlines(symbol: string, startTime: number, endTime: number): Promise<Array<[string, string, string, string, string, string]>> {
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=1&start=${startTime}&end=${endTime}&limit=200`
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`minute klines ${symbol} ${r.status}`)
+  const j = await r.json() as any
+  if (j.retCode !== 0) throw new Error(`minute klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
+  const list = (j.result?.list ?? []) as Array<[string, string, string, string, string, string]>
+  return list
+}
+
+// ---------- TP/SL resolution using historical klines ----------
+interface TPSLResolution {
+  result: 'tuttu' | 'tutmadi' | null
+  closedAt: string | null
+  resolution: 'klines' | 'current_price' | null
+}
+
+async function resolveTPSLWithKlines(
+  signal: 'BUY' | 'SELL',
+  entryPrice: number,
+  createdAtISO: string
+): Promise<TPSLResolution> {
+  try {
+    const createdAtMs = new Date(createdAtISO).getTime()
+    const createdAtSec = Math.floor(createdAtMs / 1000)
+    const endSec = createdAtSec + 60 * 60 // +1 hour
+    
+    // Fetch 1-minute klines for the 1-hour window
+    const klines = await fetchMinuteKlines(
+      'BTCUSDT', // Placeholder: will be replaced with actual symbol in caller
+      createdAtSec * 1000,
+      endSec * 1000
+    )
+    
+    if (!klines || klines.length === 0) {
+      return { result: null, closedAt: null, resolution: null }
+    }
+
+    // Parse and sort klines chronologically (API may return reverse order)
+    const parsed = klines.map((k) => ({
+      openTime: parseInt(k[0], 10),
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+    })).sort((a, b) => a.openTime - b.openTime)
+
+    // Calculate TP/SL targets
+    const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
+    const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
+
+    // Check chronologically through candles
+    for (const candle of parsed) {
+      if (candle.openTime < createdAtSec * 1000) continue // Skip candles before signal
+
+      const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
+      const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
+
+      if (tpHit && slHit) {
+        // Both TP and SL in same candle: conservative approach → SL (tutmadi)
+        return {
+          result: 'tutmadi',
+          closedAt: new Date(candle.openTime).toISOString(),
+          resolution: 'klines',
+        }
+      } else if (tpHit) {
+        return {
+          result: 'tuttu',
+          closedAt: new Date(candle.openTime).toISOString(),
+          resolution: 'klines',
+        }
+      } else if (slHit) {
+        return {
+          result: 'tutmadi',
+          closedAt: new Date(candle.openTime).toISOString(),
+          resolution: 'klines',
+        }
+      }
+    }
+
+    // No TP/SL hit in 60 minutes: return null (keep status quo)
+    return { result: null, closedAt: null, resolution: null }
+  } catch (error: any) {
+    // Error fetching/processing klines: return null, let caller log error
+    return { result: null, closedAt: null, resolution: null }
+  }
+}
+
 // ---------- Binance fetchers ----------
 async function fetchKlines(symbol: string) {
   const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&limit=100`
@@ -382,38 +471,31 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           }
         }
 
-        // 2) Resolve open signals older than 1h
+        // 2) Resolve open signals older than 1h using historical klines
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
         const { data: openSigs } = await supabase
           .from('kpk_signals')
-          .select('id, coin, signal, price')
+          .select('id, coin, signal, price, created_at')
           .eq('result', 'bekliyor')
           .lt('created_at', oneHourAgo)
 
-        const priceCache = new Map<string, number>()
+        const klinesCache = new Map<string, Array<[string, string, string, string, string, string]>>()
         for (const row of openSigs ?? []) {
           try {
-            let cur = priceCache.get(row.coin)
-            if (cur === undefined) {
-              cur = await fetchPrice(row.coin)
-              priceCache.set(row.coin, cur)
-            }
             const entry = Number(row.price)
-            let result: 'tuttu' | 'tutmadi' | null = null
-            if (row.signal === 'BUY') {
-              if (cur >= entry * 1.025) result = 'tuttu'
-              else if (cur <= entry * 0.98) result = 'tutmadi'
-            } else if (row.signal === 'SELL') {
-              if (cur <= entry * 0.975) result = 'tuttu'
-              else if (cur >= entry * 1.02) result = 'tutmadi'
-            }
-            if (result) {
+            const signal = row.signal as 'BUY' | 'SELL'
+            const createdAt = row.created_at as string
+
+            // Try to resolve using historical klines
+            const resolution = await resolveTPSLWithKlines(signal, entry, createdAt)
+
+            if (resolution.result) {
               const { error } = await supabase
                 .from('kpk_signals')
-                .update({ result, closed_at: new Date().toISOString() })
+                .update({ result: resolution.result, closed_at: resolution.closedAt })
                 .eq('id', row.id)
               if (error) errors.push(`update ${row.id}: ${error.message}`)
-              else closed.push(`${row.coin} ${row.signal} → ${result}`)
+              else closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
             }
           } catch (e: any) {
             errors.push(`resolve ${row.coin}: ${e.message}`)
