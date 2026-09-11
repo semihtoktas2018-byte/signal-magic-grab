@@ -319,8 +319,27 @@ function Landing() {
               </div>
             )}
           </div>
+          <button
+            className="menu-btn"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Menü"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+        {menuOpen && (
+          <div className="mobile-menu">
+            <a href="/" onClick={() => setMenuOpen(false)}>Ana Sayfa</a>
+            <a href="/keltos.html" onClick={() => setMenuOpen(false)}>Sinyal Terminali</a>
+            <a href="/performance" onClick={() => setMenuOpen(false)}>Performans</a>
+            <a href="/whale" onClick={() => setMenuOpen(false)}>Whale Radar</a>
+            <a href="/exchange" onClick={() => setMenuOpen(false)}>Borsa Karşılaştır</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)}>Fiyatlandırma</a>
+          </div>
+        )}
       </nav>
+
 
       {/* HERO — kompakt tanıtım */}
       <section className="hero hero-compact">
