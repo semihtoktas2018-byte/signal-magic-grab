@@ -281,6 +281,7 @@ function Landing() {
           <span className="crown">♛</span> KELTOŞ
         </div>
         <div className="nav-links">
+          <a href="/" className="nav-active">Ana Sayfa</a>
           <a href="/keltos.html">Sinyal Terminali</a>
           <a href="/performance">Performans</a>
           <a href="/whale">Whale Radar</a>
@@ -289,7 +290,6 @@ function Landing() {
         </div>
 
         <div className="nav-right">
-          <a href="/keltos.html" className="nav-login">Giriş Yap</a>
           <a href="/keltos.html" className="nav-cta">Paraya Koş ⚡</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
