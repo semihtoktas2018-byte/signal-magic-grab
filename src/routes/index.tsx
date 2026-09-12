@@ -46,13 +46,6 @@ function useReveal() {
   return ref;
 }
 
-function dayKey(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return "";
-  }
-}
 
 interface MergedSignal {
   coin: string;
@@ -64,17 +57,9 @@ interface MergedSignal {
   src: "local" | "remote";
 }
 
+// Resmi sinyal/performans verisi YALNIZCA Supabase kpk_signals'dan okunur.
+// localStorage "kpk_wins" resmi hesaplamalara dahil edilmez.
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
-  let local: MergedSignal[] = [];
-  try {
-    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-    if (Array.isArray(raw)) {
-      local = raw.map((w: any) => ({ ...w, src: "local" as const }));
-    }
-  } catch {
-    local = [];
-  }
-
   let remote: MergedSignal[] = [];
   try {
     const res = await fetch(
@@ -96,10 +81,7 @@ async function fetchMergedSignals(): Promise<MergedSignal[]> {
   } catch {
     remote = [];
   }
-
-  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
-  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`));
-  return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return remote.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 function computeHitRate(signals: MergedSignal[]): string {
