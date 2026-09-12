@@ -276,6 +276,7 @@ const fadeUp = {
 
 export default function AISignalIntelligence() {
   const { prices, signals, whales, loaded } = useRealData();
+  const { fng, fngLoaded } = useFearGreed();
 
   const priceRows = (prices ?? []).slice().sort((a, b) => Math.abs(Number(b.diff_pct)) - Math.abs(Number(a.diff_pct)));
   const lastPriceUpdate = priceRows.length
