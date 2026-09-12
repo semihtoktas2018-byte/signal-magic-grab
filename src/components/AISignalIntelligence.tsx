@@ -157,6 +157,59 @@ function useRealData() {
   return { prices, signals, whales, loaded };
 }
 
+/* ---------- Korku & Hırs endeksi (gerçek: alternative.me -> Supabase cache) ---------- */
+interface FngRow {
+  value: number;
+  classification: string;
+  source_timestamp: string;
+}
+function fngColor(v: number) {
+  if (v <= 25) return "#ef4444";
+  if (v <= 45) return "#f59e0b";
+  if (v <= 55) return "#8a93a3";
+  if (v <= 75) return "#22c55e";
+  return "#16a34a";
+}
+function fngLabel(c: string) {
+  const map: Record<string, string> = {
+    "Extreme Fear": "Aşırı Korku",
+    Fear: "Korku",
+    Neutral: "Nötr",
+    Greed: "Hırs",
+    "Extreme Greed": "Aşırı Hırs",
+  };
+  return map[c] ?? c;
+}
+function useFearGreed() {
+  const [fng, setFng] = useState<FngRow | null>(null);
+  const [fngLoaded, setFngLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/public/hooks/fear-greed");
+        const body = (await res.json()) as { data?: FngRow | null };
+        if (cancelled) return;
+        const d = body?.data;
+        setFng(d && Number.isFinite(Number(d.value)) ? { ...d, value: Number(d.value) } : null);
+      } catch {
+        if (!cancelled) setFng(null);
+      } finally {
+        if (!cancelled) setFngLoaded(true);
+      }
+    };
+    load();
+    const id = setInterval(load, 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { fng, fngLoaded };
+}
+
 /* ---------- Performance chart: gerçek kapanmış sinyallerden kümülatif net ---------- */
 function PerfChart({ series }: { series: number[] }) {
   const ref = useRef<SVGSVGElement>(null);
@@ -223,6 +276,7 @@ const fadeUp = {
 
 export default function AISignalIntelligence() {
   const { prices, signals, whales, loaded } = useRealData();
+  const { fng, fngLoaded } = useFearGreed();
 
   const priceRows = (prices ?? []).slice().sort((a, b) => Math.abs(Number(b.diff_pct)) - Math.abs(Number(a.diff_pct)));
   const lastPriceUpdate = priceRows.length
@@ -528,7 +582,28 @@ export default function AISignalIntelligence() {
             <div className="aic-title">
               <Shield size={16} /> Piyasa Duyarlılığı
             </div>
-            <NoData text="Gerçek veri bağlantısı yok — duyarlılık endeksi kaynağı bağlı değil. Canlı Korku & Hırs endeksi sinyal terminalinde görüntülenir." />
+            {!fng ? (
+              <NoData
+                text={
+                  fngLoaded
+                    ? "Veri bekleniyor — Korku & Hırs endeksi kaynağına şu anda ulaşılamıyor."
+                    : "Veri yükleniyor…"
+                }
+              />
+            ) : (
+              <div className="aic-fng">
+                <div className="aic-fng-val" style={{ color: fngColor(fng.value) }}>
+                  {fng.value}
+                </div>
+                <div className="aic-fng-cls">{fngLabel(fng.classification)}</div>
+                <div className="aic-fng-bar">
+                  <span style={{ width: `${Math.min(100, Math.max(0, fng.value))}%`, background: fngColor(fng.value) }} />
+                </div>
+                <div className="aic-fng-sub">
+                  Crypto Fear &amp; Greed Index · {stamp(fng.source_timestamp)}
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
@@ -558,6 +633,12 @@ const aicCss = `
 .glass:hover{border-color:rgba(245,182,41,.4);box-shadow:0 30px 70px -30px rgba(245,182,41,.55),inset 0 1px 0 rgba(255,255,255,.06)}
 
 .aic-title{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f5b629;margin-bottom:14px}
+.aic-fng{text-align:center;padding:6px 2px 2px}
+.aic-fng-val{font-size:38px;font-weight:900;line-height:1}
+.aic-fng-cls{margin-top:4px;font-size:13px;font-weight:800;color:#e6e9ef}
+.aic-fng-bar{margin:12px 0 8px;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+.aic-fng-bar span{display:block;height:100%;border-radius:999px}
+.aic-fng-sub{font-size:11px;color:#8a93a3}
 .aic-live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.15em;color:#8a93a3;padding:3px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03)}
 .aic-live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:aicPulse 1.6s infinite}
 @keyframes aicPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
