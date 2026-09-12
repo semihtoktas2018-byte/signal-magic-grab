@@ -46,13 +46,6 @@ function useReveal() {
   return ref;
 }
 
-function dayKey(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return "";
-  }
-}
 
 interface MergedSignal {
   coin: string;
