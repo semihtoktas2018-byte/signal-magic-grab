@@ -528,7 +528,28 @@ export default function AISignalIntelligence() {
             <div className="aic-title">
               <Shield size={16} /> Piyasa Duyarlılığı
             </div>
-            <NoData text="Gerçek veri bağlantısı yok — duyarlılık endeksi kaynağı bağlı değil. Canlı Korku & Hırs endeksi sinyal terminalinde görüntülenir." />
+            {!fng ? (
+              <NoData
+                text={
+                  fngLoaded
+                    ? "Veri bekleniyor — Korku & Hırs endeksi kaynağına şu anda ulaşılamıyor."
+                    : "Veri yükleniyor…"
+                }
+              />
+            ) : (
+              <div className="aic-fng">
+                <div className="aic-fng-val" style={{ color: fngColor(fng.value) }}>
+                  {fng.value}
+                </div>
+                <div className="aic-fng-cls">{fngLabel(fng.classification)}</div>
+                <div className="aic-fng-bar">
+                  <span style={{ width: `${Math.min(100, Math.max(0, fng.value))}%`, background: fngColor(fng.value) }} />
+                </div>
+                <div className="aic-fng-sub">
+                  Crypto Fear &amp; Greed Index · {stamp(fng.source_timestamp)}
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
