@@ -633,6 +633,12 @@ const aicCss = `
 .glass:hover{border-color:rgba(245,182,41,.4);box-shadow:0 30px 70px -30px rgba(245,182,41,.55),inset 0 1px 0 rgba(255,255,255,.06)}
 
 .aic-title{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f5b629;margin-bottom:14px}
+.aic-fng{text-align:center;padding:6px 2px 2px}
+.aic-fng-val{font-size:38px;font-weight:900;line-height:1}
+.aic-fng-cls{margin-top:4px;font-size:13px;font-weight:800;color:#e6e9ef}
+.aic-fng-bar{margin:12px 0 8px;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+.aic-fng-bar span{display:block;height:100%;border-radius:999px}
+.aic-fng-sub{font-size:11px;color:#8a93a3}
 .aic-live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.15em;color:#8a93a3;padding:3px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03)}
 .aic-live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:aicPulse 1.6s infinite}
 @keyframes aicPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
