@@ -157,6 +157,59 @@ function useRealData() {
   return { prices, signals, whales, loaded };
 }
 
+/* ---------- Korku & Hırs endeksi (gerçek: alternative.me -> Supabase cache) ---------- */
+interface FngRow {
+  value: number;
+  classification: string;
+  source_timestamp: string;
+}
+function fngColor(v: number) {
+  if (v <= 25) return "#ef4444";
+  if (v <= 45) return "#f59e0b";
+  if (v <= 55) return "#8a93a3";
+  if (v <= 75) return "#22c55e";
+  return "#16a34a";
+}
+function fngLabel(c: string) {
+  const map: Record<string, string> = {
+    "Extreme Fear": "Aşırı Korku",
+    Fear: "Korku",
+    Neutral: "Nötr",
+    Greed: "Hırs",
+    "Extreme Greed": "Aşırı Hırs",
+  };
+  return map[c] ?? c;
+}
+function useFearGreed() {
+  const [fng, setFng] = useState<FngRow | null>(null);
+  const [fngLoaded, setFngLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/public/hooks/fear-greed");
+        const body = (await res.json()) as { data?: FngRow | null };
+        if (cancelled) return;
+        const d = body?.data;
+        setFng(d && Number.isFinite(Number(d.value)) ? { ...d, value: Number(d.value) } : null);
+      } catch {
+        if (!cancelled) setFng(null);
+      } finally {
+        if (!cancelled) setFngLoaded(true);
+      }
+    };
+    load();
+    const id = setInterval(load, 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { fng, fngLoaded };
+}
+
 /* ---------- Performance chart: gerçek kapanmış sinyallerden kümülatif net ---------- */
 function PerfChart({ series }: { series: number[] }) {
   const ref = useRef<SVGSVGElement>(null);
