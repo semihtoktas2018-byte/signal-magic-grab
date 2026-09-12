@@ -101,6 +101,33 @@ export type Database = {
         }
         Relationships: []
       }
+      market_sentiment: {
+        Row: {
+          classification: string
+          created_at: string
+          id: string
+          source_timestamp: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          classification: string
+          created_at?: string
+          id?: string
+          source_timestamp: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          id?: string
+          source_timestamp?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       whale_events: {
         Row: {
           amount_usd: number
