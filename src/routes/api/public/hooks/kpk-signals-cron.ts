@@ -440,6 +440,37 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   }
 }
 
+// Faz 1: sinyal kapanınca anlık sonuç bildirimi (tuttu/tutmadı)
+async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) return // sonuç bildirimi kritik değil; token yoksa sessizce geç
+  const symbol = coin.replace(/USDT$/, '')
+  const win = result === 'tuttu'
+  const emoji = win ? '✅' : '❌'
+  const pct = win ? '+%2.5' : '-%2'
+  const mins = Math.max(0, Math.round((Date.now() - new Date(createdAt).getTime()) / 60000))
+  const dur = mins >= 60 ? `${Math.floor(mins / 60)}s ${mins % 60}dk` : `${mins}dk`
+  const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
+  const text =
+`${emoji} SONUÇ · ${win ? 'TUTTU' : 'TUTMADI'}
+━━━━━━━━━━━━━━
+💰 ${symbol}/USDT · ${signal}
+${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
+⏱️ Süre: ${dur}
+━━━━━━━━━━━━━━
+⏰ ${time}
+⚠️ Yatırım tavsiyesi değildir.`
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+  })
+  if (!r.ok) {
+    const body = await r.text()
+    throw new Error(`telegram result ${r.status}: ${body.slice(0, 150)}`)
+  }
+}
+
 export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
 
   server: {
@@ -592,7 +623,15 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
                 .update({ result: resolution.result, closed_at: resolution.closedAt })
                 .eq('id', row.id)
               if (error) errors.push(`update ${row.id}: ${error.message}`)
-              else closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
+              else {
+                closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
+                // Faz 1: kullanıcıya anlık sonuç bildirimi
+                try {
+                  await sendResult(row.coin, row.signal, resolution.result, createdAt)
+                } catch (te: any) {
+                  errors.push(`${row.coin} sonuç telegram: ${te.message}`)
+                }
+              }
             }
           } catch (e: any) {
             // API or parsing error in resolveTPSLWithKlines—log and continue
