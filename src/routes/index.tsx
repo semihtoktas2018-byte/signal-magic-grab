@@ -46,6 +46,13 @@ function useReveal() {
   return ref;
 }
 
+function dayKey(iso: string) {
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
+}
 
 interface MergedSignal {
   coin: string;
@@ -57,9 +64,17 @@ interface MergedSignal {
   src: "local" | "remote";
 }
 
-// Resmi sinyal/performans verisi YALNIZCA Supabase kpk_signals'dan okunur.
-// localStorage "kpk_wins" resmi hesaplamalara dahil edilmez.
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
+  let local: MergedSignal[] = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
+    if (Array.isArray(raw)) {
+      local = raw.map((w: any) => ({ ...w, src: "local" as const }));
+    }
+  } catch {
+    local = [];
+  }
+
   let remote: MergedSignal[] = [];
   try {
     const res = await fetch(
@@ -81,7 +96,10 @@ async function fetchMergedSignals(): Promise<MergedSignal[]> {
   } catch {
     remote = [];
   }
-  return remote.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
+  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`));
+  return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 function computeHitRate(signals: MergedSignal[]): string {
@@ -265,7 +283,7 @@ function Landing() {
         </div>
         <div className="nav-links">
           <a href="/" className="nav-active">Ana Sayfa</a>
-          <a href="/keltos.html">Sinyal Terminali</a>
+          <a href="/signals">Sinyal Terminali</a>
           <a href="/performance">Performans</a>
           <a href="/whale">Whale Radar</a>
           <a href="/exchange">Borsa Karşılaştır</a>
@@ -273,7 +291,7 @@ function Landing() {
         </div>
 
         <div className="nav-right">
-          <a href="/keltos.html" className="nav-cta">Paraya Koş ⚡</a>
+          <a href="/signals" className="nav-cta">Paraya Koş ⚡</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
               <Bell size={20} />
@@ -314,7 +332,7 @@ function Landing() {
         {menuOpen && (
           <div className="mobile-menu">
             <a href="/" onClick={() => setMenuOpen(false)}>Ana Sayfa</a>
-            <a href="/keltos.html" onClick={() => setMenuOpen(false)}>Sinyal Terminali</a>
+            <a href="/signals" onClick={() => setMenuOpen(false)}>Sinyal Terminali</a>
             <a href="/performance" onClick={() => setMenuOpen(false)}>Performans</a>
             <a href="/whale" onClick={() => setMenuOpen(false)}>Whale Radar</a>
             <a href="/exchange" onClick={() => setMenuOpen(false)}>Borsa Karşılaştır</a>
@@ -337,7 +355,7 @@ function Landing() {
             </div>
             <p className="hero-sub">Balinalar hareket eder, <b>KELTOŞ önceden görür.</b> Kripto piyasasını yapay zeka destekli sinyal sistemiyle senin yerine analiz eder.</p>
             <div className="hero-cta">
-              <a href="/keltos.html" className="btn btn-primary">⚡ SİNYAL TERMİNALİNE GİR</a>
+              <a href="/signals" className="btn btn-primary">⚡ SİNYAL TERMİNALİNE GİR</a>
               <a href="/performance" className="btn btn-ghost">📊 Performans</a>
             </div>
             <div className="hero-stats">
@@ -410,7 +428,7 @@ function Landing() {
           </div>
         )}
         <div className="live-foot">
-          <a href="/keltos.html" className="btn btn-primary">⚡ Tüm Sinyaller & Detaylar Terminalde →</a>
+          <a href="/signals" className="btn btn-primary">⚡ Tüm Sinyaller & Detaylar Terminalde →</a>
         </div>
       </section>
 
@@ -479,7 +497,7 @@ function Landing() {
               <a href={
                 p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662"
                 : p.name === "VIP Günlük" ? "https://www.shopier.com/bamironlinestore/48843519"
-                : "/keltos.html"
+                : "/signals"
               }
                 target={p.name === "Ücretsiz" ? "_self" : "_blank"} rel="noreferrer" className="btn btn-primary plan-cta"
               >
@@ -494,7 +512,7 @@ function Landing() {
       <section className="final-cta" data-reveal>
         <h2>Bugün Kazanmaya Başla</h2>
         <p>Balinaları önden gör, doğru zamanda giriş yap.</p>
-        <a href="/keltos.html" className="btn btn-primary final-btn">⚡ HEMEN PANELE GİR</a>
+        <a href="/signals" className="btn btn-primary final-btn">⚡ HEMEN PANELE GİR</a>
       </section>
 
       <footer className="footer">
