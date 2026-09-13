@@ -351,11 +351,48 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
     ...sig, price, v2,
     v2Agreement: agreementWithV1(sig.signal, v2),
     v2Comparison: compareScores(Math.round(sig.score), v2.score),
+    // Faz 0: skorun ham bileşenleri — sadece kayıt/analiz için, karara etkisi yok
+    components: {
+      rsi: rsiVal,
+      ema20: e20,
+      ema50: e50,
+      emaTrend: e20 >= e50 ? 'up' : 'down',
+      macdHist: macdData.hist,
+      bbPct: bbData.pct,
+      volRatio: volData.ratio,
+      whaleBuyUsd: whale.buyUsd,
+      whaleSellUsd: whale.sellUsd,
+      v2Score: v2.score,
+    },
   }
 }
 
 
 const TELEGRAM_CHAT_ID = '-1003733127546'
+
+// Faz 0: skor bandı etiketi (analiz için)
+function scoreBand(score: number): string {
+  if (score >= 88) return '88+'
+  if (score >= 82) return '82-87'
+  if (score >= 75) return '75-81'
+  if (score >= 70) return '70-74'
+  return '<70'
+}
+
+// Faz 0: sinyal anındaki gerçek zamanlı Bybit fiyatı (entry snapshot için).
+// Hata olursa null döner — kayıt yine de yapılır, snapshot boş kalır.
+async function fetchTicker(symbol: string): Promise<number | null> {
+  try {
+    const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
+    if (!r.ok) return null
+    const j = await r.json() as any
+    if (j.retCode !== 0) return null
+    const p = j.result?.list?.[0]?.lastPrice
+    return p ? parseFloat(p) : null
+  } catch {
+    return null
+  }
+}
 
 function fmtPrice(p: number): string {
   if (p >= 100) return p.toFixed(2)
@@ -427,6 +464,8 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
           quality: string
           price: number
           whale: WhaleActivity
+          components: Record<string, unknown>
+          scoreBand: string
         }> = []
 
         // 1) Generate new signals
@@ -475,6 +514,8 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
                 quality: a.quality,
                 price: a.price,
                 whale: a.whale,
+                components: a.components,
+                scoreBand: scoreBand(Math.round(a.score)),
               })
             }
           } catch (e: any) {
@@ -495,9 +536,15 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
               .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
               .limit(1)
             if (dup && dup.length > 0) continue
+            // Faz 0: sinyal anındaki gerçek fiyatı çek (entry snapshot / kanıt)
+            const entrySnap = await fetchTicker(c.coin)
             const { error } = await supabase.from('kpk_signals').insert({
               coin: c.coin, signal: c.signal, score: c.score,
               quality: c.quality, price: c.price,
+              entry_snapshot: entrySnap,
+              entry_snapshot_at: new Date().toISOString(),
+              components: c.components,
+              score_band: c.scoreBand,
             })
             if (error) {
               errors.push(`${c.coin} insert: ${error.message}`)
