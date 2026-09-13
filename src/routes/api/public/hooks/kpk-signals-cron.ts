@@ -211,14 +211,15 @@ function signalLogic(
   return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
-// ---------- 1-minute kline fetcher (belirli aralık) ----------
-// Bybit tek çağrıda en fazla 1000 mum döndürür → 1dk × 1000 = ~16.6 saat.
-async function fetchMinuteKlines(symbol: string, startMs: number, endMs: number): Promise<Array<[string, string, string, string, string, string]>> {
-  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=1&start=${startMs}&end=${endMs}&limit=1000`
+// ---------- Resolve kline fetcher (15dk) ----------
+// TP/SL çözümü için 15 dakikalık mumlar tek çağrıda çekilir. 48 saat = 192 mum,
+// Bybit'in 1000 limitinin çok altında; sinyal başına tek istek yeter (hafif).
+async function fetchResolveKlines(symbol: string, startMs: number, endMs: number): Promise<Array<[string, string, string, string, string, string]>> {
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&start=${startMs}&end=${endMs}&limit=1000`
   const r = await fetch(url)
-  if (!r.ok) throw new Error(`minute klines ${symbol} ${r.status}`)
+  if (!r.ok) throw new Error(`resolve klines ${symbol} ${r.status}`)
   const j = await r.json() as any
-  if (j.retCode !== 0) throw new Error(`minute klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
+  if (j.retCode !== 0) throw new Error(`resolve klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
   const list = (j.result?.list ?? []) as Array<[string, string, string, string, string, string]>
   return list
 }
@@ -233,11 +234,11 @@ export interface TPSLResolution {
 // Sinyale hedef/stop için tanınan süre. Bu süre içinde ne hedefe ne stopa
 // dokunulmazsa sinyal 'bekliyor' kalır (ve section 2'deki yaş filtresi sayesinde
 // bu süreyi geçince artık tekrar tekrar sorgulanmaz).
-const RESOLVE_WINDOW_HOURS = 24
+const RESOLVE_WINDOW_HOURS = 48
 
 /**
  * TP/SL sonucunu, sinyal açıldıktan sonraki RESOLVE_WINDOW_HOURS saatlik
- * 1 dakikalık mumlara bakarak belirler.
+ * 15 dakikalık mumlara bakarak belirler.
  *
  * BUY: TP = entry * 1.025, SL = entry * 0.98
  * SELL: TP = entry * 0.975, SL = entry * 1.02
@@ -246,9 +247,7 @@ const RESOLVE_WINDOW_HOURS = 24
  * dokunulmuşsa (hangisi önce bilinemez) temkinli davranıp KAYIP sayar.
  * Süre içinde hiç dokunulmazsa null döner (bekliyor kalır).
  *
- * 24 saati kapatmak için gerekirse ikinci sayfa çekilir (1dk × 1000 ≈ 16.6s).
- *
- * @throws fetchMinuteKlines başarısız olursa (no-hit'ten ayırt edilebilsin diye)
+ * @throws fetchResolveKlines başarısız olursa (no-hit'ten ayırt edilebilsin diye)
  */
 export async function resolveTPSLWithKlines(
   symbol: string,
@@ -259,19 +258,11 @@ export async function resolveTPSLWithKlines(
   const createdAtMs = new Date(createdAtISO).getTime()
   const endMs = createdAtMs + RESOLVE_WINDOW_HOURS * 60 * 60 * 1000
 
-  // Pencere boyunca 1dk mumlarını topla (gerekirse sayfalı)
+  // Pencere boyunca 15dk mumlarını tek çağrıda çek
+  const batch = await fetchResolveKlines(symbol, createdAtMs, endMs)
   const parsed: Array<{ openTime: number; high: number; low: number }> = []
-  let cursor = createdAtMs
-  for (let page = 0; page < 2 && cursor < endMs; page++) {
-    const batch = await fetchMinuteKlines(symbol, cursor, endMs)
-    if (!batch || batch.length === 0) break
-    for (const k of batch) {
-      parsed.push({ openTime: parseInt(k[0], 10), high: parseFloat(k[2]), low: parseFloat(k[3]) })
-    }
-    // Bir sonraki sayfa için en yeni mumun ötesine geç
-    const maxOpen = batch.reduce((m, k) => Math.max(m, parseInt(k[0], 10)), 0)
-    if (maxOpen <= cursor) break // ilerleme yoksa kır
-    cursor = maxOpen + 60 * 1000
+  for (const k of batch) {
+    parsed.push({ openTime: parseInt(k[0], 10), high: parseFloat(k[2]), low: parseFloat(k[3]) })
   }
 
   if (parsed.length === 0) {
@@ -529,7 +520,7 @@ export const Route = createFileRoute('/api/public/hooks/kpk-signals-cron')({
         //    aşmışsa artık hiç sorgulama (boşuna API + sonsuz 'bekliyor' önlenir).
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
         const resolveFloor = new Date(
-          Date.now() - (RESOLVE_WINDOW_HOURS + 2) * 60 * 60 * 1000
+          Date.now() - (RESOLVE_WINDOW_HOURS + 6) * 60 * 60 * 1000
         ).toISOString()
         const { data: openSigs } = await supabase
           .from('kpk_signals')
