@@ -20,19 +20,28 @@ export const Route = createFileRoute('/api/public/hooks/fear-greed')({
             headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' },
           })
 
-        const url = process.env['SUPABASE_URL']
+        const url = process.env['SUPABASE_URL'] ?? process.env['VITE_SUPABASE_URL']
         const serviceKey = process.env['SUPABASE_SERVICE_ROLE_KEY']
-        if (!url || !serviceKey) return json({ data: null, error: 'missing_supabase_env' }, 500)
+        const publishableKey =
+          process.env['SUPABASE_PUBLISHABLE_KEY'] ?? process.env['VITE_SUPABASE_PUBLISHABLE_KEY']
+        const key = serviceKey ?? publishableKey
 
-        const db = createClient(url, serviceKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        })
+        const db =
+          url && key
+            ? createClient(url, key, {
+                auth: { persistSession: false, autoRefreshToken: false },
+              })
+            : null
 
-        const { data: cachedRows } = await db
-          .from('market_sentiment')
-          .select('value,classification,source_timestamp')
-          .order('source_timestamp', { ascending: false })
-          .limit(1)
+        const cachedRows = db
+          ? (
+              await db
+                .from('market_sentiment')
+                .select('value,classification,source_timestamp')
+                .order('source_timestamp', { ascending: false })
+                .limit(1)
+            ).data
+          : null
         const cached = (cachedRows?.[0] as Row | undefined) ?? null
 
         const fresh =
@@ -60,7 +69,9 @@ export const Route = createFileRoute('/api/public/hooks/fear-greed')({
             classification,
             source_timestamp: new Date(ts * 1000).toISOString(),
           }
-          await db.from('market_sentiment').upsert(row, { onConflict: 'source_timestamp' })
+          if (db) {
+            await db.from('market_sentiment').upsert(row, { onConflict: 'source_timestamp' })
+          }
           return json({ data: row, cached: false })
         } catch (e) {
           // Dış API başarısızsa yalnızca gerçek cache döner (varsa).

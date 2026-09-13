@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhaleRouteImport } from './routes/whale'
+import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as ExchangeRouteImport } from './routes/exchange'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,6 +20,11 @@ import { Route as ApiPublicHooksFearGreedRouteImport } from './routes/api/public
 const WhaleRoute = WhaleRouteImport.update({
   id: '/whale',
   path: '/whale',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignalsRoute = SignalsRouteImport.update({
+  id: '/signals',
+  path: '/signals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerformanceRoute = PerformanceRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
   '/performance': typeof PerformanceRoute
+  '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
   '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
   '/performance': typeof PerformanceRoute
+  '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
   '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
   '/performance': typeof PerformanceRoute
+  '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
   '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
   '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/'
     | '/exchange'
     | '/performance'
+    | '/signals'
     | '/whale'
     | '/api/public/hooks/fear-greed'
     | '/api/public/hooks/kpk-signals-cron'
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/'
     | '/exchange'
     | '/performance'
+    | '/signals'
     | '/whale'
     | '/api/public/hooks/fear-greed'
     | '/api/public/hooks/kpk-signals-cron'
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/exchange'
     | '/performance'
+    | '/signals'
     | '/whale'
     | '/api/public/hooks/fear-greed'
     | '/api/public/hooks/kpk-signals-cron'
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExchangeRoute: typeof ExchangeRoute
   PerformanceRoute: typeof PerformanceRoute
+  SignalsRoute: typeof SignalsRoute
   WhaleRoute: typeof WhaleRoute
   ApiPublicHooksFearGreedRoute: typeof ApiPublicHooksFearGreedRoute
   ApiPublicHooksKpkSignalsCronRoute: typeof ApiPublicHooksKpkSignalsCronRoute
@@ -116,6 +129,13 @@ declare module '@tanstack/react-router' {
       path: '/whale'
       fullPath: '/whale'
       preLoaderRoute: typeof WhaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signals': {
+      id: '/signals'
+      path: '/signals'
+      fullPath: '/signals'
+      preLoaderRoute: typeof SignalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/performance': {
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExchangeRoute: ExchangeRoute,
   PerformanceRoute: PerformanceRoute,
+  SignalsRoute: SignalsRoute,
   WhaleRoute: WhaleRoute,
   ApiPublicHooksFearGreedRoute: ApiPublicHooksFearGreedRoute,
   ApiPublicHooksKpkSignalsCronRoute: ApiPublicHooksKpkSignalsCronRoute,
