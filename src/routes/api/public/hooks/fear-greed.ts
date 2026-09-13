@@ -33,11 +33,15 @@ export const Route = createFileRoute('/api/public/hooks/fear-greed')({
               })
             : null
 
-        const { data: cachedRows } = await db
-          .from('market_sentiment')
-          .select('value,classification,source_timestamp')
-          .order('source_timestamp', { ascending: false })
-          .limit(1)
+        const cachedRows = db
+          ? (
+              await db
+                .from('market_sentiment')
+                .select('value,classification,source_timestamp')
+                .order('source_timestamp', { ascending: false })
+                .limit(1)
+            ).data
+          : null
         const cached = (cachedRows?.[0] as Row | undefined) ?? null
 
         const fresh =
