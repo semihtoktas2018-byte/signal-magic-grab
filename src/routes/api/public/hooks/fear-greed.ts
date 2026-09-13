@@ -69,7 +69,9 @@ export const Route = createFileRoute('/api/public/hooks/fear-greed')({
             classification,
             source_timestamp: new Date(ts * 1000).toISOString(),
           }
-          await db.from('market_sentiment').upsert(row, { onConflict: 'source_timestamp' })
+          if (db) {
+            await db.from('market_sentiment').upsert(row, { onConflict: 'source_timestamp' })
+          }
           return json({ data: row, cached: false })
         } catch (e) {
           // Dış API başarısızsa yalnızca gerçek cache döner (varsa).
