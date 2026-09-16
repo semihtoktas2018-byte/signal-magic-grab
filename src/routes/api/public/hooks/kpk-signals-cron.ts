@@ -9,7 +9,7 @@ const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGE
 // - Skoru bu eşiğin altındaki BUY/SELL'ler kaydedilmez (ORTA ve üstü kaydolur).
 // - Aynı turda piyasa toptan aynı yöne gittiğinde 8-9 korele sinyali birden
 //   kaydetmemek için yalnızca en yüksek skorlu ilk N coin kaydedilir.
-const RECORD_THRESHOLD = 70
+const RECORD_THRESHOLD = 75
 const MAX_SIGNALS_PER_RUN = 2
 
 // ---------- indicator helpers ----------
