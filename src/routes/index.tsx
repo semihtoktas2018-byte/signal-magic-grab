@@ -20,8 +20,8 @@ export const Route = createFileRoute("/")({
 
 const WHATSAPP = "https://wa.me/905446452430";
 
-const KPK_SB_URL = "https://hnzjvcwbcfgfwpnfyhiz.supabase.co";
-const KPK_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhuemp2Y3diY2ZnZndwbmZ5aGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTQ5NzcsImV4cCI6MjA5NzQzMDk3N30.YnbumW8oXeycMd2DNLTA5Qui52sWqRlQgrWyaMwKulI";
+const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
+const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);

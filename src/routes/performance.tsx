@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-const supabase = createClient("https://hnzjvcwbcfgfwpnfyhiz.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhuemp2Y3diY2ZnZndwbmZ5aGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTQ5NzcsImV4cCI6MjA5NzQzMDk3N30.YnbumW8oXeycMd2DNLTA5Qui52sWqRlQgrWyaMwKulI");
+const supabase = createClient("https://gmwlkkebwpenocatlmty.supabase.co","sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 export const Route = createFileRoute("/performance")({
   head: () => ({
     meta: [

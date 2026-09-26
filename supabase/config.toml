@@ -1,1 +1,12 @@
-project_id = "hnzjvcwbcfgfwpnfyhiz"
+project_id = "gmwlkkebwpenocatlmty"
+
+# Edge Functions
+# kpk-signals-cron: pg_cron tarafından çağrılır; kendi x-cron-secret kontrolü
+# olduğu için platform JWT doğrulaması kapalıdır (güvenlik x-cron-secret ile).
+[functions.kpk-signals-cron]
+verify_jwt = false
+
+# fear-greed: panelin tarayıcıdan herkese açık çağırdığı salt-okunur uçtur;
+# JWT doğrulaması kapalı, CORS fonksiyon içinde ele alınır.
+[functions.fear-greed]
+verify_jwt = false

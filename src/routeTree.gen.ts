@@ -14,8 +14,6 @@ import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as ExchangeRouteImport } from './routes/exchange'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicHooksKpkSignalsCronRouteImport } from './routes/api/public/hooks/kpk-signals-cron'
-import { Route as ApiPublicHooksFearGreedRouteImport } from './routes/api/public/hooks/fear-greed'
 
 const WhaleRoute = WhaleRouteImport.update({
   id: '/whale',
@@ -42,17 +40,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksKpkSignalsCronRoute =
-  ApiPublicHooksKpkSignalsCronRouteImport.update({
-    id: '/api/public/hooks/kpk-signals-cron',
-    path: '/api/public/hooks/kpk-signals-cron',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksFearGreedRoute = ApiPublicHooksFearGreedRouteImport.update({
-  id: '/api/public/hooks/fear-greed',
-  path: '/api/public/hooks/fear-greed',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,8 +47,6 @@ export interface FileRoutesByFullPath {
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
-  '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
-  '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,8 +54,6 @@ export interface FileRoutesByTo {
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
-  '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
-  '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,28 +62,12 @@ export interface FileRoutesById {
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
-  '/api/public/hooks/fear-greed': typeof ApiPublicHooksFearGreedRoute
-  '/api/public/hooks/kpk-signals-cron': typeof ApiPublicHooksKpkSignalsCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/exchange'
-    | '/performance'
-    | '/signals'
-    | '/whale'
-    | '/api/public/hooks/fear-greed'
-    | '/api/public/hooks/kpk-signals-cron'
+  fullPaths: '/' | '/exchange' | '/performance' | '/signals' | '/whale'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/exchange'
-    | '/performance'
-    | '/signals'
-    | '/whale'
-    | '/api/public/hooks/fear-greed'
-    | '/api/public/hooks/kpk-signals-cron'
+  to: '/' | '/exchange' | '/performance' | '/signals' | '/whale'
   id:
     | '__root__'
     | '/'
@@ -108,8 +75,6 @@ export interface FileRouteTypes {
     | '/performance'
     | '/signals'
     | '/whale'
-    | '/api/public/hooks/fear-greed'
-    | '/api/public/hooks/kpk-signals-cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,8 +83,6 @@ export interface RootRouteChildren {
   PerformanceRoute: typeof PerformanceRoute
   SignalsRoute: typeof SignalsRoute
   WhaleRoute: typeof WhaleRoute
-  ApiPublicHooksFearGreedRoute: typeof ApiPublicHooksFearGreedRoute
-  ApiPublicHooksKpkSignalsCronRoute: typeof ApiPublicHooksKpkSignalsCronRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,20 +122,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/kpk-signals-cron': {
-      id: '/api/public/hooks/kpk-signals-cron'
-      path: '/api/public/hooks/kpk-signals-cron'
-      fullPath: '/api/public/hooks/kpk-signals-cron'
-      preLoaderRoute: typeof ApiPublicHooksKpkSignalsCronRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/fear-greed': {
-      id: '/api/public/hooks/fear-greed'
-      path: '/api/public/hooks/fear-greed'
-      fullPath: '/api/public/hooks/fear-greed'
-      preLoaderRoute: typeof ApiPublicHooksFearGreedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -182,8 +131,6 @@ const rootRouteChildren: RootRouteChildren = {
   PerformanceRoute: PerformanceRoute,
   SignalsRoute: SignalsRoute,
   WhaleRoute: WhaleRoute,
-  ApiPublicHooksFearGreedRoute: ApiPublicHooksFearGreedRoute,
-  ApiPublicHooksKpkSignalsCronRoute: ApiPublicHooksKpkSignalsCronRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
