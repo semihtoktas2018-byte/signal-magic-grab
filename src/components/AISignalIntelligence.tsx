@@ -188,7 +188,8 @@ function useFearGreed() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/public/hooks/fear-greed");
+        const fngBase = import.meta.env.VITE_SUPABASE_URL ?? "https://gmwlkkebwpenocatlmty.supabase.co";
+        const res = await fetch(`${fngBase}/functions/v1/fear-greed`);
         const body = (await res.json()) as { data?: FngRow | null };
         if (cancelled) return;
         const d = body?.data;
