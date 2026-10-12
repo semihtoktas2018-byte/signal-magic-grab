@@ -69,34 +69,46 @@ export type Database = {
         Row: {
           closed_at: string | null
           coin: string
+          components: Json | null
           created_at: string
+          entry_snapshot: number | null
+          entry_snapshot_at: string | null
           id: string
           price: number
           quality: string | null
           result: string
           score: number
+          score_band: string | null
           signal: string
         }
         Insert: {
           closed_at?: string | null
           coin: string
+          components?: Json | null
           created_at?: string
+          entry_snapshot?: number | null
+          entry_snapshot_at?: string | null
           id?: string
           price: number
           quality?: string | null
           result?: string
           score: number
+          score_band?: string | null
           signal: string
         }
         Update: {
           closed_at?: string | null
           coin?: string
+          components?: Json | null
           created_at?: string
+          entry_snapshot?: number | null
+          entry_snapshot_at?: string | null
           id?: string
           price?: number
           quality?: string | null
           result?: string
           score?: number
+          score_band?: string | null
           signal?: string
         }
         Relationships: []
