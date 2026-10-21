@@ -9,25 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WhaleRouteImport } from './routes/whale'
-import { Route as SignalsRouteImport } from './routes/signals'
-import { Route as PerformanceRouteImport } from './routes/performance'
-import { Route as ExchangeRouteImport } from './routes/exchange'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExchangeRouteImport } from './routes/exchange'
+import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as SignalsRouteImport } from './routes/signals'
+import { Route as WhaleRouteImport } from './routes/whale'
 
-const WhaleRoute = WhaleRouteImport.update({
-  id: '/whale',
-  path: '/whale',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignalsRoute = SignalsRouteImport.update({
-  id: '/signals',
-  path: '/signals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerformanceRoute = PerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExchangeRoute = ExchangeRouteImport.update({
@@ -35,9 +25,19 @@ const ExchangeRoute = ExchangeRouteImport.update({
   path: '/exchange',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignalsRoute = SignalsRouteImport.update({
+  id: '/signals',
+  path: '/signals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhaleRoute = WhaleRouteImport.update({
+  id: '/whale',
+  path: '/whale',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,25 +81,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/whale': {
-      id: '/whale'
-      path: '/whale'
-      fullPath: '/whale'
-      preLoaderRoute: typeof WhaleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signals': {
-      id: '/signals'
-      path: '/signals'
-      fullPath: '/signals'
-      preLoaderRoute: typeof SignalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/performance': {
-      id: '/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof PerformanceRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exchange': {
@@ -109,11 +95,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExchangeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signals': {
+      id: '/signals'
+      path: '/signals'
+      fullPath: '/signals'
+      preLoaderRoute: typeof SignalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whale': {
+      id: '/whale'
+      path: '/whale'
+      fullPath: '/whale'
+      preLoaderRoute: typeof WhaleRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
