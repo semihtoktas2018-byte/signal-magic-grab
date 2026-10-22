@@ -120,23 +120,31 @@ function fmtNum(p: number): string {
   return p.toFixed(6);
 }
 
-// exchange_prices tablosundan güncel (neredeyse canlı) fiyatlar
+// Binance'ten güncel (neredeyse canlı) fiyatlar — sinyal motoruyla aynı coin listesi
+const LIVE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
+const LIVE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+
 async function fetchLivePrices(): Promise<Record<string, number>> {
-  try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/exchange_prices?select=coin,bybit_price`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return {};
-    const rows = await res.json();
-    const map: Record<string, number> = {};
-    (rows || []).forEach((r: any) => {
-      if (r.coin && r.bybit_price != null) map[r.coin] = Number(r.bybit_price);
-    });
-    return map;
-  } catch {
-    return {};
+  const q = encodeURIComponent(JSON.stringify(LIVE_SYMBOLS));
+  for (const host of LIVE_HOSTS) {
+    try {
+      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
+      if (!res.ok) continue;
+      const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string }>;
+      const map: Record<string, number> = {};
+      (rows || []).forEach((r) => {
+        if (!r.symbol || r.lastPrice == null) return;
+        const price = Number(r.lastPrice);
+        // hem "BTCUSDT" hem "BTC" anahtarlarıyla uyumlu
+        map[r.symbol] = price;
+        map[r.symbol.replace("USDT", "")] = price;
+      });
+      return map;
+    } catch {
+      // sıradaki host denenir; uydurma değer üretilmez
+    }
   }
+  return {};
 }
 
 // Açık sinyal için canlı kâr/zarar ve hedef/stop ilerlemesi

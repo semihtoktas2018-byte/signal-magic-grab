@@ -357,13 +357,12 @@ const fadeUp = {
 };
 
 export default function AISignalIntelligence() {
-  const { prices, signals, whales, loaded } = useRealData();
+  const { signals, whales, loaded } = useRealData();
+  const { prices, loaded: priceLoaded } = useLivePrices();
   const { fng, fngLoaded } = useFearGreed();
 
-  const priceRows = (prices ?? []).slice().sort((a, b) => Math.abs(Number(b.diff_pct)) - Math.abs(Number(a.diff_pct)));
-  const lastPriceUpdate = priceRows.length
-    ? priceRows.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), priceRows[0].updated_at)
-    : null;
+  const priceRows = (prices ?? []).slice().sort((a, b) => Math.abs(Number(b.change_pct)) - Math.abs(Number(a.change_pct)));
+  const lastPriceUpdate = priceRows.length ? priceRows[0].updated_at : null;
 
   const allSignals = signals ?? [];
   const recentSignals = allSignals.slice(0, 10);
@@ -410,7 +409,7 @@ export default function AISignalIntelligence() {
 
         {/* Top grid: canlı fiyatlar / sinyaller / analiz */}
         <div className="aic-top">
-          {/* Canlı borsa fiyatları (exchange_prices) */}
+          {/* Canlı fiyatlar (gerçek: Binance ticker/24hr) */}
           <motion.div
             className="glass aic-pulse"
             initial="hidden"
@@ -419,30 +418,30 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Waves size={16} /> Canlı Fiyat / Fark
+              <Waves size={16} /> Canlı Fiyat / 24s Fark
               {priceRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>}
             </div>
-            {!loaded ? (
+            {!priceLoaded ? (
               <NoData text="Yükleniyor..." />
             ) : priceRows.length === 0 ? (
-              <NoData text="Veri mevcut değil — borsa fiyat kaydı bulunamadı." />
+              <NoData text="Veri mevcut değil — Binance fiyat verisi alınamadı." />
             ) : (
               <>
                 <div className="aic-pulse-list">
-                  {priceRows.slice(0, 6).map((p, i) => {
-                    const diff = Number(p.diff_pct);
-                    const col = diff >= 0 ? "#22c55e" : "#ef4444";
+                  {priceRows.slice(0, 6).map((p) => {
+                    const chg = Number(p.change_pct);
+                    const col = chg >= 0 ? "#22c55e" : "#ef4444";
                     return (
                       <div key={p.coin} className="aic-pulse-row">
                         <div className="aic-pulse-coin">{p.coin.replace("USDT", "")}</div>
                         <div className="aic-pulse-trend" style={{ color: "#f0f4fa" }}>
-                          Bybit {fmt(Number(p.bybit_price))}
+                          {fmt(Number(p.price))} USDT
                         </div>
                         <div className="aic-pulse-conf">
-                          <span style={{ color: "#8a93a3", minWidth: 0 }}>OKX {fmt(Number(p.okx_price))}</span>
+                          <span style={{ color: "#8a93a3", minWidth: 0 }}>24s değişim</span>
                         </div>
                         <div className="aic-chip" style={{ color: col, background: col + "1f", borderColor: col + "4d" }}>
-                          {diff >= 0 ? "+" : ""}{diff.toFixed(2)}%
+                          {chg >= 0 ? "+" : ""}{chg.toFixed(2)}%
                         </div>
                       </div>
                     );
