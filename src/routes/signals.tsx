@@ -46,20 +46,6 @@ interface PriceRow {
   price24hPcnt: number;
 }
 
-interface BybitTicker {
-  symbol?: string;
-  lastPrice?: string;
-  price24hPcnt?: string;
-}
-
-interface BybitTickerResponse {
-  retCode: number;
-  retMsg?: string;
-  result?: {
-    list?: BybitTicker[];
-  };
-}
-
 interface Indicators {
   rsi: number | null;
   emaTrend: "yukarı" | "aşağı" | "yatay";
@@ -272,74 +258,26 @@ async function loadSignals(): Promise<Signal[]> {
   }
 }
 
-// ---------- Bybit Spot: canlı fiyatlar ----------
+// ---------- Supabase: Canlı Fiyatlar (exchange_prices tablosundan) ----------
 async function loadPrices(symbols: string[]): Promise<PriceRow[]> {
-  const uniqueSymbols = [
-    ...new Set(
-      symbols
-        .map((coin) => {
-          const normalized = coin.trim().toUpperCase();
-          return normalized.endsWith("USDT")
-            ? normalized
-            : `${normalized}USDT`;
-        })
-        .filter((symbol) => /^[A-Z0-9]+USDT$/.test(symbol))
-    ),
-  ];
-
-  if (uniqueSymbols.length === 0) return [];
-
   try {
-    const response = await fetch(
-      "https://api.bybit.com/v5/market/tickers?category=spot"
-    );
+    const { data, error } = await supabase
+      .from("exchange_prices")
+      .select("coin, bybit_price, diff_pct")
+      .order("coin", { ascending: true });
 
-    if (!response.ok) {
-      throw new Error(`Bybit HTTP hatası: ${response.status}`);
+    if (error) {
+      console.error("exchange_prices okunamadı:", error.message);
+      return [];
     }
 
-    const payload = (await response.json()) as BybitTickerResponse;
-
-    if (
-      payload.retCode !== 0 ||
-      !Array.isArray(payload.result?.list)
-    ) {
-      throw new Error(
-        payload.retMsg || "Bybit geçerli fiyat verisi döndürmedi."
-      );
-    }
-
-    const requested = new Set(uniqueSymbols);
-
-    return payload.result.list
-      .filter(
-        (ticker) =>
-          typeof ticker.symbol === "string" &&
-          requested.has(ticker.symbol)
-      )
-      .map((ticker): PriceRow | null => {
-        const price = Number(ticker.lastPrice);
-        const change = Number(ticker.price24hPcnt);
-
-        if (
-          !ticker.symbol ||
-          !Number.isFinite(price) ||
-          price <= 0 ||
-          !Number.isFinite(change)
-        ) {
-          return null;
-        }
-
-        return {
-          coin: ticker.symbol,
-          bybit_price: price,
-          price24hPcnt: change,
-        };
-      })
-      .filter((ticker): ticker is PriceRow => ticker !== null)
-      .sort((a, b) => a.coin.localeCompare(b.coin));
+    return (data as any[]).map((row) => ({
+      coin: row.coin,
+      bybit_price: Number(row.bybit_price),
+      price24hPcnt: Number(row.diff_pct) || 0, 
+    }));
   } catch (error) {
-    console.error("Bybit canlı fiyatları alınamadı:", error);
+    console.error("Fiyat verisi çekilemedi:", error);
     return [];
   }
 }
