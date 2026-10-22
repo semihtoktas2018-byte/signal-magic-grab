@@ -26,7 +26,7 @@ const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_L
 /* ============================================================
  * AI SIGNAL INTELLIGENCE CENTER
  * Tüm veriler gerçek kaynaklardan gelir:
- *  - exchange_prices  (canlı Bybit/OKX fiyatları)
+ *  - Binance ticker/24hr (canlı fiyat + 24s değişim, doğrudan API)
  *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
  *  - whale_events     (gerçek balina işlemleri)
  * Gerçek kaynağı olmayan hiçbir kutuda uydurma değer gösterilmez.
@@ -45,9 +45,8 @@ interface SignalRow {
 }
 interface PriceRow {
   coin: string;
-  bybit_price: number;
-  okx_price: number;
-  diff_pct: number;
+  price: number;
+  change_pct: number;
   updated_at: string;
 }
 interface WhaleRow {
@@ -124,7 +123,6 @@ function NoData({ text }: { text: string }) {
 
 /* ---------- gerçek veri yükleyici ---------- */
 function useRealData() {
-  const [prices, setPrices] = useState<PriceRow[] | null>(null);
   const [signals, setSignals] = useState<SignalRow[] | null>(null);
   const [whales, setWhales] = useState<WhaleRow[] | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -132,8 +130,7 @@ function useRealData() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [p, s, w] = await Promise.all([
-        supabase.from("exchange_prices").select("coin,bybit_price,okx_price,diff_pct,updated_at"),
+      const [s, w] = await Promise.all([
         supabase
           .from("kpk_signals")
           .select("id,coin,signal,score,quality,price,result,created_at")
@@ -146,7 +143,6 @@ function useRealData() {
           .limit(8),
       ]);
       if (cancelled) return;
-      setPrices((p.data as PriceRow[] | null) ?? []);
       setSignals((s.data as SignalRow[] | null) ?? []);
       setWhales((w.data as WhaleRow[] | null) ?? []);
       setLoaded(true);
@@ -159,7 +155,69 @@ function useRealData() {
     };
   }, []);
 
-  return { prices, signals, whales, loaded };
+  return { signals, whales, loaded };
+}
+
+/* ---------- Canlı fiyatlar (gerçek: Binance ticker/24hr, doğrudan API) ---------- */
+const BINANCE_SYMBOLS = [
+  "BTCUSDT",
+  "ETHUSDT",
+  "SOLUSDT",
+  "BNBUSDT",
+  "XRPUSDT",
+  "ADAUSDT",
+  "DOGEUSDT",
+  "AVAXUSDT",
+  "LINKUSDT",
+];
+const BINANCE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+
+async function fetchBinanceTickers(): Promise<PriceRow[]> {
+  const q = encodeURIComponent(JSON.stringify(BINANCE_SYMBOLS));
+  for (const host of BINANCE_HOSTS) {
+    try {
+      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
+      if (!res.ok) continue;
+      const rows = (await res.json()) as Array<{
+        symbol: string;
+        lastPrice: string;
+        priceChangePercent: string;
+      }>;
+      const now = new Date().toISOString();
+      return rows.map((r) => ({
+        coin: r.symbol,
+        price: Number(r.lastPrice),
+        change_pct: Number(r.priceChangePercent),
+        updated_at: now,
+      }));
+    } catch {
+      // sıradaki host denenir; asla uydurma değer üretilmez
+    }
+  }
+  return [];
+}
+
+function useLivePrices() {
+  const [prices, setPrices] = useState<PriceRow[] | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const rows = await fetchBinanceTickers();
+      if (cancelled) return;
+      setPrices(rows);
+      setLoaded(true);
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { prices, loaded };
 }
 
 /* ---------- Korku & Hırs endeksi (gerçek: alternative.me -> Supabase cache) ---------- */
