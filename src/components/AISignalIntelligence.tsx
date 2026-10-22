@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import {
   Activity,
   Brain,
@@ -17,6 +18,10 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+
+// KELTOŞ kendi Supabase projesi (keltos) — 'fear-greed' Edge Function burada çalışır
+const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
+const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 
 /* ============================================================
  * AI SIGNAL INTELLIGENCE CENTER
@@ -188,12 +193,30 @@ function useFearGreed() {
     let cancelled = false;
     const load = async () => {
       try {
-        const fngBase = import.meta.env.VITE_SUPABASE_URL ?? "https://gmwlkkebwpenocatlmty.supabase.co";
-        const res = await fetch(`${fngBase}/functions/v1/fear-greed`);
-        const body = (await res.json()) as { data?: FngRow | null };
+        // KELTOŞ kendi Supabase projesindeki (keltos) 'fear-greed' Edge Function
+        const { data: body, error } = await keltos.functions.invoke("fear-greed");
         if (cancelled) return;
-        const d = body?.data;
-        setFng(d && Number.isFinite(Number(d.value)) ? { ...d, value: Number(d.value) } : null);
+        if (error || !body) throw new Error("fng_invoke_failed");
+        const raw = (body as { data?: unknown }).data;
+        // Şekil 1: Edge Function önbellek formatı { data: { value, classification, source_timestamp } }
+        if (raw && !Array.isArray(raw)) {
+          const d = raw as FngRow;
+          setFng(d && Number.isFinite(Number(d.value)) ? { ...d, value: Number(d.value) } : null);
+          return;
+        }
+        // Şekil 2: alternative.me ham formatı { data: [{ value, value_classification, timestamp }] }
+        const item = Array.isArray(raw)
+          ? (raw[0] as { value?: string; value_classification?: string; timestamp?: string } | undefined)
+          : undefined;
+        const value = Number(item?.value);
+        const cls = item?.value_classification;
+        const ts = Number(item?.timestamp);
+        if (!Number.isFinite(value) || !cls) throw new Error("fng_bad_payload");
+        setFng({
+          value: Math.round(value),
+          classification: cls,
+          source_timestamp: Number.isFinite(ts) ? new Date(ts * 1000).toISOString() : new Date().toISOString(),
+        });
       } catch {
         if (!cancelled) setFng(null);
       } finally {
