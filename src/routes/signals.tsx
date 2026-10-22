@@ -1,4 +1,4 @@
-// Cache bust 1
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -263,15 +263,19 @@ async function loadPrices(symbols: string[]): Promise<PriceRow[]> {
   try {
     const { data, error } = await supabase
       .from("exchange_prices")
-      .select("coin, bybit_price, diff_pct")
-      .order("coin", { ascending: true });
+      .select("coin, bybit_price, diff_pct");
 
     if (error) {
       console.error("exchange_prices okunamadı:", error.message);
       return [];
     }
 
-    return (data as any[]).map((row) => ({
+    if (!data || data.length === 0) {
+      console.warn("exchange_prices tablosu boş döndü.");
+      return [];
+    }
+
+    return data.map((row: any) => ({
       coin: row.coin,
       bybit_price: Number(row.bybit_price),
       price24hPcnt: Number(row.diff_pct) || 0, 
