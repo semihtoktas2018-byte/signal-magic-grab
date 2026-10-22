@@ -26,7 +26,7 @@ const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_L
 /* ============================================================
  * AI SIGNAL INTELLIGENCE CENTER
  * Tüm veriler gerçek kaynaklardan gelir:
- *  - Binance ticker/24hr (canlı fiyat + 24s değişim, doğrudan API)
+ *  - Bybit API (canlı fiyat + 24s değişim, doğrudan API)
  *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
  *  - whale_events     (gerçek balina işlemleri)
  * Gerçek kaynağı olmayan hiçbir kutuda uydurma değer gösterilmez.
@@ -158,43 +158,45 @@ function useRealData() {
   return { signals, whales, loaded };
 }
 
-/* ---------- Canlı fiyatlar (gerçek: Binance ticker/24hr, doğrudan API) ---------- */
-const BINANCE_SYMBOLS = [
+/* ---------- Canlı fiyatlar (gerçek: Bybit API, doğrudan) ---------- */
+const BYBIT_SYMBOLS = [
   "BTCUSDT",
   "ETHUSDT",
   "SOLUSDT",
-  "BNBUSDT",
   "XRPUSDT",
   "ADAUSDT",
   "DOGEUSDT",
   "AVAXUSDT",
   "LINKUSDT",
 ];
-const BINANCE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 
-async function fetchBinanceTickers(): Promise<PriceRow[]> {
-  const q = encodeURIComponent(JSON.stringify(BINANCE_SYMBOLS));
-  for (const host of BINANCE_HOSTS) {
-    try {
-      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
-      if (!res.ok) continue;
-      const rows = (await res.json()) as Array<{
-        symbol: string;
-        lastPrice: string;
-        priceChangePercent: string;
-      }>;
-      const now = new Date().toISOString();
-      return rows.map((r) => ({
-        coin: r.symbol,
-        price: Number(r.lastPrice),
-        change_pct: Number(r.priceChangePercent),
-        updated_at: now,
-      }));
-    } catch {
-      // sıradaki host denenir; asla uydurma değer üretilmez
+async function fetchBybitTickers(): Promise<PriceRow[]> {
+  const now = new Date().toISOString();
+  try {
+    const promises = BYBIT_SYMBOLS.map(symbol =>
+      fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
+        .then(res => res.json())
+    );
+
+    const results = await Promise.all(promises);
+    const rows: PriceRow[] = [];
+
+    for (const res of results) {
+      if (res.retCode === 0 && res.result && res.result.list && res.result.list.length > 0) {
+        const item = res.result.list[0];
+        rows.push({
+          coin: item.symbol,
+          price: Number(item.lastPrice),
+          change_pct: Number(item.price24hPcnt) * 100, // Bybit ondalık verir, 100 ile çarpıyoruz
+          updated_at: now,
+        });
+      }
     }
+    return rows;
+  } catch (error) {
+    console.error("Bybit API hatası:", error);
+    return [];
   }
-  return [];
 }
 
 function useLivePrices() {
@@ -204,10 +206,16 @@ function useLivePrices() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const rows = await fetchBinanceTickers();
-      if (cancelled) return;
-      setPrices(rows);
-      setLoaded(true);
+      try {
+        const rows = await fetchBybitTickers();
+        if (!cancelled) {
+          setPrices(rows);
+          setLoaded(true);
+        }
+      } catch (error) {
+        console.error("Fiyat çekme hatası:", error);
+        if (!cancelled) setLoaded(true);
+      }
     };
     load();
     const id = setInterval(load, 60000);
@@ -409,7 +417,7 @@ export default function AISignalIntelligence() {
 
         {/* Top grid: canlı fiyatlar / sinyaller / analiz */}
         <div className="aic-top">
-          {/* Canlı fiyatlar (gerçek: Binance ticker/24hr) */}
+          {/* Canlı fiyatlar (gerçek: Bybit API) */}
           <motion.div
             className="glass aic-pulse"
             initial="hidden"
@@ -424,7 +432,7 @@ export default function AISignalIntelligence() {
             {!priceLoaded ? (
               <NoData text="Yükleniyor..." />
             ) : priceRows.length === 0 ? (
-              <NoData text="Veri mevcut değil — Binance fiyat verisi alınamadı." />
+              <NoData text="Veri mevcut değil — Bybit fiyat verisi alınamadı." />
             ) : (
               <>
                 <div className="aic-pulse-list">
@@ -857,4 +865,3 @@ const aicCss = `
   .aic-conf-mini{min-width:64px;flex:1}
 }
 `;
-
