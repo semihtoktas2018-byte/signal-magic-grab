@@ -30,22 +30,24 @@ function trackPageView(pathname: string, search: string, hash: string) {
 
   const pageLocation = `${window.location.origin}${pathname}${search}${hash}`;
   const pageTitle = document.title || pathname || "Page";
+  const payload = {
+    page_location: pageLocation,
+    page_title: pageTitle,
+    send_to: GA_MEASUREMENT_ID,
+  };
+
+  const gtagFn = window.gtag;
+
+  if (typeof gtagFn === "function") {
+    gtagFn("event", "page_view", payload);
+    return;
+  }
 
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
     event: "page_view",
-    page_location: pageLocation,
-    page_title: pageTitle,
-    send_to: GA_MEASUREMENT_ID,
+    ...payload,
   });
-
-  if (typeof window.gtag === "function") {
-    window.gtag("event", "page_view", {
-      page_location: pageLocation,
-      page_title: pageTitle,
-      send_to: GA_MEASUREMENT_ID,
-    });
-  }
 }
 
 function NotFoundComponent() {
