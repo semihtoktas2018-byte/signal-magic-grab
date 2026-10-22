@@ -5,13 +5,48 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+
+const GA_MEASUREMENT_ID = "G-V35DXZ4KYKF";
+
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+function trackPageView(pathname: string, search: string, hash: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const pageLocation = `${window.location.origin}${pathname}${search}${hash}`;
+  const pageTitle = document.title || pathname || "Page";
+
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: "page_view",
+    page_location: pageLocation,
+    page_title: pageTitle,
+    send_to: GA_MEASUREMENT_ID,
+  });
+
+  if (typeof window.gtag === "function") {
+    window.gtag("event", "page_view", {
+      page_location: pageLocation,
+      page_title: pageTitle,
+      send_to: GA_MEASUREMENT_ID,
+    });
+  }
+}
 
 function NotFoundComponent() {
   return (
@@ -88,8 +123,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
       { name: "twitter:description", content: "Keltos Signal Importer imports GitHub repositories to integrate trading signals into your system." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app-1781188161807.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app-1781188161807.png" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app/445d12f0-3598-4d6b-8a20-7d21ab90df4b.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app/445d12f0-3598-4d6b-8a20-7d21ab90df4b.png" },
     ],
     links: [
       {
@@ -109,6 +144,17 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
+            `,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -120,6 +166,24 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useRouterState((state) => state.location);
+  const lastTrackedRouteRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentRoute = `${location.pathname}${location.search}${location.hash}`;
+    const previousRoute = lastTrackedRouteRef.current;
+
+    if (previousRoute === null) {
+      lastTrackedRouteRef.current = currentRoute;
+      trackPageView(location.pathname, location.search, location.hash);
+      return;
+    }
+
+    if (currentRoute !== previousRoute) {
+      lastTrackedRouteRef.current = currentRoute;
+      trackPageView(location.pathname, location.search, location.hash);
+    }
+  }, [location.pathname, location.search, location.hash]);
 
   return (
     <QueryClientProvider client={queryClient}>
