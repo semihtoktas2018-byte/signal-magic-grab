@@ -1,3 +1,4 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -16,7 +17,10 @@ export const Route = createFileRoute("/signals")({
         content:
           "Canlı kripto sinyal terminali: radar, güncel fiyatlar, aktif sinyaller, hedef/stop, skor ve coin başına teknik detaylar.",
       },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
     ],
   }),
   component: SignalTerminal,
@@ -36,13 +40,27 @@ interface Signal {
   result: "tuttu" | "tutmadi" | "bekliyor";
   created_at: string;
 }
+
 interface PriceRow {
   coin: string;
   bybit_price: number;
-  okx_price: number;
-  diff_pct: number;
-  updated_at: string;
+  price24hPcnt: number;
 }
+
+interface BybitTicker {
+  symbol?: string;
+  lastPrice?: string;
+  price24hPcnt?: string;
+}
+
+interface BybitTickerResponse {
+  retCode: number;
+  retMsg?: string;
+  result?: {
+    list?: BybitTicker[];
+  };
+}
+
 interface Indicators {
   rsi: number | null;
   emaTrend: "yukarı" | "aşağı" | "yatay";
@@ -51,56 +69,84 @@ interface Indicators {
   reason: string;
 }
 
-// ---------- göstergeler (cron ile aynı matematik, tarayıcıda canlı) ----------
+// ---------- Teknik göstergeler ----------
 function ema(values: number[], period: number): number[] {
+  if (values.length === 0) return [];
+
   const k = 2 / (period + 1);
   const out: number[] = [];
   let prev = values[0];
+
   out.push(prev);
+
   for (let i = 1; i < values.length; i++) {
     prev = values[i] * k + prev * (1 - k);
     out.push(prev);
   }
+
   return out;
 }
+
 function rsi(values: number[], period = 14): number | null {
   if (values.length <= period) return null;
-  let gain = 0,
-    loss = 0;
+
+  let gain = 0;
+  let loss = 0;
+
   for (let i = 1; i <= period; i++) {
     const ch = values[i] - values[i - 1];
+
     if (ch >= 0) gain += ch;
     else loss -= ch;
   }
-  let ag = gain / period,
-    al = loss / period;
+
+  let ag = gain / period;
+  let al = loss / period;
   let r = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+
   for (let i = period + 1; i < values.length; i++) {
     const ch = values[i] - values[i - 1];
     const g = ch > 0 ? ch : 0;
     const l = ch < 0 ? -ch : 0;
+
     ag = (ag * (period - 1) + g) / period;
     al = (al * (period - 1) + l) / period;
     r = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
   }
+
   return r;
 }
+
 function macdHist(values: number[]): number {
-  const e12 = ema(values, 12),
-    e26 = ema(values, 26);
+  const e12 = ema(values, 12);
+  const e26 = ema(values, 26);
+
   const line = values.map((_, i) => e12[i] - e26[i]);
   const sig = ema(line.slice(25), 9);
+
+  if (line.length === 0 || sig.length === 0) return 0;
+
   return line[line.length - 1] - sig[sig.length - 1];
 }
-function bollingerPct(values: number[], period = 20, mult = 2): number | null {
+
+function bollingerPct(
+  values: number[],
+  period = 20,
+  mult = 2
+): number | null {
   if (values.length < period) return null;
+
   const slice = values.slice(-period);
   const mean = slice.reduce((a, b) => a + b, 0) / period;
-  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+
+  const variance =
+    slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+
   const sd = Math.sqrt(variance);
-  const upper = mean + mult * sd,
-    lower = mean - mult * sd;
+  const upper = mean + mult * sd;
+  const lower = mean - mult * sd;
   const price = values[values.length - 1];
+
   return upper === lower ? 0.5 : (price - lower) / (upper - lower);
 }
 
@@ -108,75 +154,195 @@ function computeIndicators(closes: number[]): Indicators {
   const r = rsi(closes);
   const e20 = ema(closes, 20);
   const e50 = ema(closes, 50);
+
   const last20 = e20[e20.length - 1];
   const last50 = e50[e50.length - 1];
-  const diff = ((last20 - last50) / last50) * 100;
-  const emaTrend = diff > 0.15 ? "yukarı" : diff < -0.15 ? "aşağı" : "yatay";
+
+  const diff =
+    Number.isFinite(last50) && last50 !== 0
+      ? ((last20 - last50) / last50) * 100
+      : 0;
+
+  const emaTrend =
+    diff > 0.15 ? "yukarı" : diff < -0.15 ? "aşağı" : "yatay";
+
   const mh = macdHist(closes);
   const macd = mh >= 0 ? "pozitif" : "negatif";
   const bbPct = bollingerPct(closes);
 
   const parts: string[] = [];
+
   if (r != null) {
     if (r >= 70) parts.push("RSI aşırı alım bölgesinde");
     else if (r <= 30) parts.push("RSI aşırı satım bölgesinde");
     else parts.push("RSI nötr");
   }
+
   parts.push(`trend ${emaTrend}`);
   parts.push(`momentum ${macd}`);
-  return { rsi: r, emaTrend, macd, bbPct, reason: parts.join(" · ") };
+
+  return {
+    rsi: r,
+    emaTrend,
+    macd,
+    bbPct,
+    reason: parts.join(" · "),
+  };
 }
 
+// ---------- Bybit mum verileri ----------
 async function fetchCloses(symbol: string): Promise<number[]> {
-  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&limit=120`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("kline");
-  const j = await res.json();
-  const list = (j.result?.list ?? []) as string[][];
-  // Bybit yeni→eski döndürür; kronolojik sıraya çevir, kapanış (index 4)
-  return list
-    .slice()
-    .reverse()
-    .map((k) => parseFloat(k[4]))
-    .filter((n) => !isNaN(n));
+  try {
+    const normalized = symbol.trim().toUpperCase();
+    const marketSymbol = normalized.endsWith("USDT")
+      ? normalized
+      : `${normalized}USDT`;
+
+    const url =
+      `https://api.bybit.com/v5/market/kline?category=spot` +
+      `&symbol=${encodeURIComponent(marketSymbol)}` +
+      "&interval=15&limit=120";
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(`Bybit mum verisi HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+
+    if (json.retCode !== 0 || !Array.isArray(json.result?.list)) {
+      throw new Error(json.retMsg || "Bybit mum verisi alınamadı.");
+    }
+
+    return (json.result.list as string[][])
+      .slice()
+      .reverse()
+      .map((k) => Number(k[4]))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  } catch (error) {
+    console.error("Teknik gösterge verisi alınamadı:", error);
+    throw error;
+  }
 }
 
 function fmtNum(p: number): string {
-  if (!p) return "0";
+  if (!Number.isFinite(p) || p <= 0) return "—";
   if (p >= 100) return p.toFixed(2);
   if (p >= 1) return p.toFixed(4);
   return p.toFixed(6);
 }
+
 function coinShort(c: string): string {
-  return c.replace("USDT", "");
+  return c.replace(/USDT$/, "");
 }
+
 function targetStop(signal: "BUY" | "SELL", entry: number) {
   const isBuy = signal === "BUY";
+
   return {
     target: isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT),
     stop: isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT),
   };
 }
+
 function resultLabel(r: Signal["result"]) {
   if (r === "tuttu") return { text: "✓ Tuttu", cls: "res-win" };
   if (r === "tutmadi") return { text: "✗ Tutmadı", cls: "res-loss" };
   return { text: "⏳ Bekliyor", cls: "res-wait" };
 }
 
+// ---------- Supabase: yalnızca sinyal kayıtları ----------
 async function loadSignals(): Promise<Signal[]> {
-  const { data } = await supabase
-    .from("kpk_signals")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(60);
-  return (data as Signal[]) || [];
+  try {
+    const { data, error } = await supabase
+      .from("kpk_signals")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(60);
+
+    if (error) {
+      console.error("Sinyaller yüklenemedi:", error.message);
+      return [];
+    }
+
+    return (data as Signal[]) || [];
+  } catch (error) {
+    console.error("Sinyaller yüklenirken hata:", error);
+    return [];
+  }
 }
-async function loadPrices(): Promise<PriceRow[]> {
-  const { data } = await supabase
-    .from("exchange_prices")
-    .select("*")
-    .order("coin", { ascending: true });
-  return (data as PriceRow[]) || [];
+
+// ---------- Bybit Spot: canlı fiyatlar ----------
+async function loadPrices(symbols: string[]): Promise<PriceRow[]> {
+  const uniqueSymbols = [
+    ...new Set(
+      symbols
+        .map((coin) => {
+          const normalized = coin.trim().toUpperCase();
+          return normalized.endsWith("USDT")
+            ? normalized
+            : `${normalized}USDT`;
+        })
+        .filter((symbol) => /^[A-Z0-9]+USDT$/.test(symbol))
+    ),
+  ];
+
+  if (uniqueSymbols.length === 0) return [];
+
+  try {
+    const response = await fetch(
+      "https://api.bybit.com/v5/market/tickers?category=spot"
+    );
+
+    if (!response.ok) {
+      throw new Error(`Bybit HTTP hatası: ${response.status}`);
+    }
+
+    const payload = (await response.json()) as BybitTickerResponse;
+
+    if (
+      payload.retCode !== 0 ||
+      !Array.isArray(payload.result?.list)
+    ) {
+      throw new Error(
+        payload.retMsg || "Bybit geçerli fiyat verisi döndürmedi."
+      );
+    }
+
+    const requested = new Set(uniqueSymbols);
+
+    return payload.result.list
+      .filter(
+        (ticker) =>
+          typeof ticker.symbol === "string" &&
+          requested.has(ticker.symbol)
+      )
+      .map((ticker): PriceRow | null => {
+        const price = Number(ticker.lastPrice);
+        const change = Number(ticker.price24hPcnt);
+
+        if (
+          !ticker.symbol ||
+          !Number.isFinite(price) ||
+          price <= 0 ||
+          !Number.isFinite(change)
+        ) {
+          return null;
+        }
+
+        return {
+          coin: ticker.symbol,
+          bybit_price: price,
+          price24hPcnt: change,
+        };
+      })
+      .filter((ticker): ticker is PriceRow => ticker !== null)
+      .sort((a, b) => a.coin.localeCompare(b.coin));
+  } catch (error) {
+    console.error("Bybit canlı fiyatları alınamadı:", error);
+    return [];
+  }
 }
 
 function SignalTerminal() {
@@ -186,64 +352,129 @@ function SignalTerminal() {
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [lastUpdate, setLastUpdate] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
+  const [details, setDetails] = useState<
+    Record<string, Indicators | "loading" | "error">
+  >({});
 
   useEffect(() => {
     let cancelled = false;
-    const load = () => {
-      Promise.all([loadSignals(), loadPrices()]).then(([s, p]) => {
+    let running = false;
+
+    const load = async () => {
+      if (running || cancelled) return;
+
+      running = true;
+
+      try {
+        const s = await loadSignals();
+
         if (cancelled) return;
+
         setSignals(s);
+
+        const p = await loadPrices(s.map((signal) => signal.coin));
+
+        if (cancelled) return;
+
         setPrices(p);
-        setLoading(false);
         setLastUpdate(
-          new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+          new Date().toLocaleTimeString("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         );
-      });
+      } catch (error) {
+        console.error("Terminal verileri yüklenemedi:", error);
+
+        if (cancelled) return;
+
+        setPrices([]);
+      } finally {
+        running = false;
+
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     };
-    load();
-    const t = setInterval(load, 30000);
+
+    void load();
+
+    const timer = setInterval(() => {
+      void load();
+    }, 30000);
+
     return () => {
       cancelled = true;
-      clearInterval(t);
+      clearInterval(timer);
     };
   }, []);
 
   const priceMap: Record<string, number> = {};
+
   prices.forEach((p) => {
-    if (p.coin && p.bybit_price != null) priceMap[p.coin] = Number(p.bybit_price);
+    if (p.coin && Number.isFinite(p.bybit_price)) {
+      priceMap[p.coin] = p.bybit_price;
+    }
   });
 
-  // Piyasa eğilimi: en güncel sinyallerdeki BUY/SELL dağılımından (gerçek veri)
+  // Piyasa eğilimi: gerçek sinyal kayıtlarından hesaplanır.
   const latestByCoin: Record<string, Signal> = {};
+
   signals.forEach((s) => {
-    if (!latestByCoin[s.coin]) latestByCoin[s.coin] = s;
+    if (!latestByCoin[s.coin]) {
+      latestByCoin[s.coin] = s;
+    }
   });
+
   const latest = Object.values(latestByCoin);
   const buyN = latest.filter((s) => s.signal === "BUY").length;
   const sellN = latest.filter((s) => s.signal === "SELL").length;
   const decided = buyN + sellN;
   const bullPct = decided ? Math.round((buyN / decided) * 100) : 50;
-  const mood = bullPct >= 55 ? "YÜKSELİŞ" : bullPct <= 45 ? "DÜŞÜŞ" : "KARARSIZ";
-  const moodCls = bullPct >= 55 ? "mood-up" : bullPct <= 45 ? "mood-down" : "mood-flat";
+
+  const mood =
+    bullPct >= 55 ? "YÜKSELİŞ" : bullPct <= 45 ? "DÜŞÜŞ" : "KARARSIZ";
+
+  const moodCls =
+    bullPct >= 55
+      ? "mood-up"
+      : bullPct <= 45
+        ? "mood-down"
+        : "mood-flat";
 
   const openCount = signals.filter((s) => s.result === "bekliyor").length;
-  const shown = filter === "hepsi" ? signals : signals.filter((s) => s.signal === filter);
+
+  const shown =
+    filter === "hepsi"
+      ? signals
+      : signals.filter((s) => s.signal === filter);
 
   function toggleDetail(s: Signal) {
     if (openId === s.id) {
       setOpenId(null);
       return;
     }
+
     setOpenId(s.id);
+
     if (!details[s.id]) {
       setDetails((d) => ({ ...d, [s.id]: "loading" }));
+
       fetchCloses(s.coin)
         .then((closes) => {
-          if (closes.length < 50) throw new Error("yetersiz veri");
-          setDetails((d) => ({ ...d, [s.id]: computeIndicators(closes) }));
+          if (closes.length < 50) {
+            throw new Error("Yetersiz mum verisi");
+          }
+
+          setDetails((d) => ({
+            ...d,
+            [s.id]: computeIndicators(closes),
+          }));
         })
-        .catch(() => setDetails((d) => ({ ...d, [s.id]: "error" })));
+        .catch(() => {
+          setDetails((d) => ({ ...d, [s.id]: "error" }));
+        });
     }
   }
 
@@ -341,6 +572,7 @@ function SignalTerminal() {
                 <div className="mood-fill" style={{ width: `${bullPct}%` }} />
               </div>
             </div>
+
             <div className="card">
               <div className="card-h">KELTOŞ Radar</div>
               <div className="radar-box">
@@ -359,12 +591,16 @@ function SignalTerminal() {
             </div>
           </div>
 
-          {/* Canlı fiyat */}
           <div className="sec-h">
             <span className="live-dot" />
             <span className="sec-t">Canlı Fiyat / Fark</span>
-            {lastUpdate && <span className="meta" style={{ marginLeft: "auto" }}>Son güncelleme: {lastUpdate}</span>}
+            {lastUpdate && (
+              <span className="meta" style={{ marginLeft: "auto" }}>
+                Son güncelleme: {lastUpdate}
+              </span>
+            )}
           </div>
+
           {prices.length === 0 ? (
             <div className="empty">Fiyat verisi bekleniyor…</div>
           ) : (
@@ -373,34 +609,42 @@ function SignalTerminal() {
                 <div className="pchip" key={p.coin}>
                   <div>
                     <div className="c">{coinShort(p.coin)}</div>
-                    <div className="p">Bybit {fmtNum(Number(p.bybit_price))}</div>
+                    <div className="p">Bybit {fmtNum(p.bybit_price)}</div>
                   </div>
-                  <span className={`diff ${Number(p.diff_pct) >= 0 ? "dpos" : "dneg"}`}>
-                    {Number(p.diff_pct) >= 0 ? "+" : ""}
-                    {Number(p.diff_pct).toFixed(2)}%
+                  <span
+                    className={`diff ${p.price24hPcnt >= 0 ? "dpos" : "dneg"}`}
+                  >
+                    {p.price24hPcnt >= 0 ? "+" : ""}
+                    {(p.price24hPcnt * 100).toFixed(2)}%
                   </span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Sinyaller */}
           <div className="sec-h">
             <span className="sec-t">Sinyaller</span>
             <span className="meta" style={{ marginLeft: "auto" }}>
               {openCount} açık · {signals.length} toplam
             </span>
           </div>
+
           <div className="filters">
             {(["hepsi", "BUY", "SELL"] as const).map((f) => (
-              <button key={f} className={`fbtn ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
+              <button
+                key={f}
+                className={`fbtn ${filter === f ? "active" : ""}`}
+                onClick={() => setFilter(f)}
+              >
                 {f === "hepsi" ? "Hepsi" : f}
               </button>
             ))}
           </div>
 
           {shown.length === 0 ? (
-            <div className="empty">Şu an gösterilecek sinyal yok. Yeni sinyaller geldikçe burada listelenecek.</div>
+            <div className="empty">
+              Şu an gösterilecek sinyal yok. Yeni sinyaller geldikçe burada listelenecek.
+            </div>
           ) : (
             <div className="sig-list">
               {shown.map((s) => {
@@ -408,17 +652,30 @@ function SignalTerminal() {
                 const { target, stop } = targetStop(s.signal, entry);
                 const res = resultLabel(s.result);
                 const cur = priceMap[s.coin];
+
                 let pnl: number | null = null;
+
                 if (cur && entry) {
-                  pnl = s.signal === "BUY" ? ((cur - entry) / entry) * 100 : ((entry - cur) / entry) * 100;
+                  pnl =
+                    s.signal === "BUY"
+                      ? ((cur - entry) / entry) * 100
+                      : ((entry - cur) / entry) * 100;
                 }
+
                 const det = details[s.id];
                 const isOpen = openId === s.id;
+
                 return (
                   <div className="sig-card" key={s.id}>
                     <div className="sig-main">
-                      <span className={`badge ${s.signal === "BUY" ? "b-buy" : "b-sell"}`}>{s.signal}</span>
+                      <span
+                        className={`badge ${s.signal === "BUY" ? "b-buy" : "b-sell"}`}
+                      >
+                        {s.signal}
+                      </span>
+
                       <span className="coin-name">{coinShort(s.coin)}</span>
+
                       <div className="levels">
                         <div>
                           <div className="lv-k">Giriş</div>
@@ -433,10 +690,17 @@ function SignalTerminal() {
                           <div className="mono c-s">{fmtNum(stop)}</div>
                         </div>
                       </div>
+
                       <span className="score">{s.score}</span>
+
                       <div style={{ textAlign: "right" }}>
                         {pnl != null && (
-                          <div className="pnl" style={{ color: pnl >= 0 ? "#22c55e" : "#ef4444" }}>
+                          <div
+                            className="pnl"
+                            style={{
+                              color: pnl >= 0 ? "#22c55e" : "#ef4444",
+                            }}
+                          >
                             {pnl >= 0 ? "+" : ""}
                             {pnl.toFixed(2)}%
                           </div>
@@ -444,49 +708,73 @@ function SignalTerminal() {
                         <div className={res.cls}>{res.text}</div>
                       </div>
                     </div>
-                    <button className="detail-btn" onClick={() => toggleDetail(s)}>
+
+                    <button
+                      className="detail-btn"
+                      onClick={() => toggleDetail(s)}
+                    >
                       {isOpen ? "▲ Detayları gizle" : "▼ Detay"}
                     </button>
+
                     {isOpen && (
                       <div className="detail">
-                        {det === "loading" && <div className="meta">Göstergeler hesaplanıyor…</div>}
-                        {det === "error" && <div className="meta">Detay verisi şu an alınamadı.</div>}
+                        {det === "loading" && (
+                          <div className="meta">Göstergeler hesaplanıyor…</div>
+                        )}
+
+                        {det === "error" && (
+                          <div className="meta">
+                            Detay verisi şu an alınamadı.
+                          </div>
+                        )}
+
                         {det && det !== "loading" && det !== "error" && (
                           <>
                             <div className="ind-grid">
                               <div className="ind">
                                 <div className="ind-k">RSI (14)</div>
-                                <div className="ind-v">{det.rsi != null ? det.rsi.toFixed(0) : "—"}</div>
+                                <div className="ind-v">
+                                  {det.rsi != null ? det.rsi.toFixed(0) : "—"}
+                                </div>
                               </div>
+
                               <div className="ind">
                                 <div className="ind-k">EMA Trend</div>
                                 <div className="ind-v">{det.emaTrend}</div>
                               </div>
+
                               <div className="ind">
                                 <div className="ind-k">MACD</div>
                                 <div className="ind-v">{det.macd}</div>
                               </div>
+
                               <div className="ind">
                                 <div className="ind-k">Bollinger</div>
                                 <div className="ind-v">
-                                  {det.bbPct != null ? `%${Math.round(det.bbPct * 100)}` : "—"}
+                                  {det.bbPct != null
+                                    ? `%${Math.round(det.bbPct * 100)}`
+                                    : "—"}
                                 </div>
                               </div>
+
                               <div className="ind">
                                 <div className="ind-k">Kalite</div>
                                 <div className="ind-v">{s.quality}</div>
                               </div>
+
                               <div className="ind">
                                 <div className="ind-k">Skor</div>
                                 <div className="ind-v">{s.score}/100</div>
                               </div>
                             </div>
+
                             <div className="reason">
-                              {coinShort(s.coin)} için {s.signal} · {det.reason}. Hedef{" "}
-                              {fmtNum(target)}, stop {fmtNum(stop)}.
+                              {coinShort(s.coin)} için {s.signal} · {det.reason}.
+                              Hedef {fmtNum(target)}, stop {fmtNum(stop)}.
                             </div>
                           </>
                         )}
+
                         <div className="meta" style={{ marginTop: 8 }}>
                           Sinyal zamanı:{" "}
                           {new Date(s.created_at).toLocaleString("tr-TR", {
@@ -505,8 +793,10 @@ function SignalTerminal() {
           )}
 
           <div className="disc">
-            Bu panel otomatik işlem açmaz; yalnızca teknik analiz ve sinyal gösterir. Yatırım tavsiyesi değildir.
+            Bu panel otomatik işlem açmaz; yalnızca teknik analiz ve sinyal
+            gösterir. Yatırım tavsiyesi değildir.
           </div>
+
           <div className="sig-foot">A BAMIR ONLINE STORE'S PRODUCTION</div>
         </div>
       )}
