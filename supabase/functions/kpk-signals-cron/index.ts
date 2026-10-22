@@ -211,8 +211,8 @@ const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGE
 
 // Skoru bu eşiğin altındaki BUY/SELL'ler kaydedilmez; her turda en yüksek
 // skorlu ilk N coin kaydedilir (korele sinyal yığılmasını önler).
-const RECORD_THRESHOLD = 75
-const MAX_SIGNALS_PER_RUN = 2
+const RECORD_THRESHOLD = 65
+const MAX_SIGNALS_PER_RUN = 4
 
 // TELEGRAM_CHAT_ID kanal kimliğidir (gizli anahtar değil) — kod içinde kalır.
 const TELEGRAM_CHAT_ID = '-1003733127546'
