@@ -11,65 +11,119 @@ export const Route = createFileRoute("/signals")({
   component: SignalTerminal,
 });
 
+interface Signal {
+  id: string;
+  coin: string;
+  signal: "BUY" | "SELL";
+  score: number;
+  quality: string;
+  price: number;
+  result: "tuttu" | "tutmadi" | "bekliyor";
+  created_at: string;
+}
+
+interface PriceRow {
+  coin: string;
+  bybit_price: number;
+  price24hPcnt: number;
+}
+
+function fmtNum(p: number): string {
+  if (!Number.isFinite(p) || p <= 0) return "—";
+  if (p >= 100) return p.toFixed(2);
+  if (p >= 1) return p.toFixed(4);
+  return p.toFixed(6);
+}
+
+function coinShort(c: string): string {
+  return c.replace(/USDT$/, "");
+}
+
+async function loadSignals(): Promise<Signal[]> {
+  try {
+    const { data, error } = await supabase
+      .from("kpk_signals")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(60);
+    if (error) return [];
+    return (data as Signal[]) || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+async function loadPrices(): Promise<PriceRow[]> {
+  try {
+    const { data, error } = await supabase
+      .from("exchange_prices")
+      .select("*");
+    if (error) {
+      console.error("exchange_prices okunamadı:", error.message);
+      return [];
+    }
+    if (!data) return [];
+    return data.map((row: any) => ({
+      coin: row.coin,
+      bybit_price: Number(row.bybit_price),
+      price24hPcnt: Number(row.diff_pct) || 0,
+    }));
+  } catch (error) {
+    return [];
+  }
+}
+
 function SignalTerminal() {
-  const [prices, setPrices] = useState<any[]>([]);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [prices, setPrices] = useState<PriceRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Doğrudan Supabase'e bağlan ve tabloyu oku
-    const fetchData = async () => {
-      try {
-        console.log("Supabase bağlantısı başlatıldı...");
-        
-        const { data, error } = await supabase
-          .from("exchange_prices")
-          .select("*");
-
-        if (error) {
-          console.error("Supabase Hatası:", error);
-          setErrorMsg("Supabase Hatası: " + error.message);
-          return;
-        }
-
-        console.log("Gelen veri:", data);
-        
-        if (data) {
-          setPrices(data);
-        }
-      } catch (err: any) {
-        console.error("Beklenmedik Hata:", err);
-        setErrorMsg("Beklenmedik Hata: " + err.message);
-      }
+    const load = async () => {
+      setLoading(true);
+      const s = await loadSignals();
+      setSignals(s);
+      const p = await loadPrices();
+      setPrices(p);
+      setLoading(false);
     };
-
-    fetchData();
+    load();
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   return (
     <div style={{ background: "#05070c", minHeight: "100vh", color: "#fff", padding: "20px" }}>
-      <h1 style={{ color: "#f5b629" }}>Sinyal Terminali Test</h1>
+      <h1 style={{ color: "#f5b629" }}>Sinyal Terminali</h1>
       
-      {/* Hata varsa burada kırmızı yazıyla göster */}
-      {errorMsg && (
-        <div style={{ background: "red", color: "white", padding: "10px", marginBottom: "20px", borderRadius: "8px" }}>
-          {errorMsg}
-        </div>
-      )}
-
-      <h2>Canlı Fiyatlar (Supabase'den)</h2>
-      
-      {prices.length === 0 && !errorMsg ? (
-        <p>Veri bekleniyor veya tablo boş...</p>
+      {loading ? (
+        <p>Yükleniyor...</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "10px" }}>
-          {prices.map((p, index) => (
-            <div key={index} style={{ background: "#151b2b", padding: "15px", borderRadius: "10px", border: "1px solid #2a3441" }}>
-              <div style={{ fontWeight: "bold" }}>{p.coin}</div>
-              <div style={{ color: "#22c55e" }}>{p.bybit_price} USDT</div>
-              <div style={{ fontSize: "12px", color: "#8a93a3" }}>Fark: %{p.diff_pct}</div>
+        <>
+          <h2>Canlı Fiyatlar ({prices.length})</h2>
+          {prices.length === 0 ? (
+            <p>Tablo boş veya RLS engelliyor.</p>
+          ) : (
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "20px" }}>
+              {prices.map((p) => (
+                <div key={p.coin} style={{ background: "#151b2b", padding: "10px", borderRadius: "8px" }}>
+                  <b>{p.coin}</b>: {fmtNum(p.bybit_price)} USDT
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          <h2>Sinyaller ({signals.length})</h2>
+          {signals.length === 0 ? (
+            <p>Henüz sinyal yok.</p>
+          ) : (
+            <ul>
+              {signals.map((s) => (
+                <li key={s.id}>{coinShort(s.coin)} - {s.signal} - Skor: {s.score}</li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );
