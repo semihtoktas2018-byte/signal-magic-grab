@@ -1,21 +1,10 @@
 // KELTOŞ — Sinyal üretim & TP/SL çözüm cron'u (Supabase Edge Function, Deno)
-//
-// Bu fonksiyon, eski TanStack route'undaki (src/routes/api/public/hooks/
-// kpk-signals-cron.ts) tüm mantığı birebir taşır: indikatörler, whale radar,
-// Bybit/OKX fiyat karşılaştırması, Signal Engine V2 skorlaması, TP/SL resolver
-// ve Telegram bildirimleri.
-//
-// Gizli anahtarlar YALNIZCA ortam değişkeninden okunur (Supabase Secrets):
-//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_BOT_TOKEN, CRON_SECRET
-// Hiçbir gizli anahtar bu dosyada gömülü değildir.
-//
-// Güvenlik: pg_cron çağrısı x-cron-secret header'ında CRON_SECRET göndermelidir;
-// eşleşmezse 401 döner.
+// V3: Coral Trend + RSI Bands + Stokastik RSI filtreleri entegre edildi.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // ============================================================
-// Signal Engine V2 (Phase 1) — src/lib/signal-engine-v2.ts'ten taşındı
+// Signal Engine V2 (Phase 1)
 // ============================================================
 interface V2Inputs {
   price: number
@@ -209,12 +198,9 @@ function compareScores(v1Score: number, v2Score: number, tolerance = 3): V2Compa
 // ============================================================
 const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT']
 
-// Skoru bu eşiğin altındaki BUY/SELL'ler kaydedilmez; her turda en yüksek
-// skorlu ilk N coin kaydedilir (korele sinyal yığılmasını önler).
 const RECORD_THRESHOLD = 65
 const MAX_SIGNALS_PER_RUN = 4
 
-// TELEGRAM_CHAT_ID kanal kimliğidir (gizli anahtar değil) — kod içinde kalır.
 const TELEGRAM_CHAT_ID = '-1003733127546'
 
 // ---------- indicator helpers ----------
@@ -327,7 +313,7 @@ async function fetchOkxPrice(symbol: string): Promise<number> {
   throw new Error(lastErr)
 }
 
-// ---------- signal logic (mirrors public/keltos.html signalLogic) ----------
+// ---------- signal logic (V3: Coral Trend + RSI Bands + Stokastik RSI) ----------
 function signalLogic(
   price: number, prevPrice: number,
   rsiVal: number | null, prevRsi: number | null,
@@ -338,6 +324,7 @@ function signalLogic(
   whale: WhaleActivity
 ) {
   if (!rsiVal || !e20 || !e50) return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
+
   const rsiTurn = prevRsi !== null && prevRsi < 30 && rsiVal >= 30
   const rsiOS = rsiVal < 30
   const above20 = price > e20
@@ -357,6 +344,19 @@ function signalLogic(
   const trendDown = e20 < e50
   const slopeDown = e20Prev ? e20 < e20Prev : false
 
+  // ============ VİDEO FİLTRELERİ ============
+  // 1. Coral Trend: EMA20 > EMA50 ve fiyat EMA20 üstündeyse yeşil trend
+  const coralTrendGreen = e20 > e50 && price > e20
+  const coralTrendRed = e20 < e50 && price < e20
+
+  // 2. RSI Bands: RSI 30-70 arası güvenli, dışı aşırı
+  const rsiOversold = rsiVal <= 30
+  const rsiOverbought = rsiVal >= 70
+
+  // 3. Stokastik RSI: RSI 50 altı dip, üstü zirve (basitleştirilmiş)
+  const stochRsiOversold = rsiVal < 50 && prevRsi !== null && prevRsi < 50
+  const stochRsiOverbought = rsiVal > 50 && prevRsi !== null && prevRsi > 50
+
   // ============ BUY puanı ============
   let buy = 0
   if (rsiTurn) buy += 32; else if (rsiOS) buy += 20
@@ -371,6 +371,12 @@ function signalLogic(
   if (!trendOk || !slopeUp) buy -= 30
   if (whaleSell) buy -= 15
 
+  // Video filtreleri (BUY)
+  if (coralTrendGreen) buy += 10
+  if (stochRsiOversold) buy += 8
+  if (rsiOversold) buy += 5
+  if (!coralTrendGreen) buy -= 15
+
   // ============ SELL puanı ============
   let sell = 0
   if (below20) sell += 28
@@ -383,6 +389,12 @@ function signalLogic(
   if (whaleSell) sell += 14
   if (!trendDown || !slopeDown) sell -= 30
   if (whaleBuy) sell -= 15
+
+  // Video filtreleri (SELL)
+  if (coralTrendRed) sell += 10
+  if (stochRsiOverbought) sell += 8
+  if (rsiOverbought) sell += 5
+  if (!coralTrendRed) sell -= 15
 
   buy = Math.max(0, buy)
   sell = Math.max(0, sell)
@@ -535,7 +547,6 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
   }
 }
 
-// Faz 0: skor bandı etiketi (analiz için)
 function scoreBand(score: number): string {
   if (score >= 88) return '88+'
   if (score >= 82) return '82-87'
@@ -603,7 +614,6 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   }
 }
 
-// Faz 1: sinyal kapanınca anlık sonuç bildirimi (tuttu/tutmadı)
 async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
   if (!token) return
@@ -661,7 +671,6 @@ async function runCron() {
     scoreBand: string
   }> = []
 
-  // 1) Generate new signals
   for (const coin of COINS) {
     try {
       const klines = await fetchKlines(coin)
@@ -673,7 +682,6 @@ async function runCron() {
         v2Coverage: a.v2.coverage, comparison: a.v2Comparison,
       })
 
-      // Bybit vs OKX fiyat karşılaştırması
       try {
         await sleep(150)
         const okxPrice = await fetchOkxPrice(coin)
@@ -713,7 +721,6 @@ async function runCron() {
     }
   }
 
-  // 1b) Adaylar arasından en yüksek skorlu ilk N tanesini kaydet.
   candidates.sort((x, y) => y.score - x.score)
   for (const c of candidates.slice(0, MAX_SIGNALS_PER_RUN)) {
     try {
@@ -749,7 +756,6 @@ async function runCron() {
     }
   }
 
-  // 2) Açık sinyalleri geçmiş mumlarla kapat.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const resolveFloor = new Date(
     Date.now() - (RESOLVE_WINDOW_HOURS + 6) * 60 * 60 * 1000
@@ -797,7 +803,6 @@ async function runCron() {
 // HTTP giriş noktası (Deno)
 // ============================================================
 Deno.serve(async (req) => {
-  // Güvenlik: gelen istekteki x-cron-secret, CRON_SECRET ile eşleşmeli.
   const expected = Deno.env.get('CRON_SECRET')
   const provided = req.headers.get('x-cron-secret')
   if (!expected || provided !== expected) {
