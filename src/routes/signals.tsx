@@ -180,7 +180,17 @@ async function loadSignals(): Promise<Signal[]> {
   try {
     const { data, error } = await supabase.from("kpk_signals").select("*").order("created_at", { ascending: false }).limit(60);
     if (error) return [];
-    return (data as Signal[]) || [];
+    const allSignals = (data as Signal[]) || [];
+    
+    // Her coin için sadece en son sinyali tut (çiftleri temizle)
+    const latestByCoin: Record<string, Signal> = {};
+    allSignals.forEach((s) => {
+      if (!latestByCoin[s.coin]) {
+        latestByCoin[s.coin] = s;
+      }
+    });
+    
+    return Object.values(latestByCoin);
   } catch (error) {
     return [];
   }
@@ -484,7 +494,6 @@ function SignalTerminal() {
                               <div className="ind"><div className="ind-k">EMA Trend</div><div className="ind-v">{det.emaTrend}</div></div>
                               <div className="ind"><div className="ind-k">MACD</div><div className="ind-v">{det.macd}</div></div>
                               <div className="ind"><div className="ind-k">Bollinger</div><div className="ind-v">{det.bbPct != null ? `%${Math.round(det.bbPct * 100)}` : "—"}</div></div>
-                              <div className="ind"><div className="ind-k">Kalite</div><div className="ind-v">{s.quality}</div></div>
                               <div className="ind"><div className="ind-k">Skor</div><div className="ind-v">{s.score}/100</div></div>
                             </div>
                             <div className="reason">{coinShort(s.coin)} için {s.signal} · {det.reason}. Hedef {fmtNum(target)}, stop {fmtNum(stop)}.</div>
