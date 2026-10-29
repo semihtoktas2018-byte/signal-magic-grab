@@ -28,6 +28,24 @@ export const Route = createFileRoute("/signals")({
 const TP_PCT = 0.025;
 const SL_PCT = 0.02;
 
+// Coin logoları için CoinGecko ID'leri
+const COIN_LOGO_URLS: Record<string, string> = {
+  BTC: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
+  ETH: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  SOL: "https://assets.coingecko.com/coins/images/4128/large/solana.png",
+  BNB: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",
+  XRP: "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png",
+  ADA: "https://assets.coingecko.com/coins/images/975/large/cardano.png",
+  DOGE: "https://assets.coingecko.com/coins/images/5/large/dogecoin.png",
+  AVAX: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png",
+  LINK: "https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png",
+};
+
+function getCoinLogo(coin: string): string | null {
+  const symbol = coin.replace(/USDT$/, "").toUpperCase();
+  return COIN_LOGO_URLS[symbol] || null;
+}
+
 interface Signal {
   id: string;
   coin: string;
@@ -182,7 +200,6 @@ async function loadSignals(): Promise<Signal[]> {
     if (error) return [];
     const allSignals = (data as Signal[]) || [];
     
-    // Her coin için sadece en son sinyali tut (çiftleri temizle)
     const latestByCoin: Record<string, Signal> = {};
     allSignals.forEach((s) => {
       if (!latestByCoin[s.coin]) {
@@ -331,7 +348,8 @@ function SignalTerminal() {
         @media(max-width:640px){.sig-main{grid-template-columns:auto 1fr auto;row-gap:10px}}
         .badge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
         .b-buy{color:#22c55e;background:rgba(34,197,94,.14)}.b-sell{color:#ef4444;background:rgba(239,68,68,.14)}
-        .coin-name{font-weight:800;font-size:15px}
+        .coin-name{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px}
+        .coin-logo{width:20px;height:20px;border-radius:50%;object-fit:contain}
         .mono{font-variant-numeric:tabular-nums}
         .levels{display:flex;gap:14px;font-size:12px}
         @media(max-width:640px){.levels{grid-column:1/-1;justify-content:space-between}}
@@ -405,18 +423,24 @@ function SignalTerminal() {
             <div className="empty">Fiyat verisi bekleniyor…</div>
           ) : (
             <div className="price-strip">
-              {prices.map((p) => (
-                <div className="pchip" key={p.coin}>
-                  <div>
-                    <div className="c">{coinShort(p.coin)}</div>
-                    <div className="p">Bybit {fmtNum(p.bybit_price)}</div>
+              {prices.map((p) => {
+                const logo = getCoinLogo(p.coin);
+                return (
+                  <div className="pchip" key={p.coin}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {logo && <img src={logo} alt={p.coin} className="coin-logo" />}
+                      <div>
+                        <div className="c">{coinShort(p.coin)}</div>
+                        <div className="p">Bybit {fmtNum(p.bybit_price)}</div>
+                      </div>
+                    </div>
+                    <span className={`diff ${p.price24hPcnt >= 0 ? "dpos" : "dneg"}`}>
+                      {p.price24hPcnt >= 0 ? "+" : ""}
+                      {p.price24hPcnt.toFixed(2)}%
+                    </span>
                   </div>
-                  <span className={`diff ${p.price24hPcnt >= 0 ? "dpos" : "dneg"}`}>
-                    {p.price24hPcnt >= 0 ? "+" : ""}
-                    {p.price24hPcnt.toFixed(2)}%
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -442,6 +466,7 @@ function SignalTerminal() {
                 const { target, stop } = targetStop(s.signal, entry);
                 const res = resultLabel(s.result);
                 const cur = priceMap[s.coin];
+                const logo = getCoinLogo(s.coin);
                 let pnl: number | null = null;
                 if (cur && entry) {
                   pnl = s.signal === "BUY" ? ((cur - entry) / entry) * 100 : ((entry - cur) / entry) * 100;
@@ -453,7 +478,10 @@ function SignalTerminal() {
                   <div className="sig-card" key={s.id}>
                     <div className="sig-main">
                       <span className={`badge ${s.signal === "BUY" ? "b-buy" : "b-sell"}`}>{s.signal}</span>
-                      <span className="coin-name">{coinShort(s.coin)}</span>
+                      <span className="coin-name">
+                        {logo && <img src={logo} alt={s.coin} className="coin-logo" />}
+                        {coinShort(s.coin)}
+                      </span>
                       <div className="levels">
                         <div>
                           <div className="lv-k">Giriş</div>
