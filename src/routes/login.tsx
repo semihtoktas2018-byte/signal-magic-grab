@@ -7,6 +7,12 @@ const supabase = createClient(
   "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1"
 );
 
+// KeltosLogin bileşeninin beklediği tipi burada netleştiriyoruz
+interface LoginValues {
+  email: string;
+  password: string;
+}
+
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
@@ -14,8 +20,11 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
 
-  const handleLogin = async ({ email, password }: { email: string; password: string }) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const handleLogin = async (values: LoginValues) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: values.email,
+      password: values.password,
+    });
     if (error) throw error;
     navigate({ to: "/signals" });
   };
@@ -36,7 +45,7 @@ function LoginPage() {
   };
 
   const handleRegister = () => {
-    alert("Kayıt sayfası henüz hazır değil.");
+    alert("Kayıt sayfası henüz hazır değil. Lütfen yönetici ile iletişime geçin.");
   };
 
   return (
