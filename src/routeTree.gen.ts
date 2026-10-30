@@ -1,4 +1,3 @@
-// Force rebuild
 /* eslint-disable */
 
 // @ts-nocheck
@@ -12,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExchangeRouteImport } from './routes/exchange'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as WhaleRouteImport } from './routes/whale'
@@ -24,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const ExchangeRoute = ExchangeRouteImport.update({
   id: '/exchange',
   path: '/exchange',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerformanceRoute = PerformanceRouteImport.update({
@@ -45,6 +50,7 @@ const WhaleRoute = WhaleRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
+  '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
+  '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
@@ -60,21 +67,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/exchange': typeof ExchangeRoute
+  '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/exchange' | '/performance' | '/signals' | '/whale'
+  fullPaths:
+    '/' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/exchange' | '/performance' | '/signals' | '/whale'
-  id: '__root__' | '/' | '/exchange' | '/performance' | '/signals' | '/whale'
+  to: '/' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
+  id:
+    | '__root__'
+    | '/'
+    | '/exchange'
+    | '/login'
+    | '/performance'
+    | '/signals'
+    | '/whale'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExchangeRoute: typeof ExchangeRoute
+  LoginRoute: typeof LoginRoute
   PerformanceRoute: typeof PerformanceRoute
   SignalsRoute: typeof SignalsRoute
   WhaleRoute: typeof WhaleRoute
@@ -94,6 +111,13 @@ declare module '@tanstack/react-router' {
       path: '/exchange'
       fullPath: '/exchange'
       preLoaderRoute: typeof ExchangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/performance': {
@@ -123,6 +147,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExchangeRoute: ExchangeRoute,
+  LoginRoute: LoginRoute,
   PerformanceRoute: PerformanceRoute,
   SignalsRoute: SignalsRoute,
   WhaleRoute: WhaleRoute,
