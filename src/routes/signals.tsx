@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -261,6 +261,7 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
 }
 
 function SignalTerminal() {
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,6 +269,14 @@ function SignalTerminal() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate({ to: "/login" });
+      }
+    });
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
