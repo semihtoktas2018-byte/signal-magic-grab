@@ -8,7 +8,7 @@ interface KeltosLoginProps {
   onLogin: (values: LoginValues) => void | Promise<void>;
   onGoogleLogin?: () => void | Promise<void>;
   onForgotPassword?: (email: string) => void | Promise<void>;
-  onRegister?: (values: LoginValues) => Promise<RegisterResult | void>;
+  onRegister?: (values: LoginValues) => Promise<RegisterResult>;
 }
 
 function messageOf(err: unknown, fallback: string) {
