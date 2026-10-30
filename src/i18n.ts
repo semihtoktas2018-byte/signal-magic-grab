@@ -106,6 +106,20 @@ export const translations: Record<string, Record<LangCode, string>> = {
   targetReached: { tr: "HEDEF", en: "TARGET", de: "ZIEL", fr: "CIBLE", ar: "الهدف" },
   stopLoss: { tr: "STOP", en: "STOP", de: "STOP", fr: "STOP", ar: "الإيقاف" },
   waitingShort: { tr: "BEKLİYOR", en: "WAITING", de: "WARTET", fr: "ATTENTE", ar: "قيد الانتظار" },
+  professionalCryptoSignal: { tr: "PROFESYONEL KRİPTO SİNYAL", en: "PROFESSIONAL CRYPTO SIGNAL", de: "PROFESSIONELLES KRYPTO-SIGNAL", fr: "SIGNAL CRYPTO PROFESSIONNEL", ar: "إشارة تلقيم احترافية" },
+  keltosBrand: { tr: "KELTOŞ", en: "KELTOŞ", de: "KELTOŞ", fr: "KELTOŞ", ar: "KELTOŞ" },
+  raceToMoney: { tr: "PARAYA KOŞ", en: "RACE TO MONEY", de: "RACE ZUM GELD", fr: "COURSE VERS L’ARGENT", ar: "سباق نحو المال" },
+  heroWhaleText: { tr: "Balinalar hareket eder,", en: "Whales move,", de: "Wale bewegen sich,", fr: "Les baleines bougent,", ar: "تتحرك الحيتان," },
+  heroWhaleHighlight: { tr: "KELTOŞ önceden görür.", en: "KELTOŞ sees it ahead of time.", de: "KELTOŞ sieht es im Voraus.", fr: "KELTOŞ le voit à l’avance.", ar: "يرى KELTOŞ ذلك قبل الوقت." },
+  heroMarketAnalysis: { tr: "Kripto piyasasını yapay zeka destekli sinyal sistemiyle senin yerine analiz eder.", en: "It analyzes the crypto market for you with an AI-powered signal system.", de: "Es analysiert den Kryptomarkt für dich mit einem KI-gestützten Signalsystem.", fr: "Il analyse le marché crypto pour toi avec un système de signaux piloté par l’IA.", ar: "يقوم بتحليل سوق العملات المشفرة نيابةً عنك باستخدام نظام إشارات مدعوم بالذكاء الاصطناعي." },
+  enterSignalTerminal: { tr: "⚡ SİNYAL TERMİNALİNE GİR", en: "⚡ ENTER SIGNAL TERMINAL", de: "⚡ SIGNALTERMINAL ÖFFNEN", fr: "⚡ ACCÉDER AU TERMINAL DE SIGNAUX", ar: "⚡ الدخول إلى محطة الإشارات" },
+  coinTracking: { tr: "Coin Takip", en: "Coin Tracking", de: "Coin-Verfolgung", fr: "Suivi des pièces", ar: "تتبع العملات" },
+  hitRate: { tr: "İsabet", en: "Hit Rate", de: "Trefferquote", fr: "Taux de réussite", ar: "معدل النجاح" },
+  liveLabel: { tr: "Canlı", en: "Live", de: "Live", fr: "En direct", ar: "مباشر" },
+  transparent: { tr: "Şeffaf", en: "Transparent", de: "Transparent", fr: "Transparent", ar: "شفاف" },
+  bybitData: { tr: "Bybit Verisi", en: "Bybit Data", de: "Bybit-Daten", fr: "Données Bybit", ar: "بيانات Bybit" },
+  openHistory: { tr: "Açık Geçmiş", en: "Open History", de: "Offene Historie", fr: "Historique ouvert", ar: "السجل المفتوح" },
+  performanceShort: { tr: "Performans", en: "Performance", de: "Leistung", fr: "Performance", ar: "الأداء" },
 };
 
 export function getLang(): LangCode {
