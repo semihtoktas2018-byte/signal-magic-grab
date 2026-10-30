@@ -262,30 +262,6 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
 
 function SignalTerminal() {
   const navigate = useNavigate();
-    const [lang, setLang] = useState<"tr" | "en">("tr");
-
-  const t = (key: string) => {
-    const translations: Record<string, { tr: string; en: string }> = {
-      marketStatus: { tr: "Piyasa Durumu", en: "Market Status" },
-      livePrice: { tr: "Canlı Fiyat / Fark", en: "Live Price / Change" },
-      signals: { tr: "Sinyaller", en: "Signals" },
-      all: { tr: "Hepsi", en: "All" },
-      open: { tr: "açık", en: "open" },
-      total: { tr: "toplam", en: "total" },
-      entry: { tr: "Giriş", en: "Entry" },
-      target: { tr: "Hedef", en: "Target" },
-      stop: { tr: "Stop", en: "Stop" },
-      score: { tr: "Skor", en: "Score" },
-      detail: { tr: "Detay", en: "Details" },
-      hideDetail: { tr: "Detayları gizle", en: "Hide Details" },
-      waiting: { tr: "Bekliyor", en: "Waiting" },
-      hit: { tr: "Tuttu", en: "Hit" },
-      missed: { tr: "Tutmadı", en: "Missed" },
-      logout: { tr: "Çıkış Yap", en: "Logout" },
-      signalTime: { tr: "Sinyal zamanı", en: "Signal time" },
-    };
-    return translations[key]?.[lang] || key;
-  };
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -294,6 +270,30 @@ function SignalTerminal() {
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [lang, setLang] = useState<"tr" | "en" | "de" | "fr" | "ar">("tr");
+
+  const t = (key: string) => {
+    const translations: Record<string, Record<string, string>> = {
+      marketStatus: { tr: "Piyasa Durumu", en: "Market Status", de: "Marktstatus", fr: "État du marché", ar: "حالة السوق" },
+      livePrice: { tr: "Canlı Fiyat / Fark", en: "Live Price / Change", de: "Live-Preis / Änderung", fr: "Prix en direct / Variation", ar: "السعر المباشر / التغيير" },
+      signals: { tr: "Sinyaller", en: "Signals", de: "Signale", fr: "Signaux", ar: "إشارات" },
+      all: { tr: "Hepsi", en: "All", de: "Alle", fr: "Tous", ar: "الكل" },
+      open: { tr: "açık", en: "open", de: "offen", fr: "ouvert", ar: "مفتوح" },
+      total: { tr: "toplam", en: "total", de: "gesamt", fr: "total", ar: "المجموع" },
+      entry: { tr: "Giriş", en: "Entry", de: "Eintrag", fr: "Entrée", ar: "دخول" },
+      target: { tr: "Hedef", en: "Target", de: "Ziel", fr: "Cible", ar: "هدف" },
+      stop: { tr: "Stop", en: "Stop", de: "Stop", fr: "Arrêt", ar: "إيقاف" },
+      score: { tr: "Skor", en: "Score", de: "Punktzahl", fr: "Score", ar: "نتيجة" },
+      detail: { tr: "Detay", en: "Details", de: "Details", fr: "Détails", ar: "تفاصيل" },
+      hideDetail: { tr: "Detayları gizle", en: "Hide Details", de: "Details ausblenden", fr: "Masquer les détails", ar: "إخفاء التفاصيل" },
+      waiting: { tr: "Bekliyor", en: "Waiting", de: "Warten", fr: "En attente", ar: "في انتظار" },
+      hit: { tr: "Tuttu", en: "Hit", de: "Treffer", fr: "Atteint", ar: "أصاب" },
+      missed: { tr: "Tutmadı", en: "Missed", de: "Verpasst", fr: "Manqué", ar: "أخطأ" },
+      logout: { tr: "Çıkış Yap", en: "Logout", de: "Abmelden", fr: "Déconnexion", ar: "تسجيل الخروج" },
+      signalTime: { tr: "Sinyal zamanı", en: "Signal time", de: "Signalzeit", fr: "Heure du signal", ar: "وقت الإشارة" },
+    };
+    return translations[key]?.[lang] || translations[key]?.["en"] || key;
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -375,7 +375,7 @@ function SignalTerminal() {
   }
 
   return (
-    <div className={`term ${theme === "light" ? "light-mode" : ""}`}>
+    <div className={`term ${theme === "light" ? "light-mode" : ""}`} dir={lang === "ar" ? "rtl" : "ltr"}>
       <style>{`
         .term{background:#05070c;min-height:100vh;color:#f0f4fa;font-family:'Inter',system-ui,-apple-system,sans-serif;padding:0 0 60px}
         .term.light-mode{background:#f8f9fa;color:#1a1a1a}
@@ -391,6 +391,7 @@ function SignalTerminal() {
         .logout-btn{background:transparent;border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-left:10px}
         .logout-btn:hover{background:rgba(239,68,68,.1)}
         .theme-btn{background:transparent;border:1px solid #f5b629;color:#f5b629;padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:8px;font-size:14px}
+        .lang-select{background:transparent;border:1px solid #f5b629;color:#f5b629;padding:6px;border-radius:8px;margin-left:8px;font-size:12px;cursor:pointer}
         .wrap{max-width:1080px;margin:0 auto;padding:18px 14px 0}
         .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
         @media(max-width:720px){.top-grid{grid-template-columns:1fr}}
@@ -466,23 +467,28 @@ function SignalTerminal() {
           <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button 
-  onClick={() => setLang(lang === "tr" ? "en" : "tr")}
-  style={{ background: "transparent", border: "1px solid #f5b629", color: "#f5b629", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", marginLeft: "8px", fontSize: "12px" }}
->
-  {lang === "tr" ? "EN" : "TR"}
-</button>
+          <select
+            className="lang-select"
+            value={lang}
+            onChange={(e) => setLang(e.target.value as any)}
+          >
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
+            <option value="de">DE</option>
+            <option value="fr">FR</option>
+            <option value="ar">AR</option>
+          </select>
           <button className="logout-btn" onClick={handleLogout}>{t("logout")}</button>
         </div>
       </nav>
 
       {loading ? (
-        <div className="loading">⏳ Yükleniyor...</div>
+        <div className="loading">⏳ {t("waiting")}...</div>
       ) : (
         <div className="wrap">
           <div className="top-grid">
             <div className="card">
-             <div className="card-h">{t("marketStatus")}</div>
+              <div className="card-h">{t("marketStatus")}</div>
               <div className={`mood ${moodCls}`}>{mood}</div>
               <div className="mood-sub">Sinyallerin %{bullPct}'i AL yönünde ({buyN} AL · {sellN} SAT)</div>
               <div className="mood-bar">
@@ -510,7 +516,7 @@ function SignalTerminal() {
 
           <div className="sec-h">
             <span className="live-dot" />
-           <span className="sec-t">{t("livePrice")}</span>
+            <span className="sec-t">{t("livePrice")}</span>
           </div>
 
           {prices.length === 0 ? (
@@ -543,13 +549,13 @@ function SignalTerminal() {
           )}
 
           <div className="chart-panel">
-            <div className="card-h">📈 Canlı Grafik — {coinShort(chartCoin)}</div>
+            <div className="card-h">📈 {t("livePrice")} — {coinShort(chartCoin)}</div>
             <TradingViewWidget symbol={chartCoin} />
           </div>
 
           <div className="sec-h">
-           <span className="sec-t">{t("signals")}</span>
-            <span className="meta" style={{ marginLeft: "auto" }}>{openCount} açık · {signals.length} toplam</span>
+            <span className="sec-t">{t("signals")}</span>
+            <span className="meta" style={{ marginLeft: "auto" }}>{openCount} {t("open")} · {signals.length} {t("total")}</span>
           </div>
 
           <div className="filters">
@@ -587,15 +593,15 @@ function SignalTerminal() {
                       </span>
                       <div className="levels">
                         <div>
-                          <div className="lv-k">Giriş</div>
+                          <div className="lv-k">{t("entry")}</div>
                           <div className="mono">{fmtNum(entry)}</div>
                         </div>
                         <div>
-                          <div className="lv-k">Hedef</div>
+                          <div className="lv-k">{t("target")}</div>
                           <div className="mono c-t">{fmtNum(target)}</div>
                         </div>
                         <div>
-                          <div className="lv-k">Stop</div>
+                          <div className="lv-k">{t("stop")}</div>
                           <div className="mono c-s">{fmtNum(stop)}</div>
                         </div>
                       </div>
@@ -611,7 +617,7 @@ function SignalTerminal() {
                     </div>
 
                     <button className="detail-btn" onClick={() => toggleDetail(s)}>
-                      {isOpen ? "▲ Detayları gizle" : "▼ Detay"}
+                      {isOpen ? `▲ ${t("hideDetail")}` : `▼ ${t("detail")}`}
                     </button>
 
                     {isOpen && (
@@ -625,13 +631,13 @@ function SignalTerminal() {
                               <div className="ind"><div className="ind-k">EMA Trend</div><div className="ind-v">{det.emaTrend}</div></div>
                               <div className="ind"><div className="ind-k">MACD</div><div className="ind-v">{det.macd}</div></div>
                               <div className="ind"><div className="ind-k">Bollinger</div><div className="ind-v">{det.bbPct != null ? `%${Math.round(det.bbPct * 100)}` : "—"}</div></div>
-                              <div className="ind"><div className="ind-k">Skor</div><div className="ind-v">{s.score}/100</div></div>
+                              <div className="ind"><div className="ind-k">{t("score")}</div><div className="ind-v">{s.score}/100</div></div>
                             </div>
                             <div className="reason">{coinShort(s.coin)} için {s.signal} · {det.reason}. Hedef {fmtNum(target)}, stop {fmtNum(stop)}.</div>
                           </>
                         )}
                         <div className="meta" style={{ marginTop: 8 }}>
-                          Sinyal zamanı: {new Date(s.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          {t("signalTime")}: {new Date(s.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                         </div>
                       </div>
                     )}
