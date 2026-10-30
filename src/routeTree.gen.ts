@@ -1,4 +1,3 @@
-// Rebuild
 /* eslint-disable */
 
 // @ts-nocheck
