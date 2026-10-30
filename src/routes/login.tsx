@@ -52,8 +52,22 @@ function LoginPage() {
     if (error) throw error;
   };
 
-  const handleRegister = () => {
-    alert("Kayıt sayfası henüz hazır değil. Lütfen yönetici ile iletişime geçin.");
+  const handleRegister = async (values: LoginValues) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
+    });
+    if (error) throw error;
+
+    if (data.session) {
+      await navigate({ to: "/signals" });
+      return { emailConfirmationRequired: false };
+    }
+
+    return { emailConfirmationRequired: true };
   };
 
   return (
