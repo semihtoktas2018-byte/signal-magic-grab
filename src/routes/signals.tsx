@@ -269,6 +269,7 @@ function SignalTerminal() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -350,9 +351,14 @@ function SignalTerminal() {
   }
 
   return (
-    <div className="term">
+    <div className={`term ${theme === "light" ? "light-mode" : ""}`}>
       <style>{`
         .term{background:#05070c;min-height:100vh;color:#f0f4fa;font-family:'Inter',system-ui,-apple-system,sans-serif;padding:0 0 60px}
+        .term.light-mode{background:#f8f9fa;color:#1a1a1a}
+        .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip{background:rgba(0,0,0,0.03);border-color:rgba(0,0,0,0.1)}
+        .term.light-mode .term-nav{background:rgba(255,255,255,0.9);border-bottom:1px solid rgba(0,0,0,0.1)}
+        .term.light-mode .mood-sub, .term.light-mode .meta, .term.light-mode .lv-k{color:#555}
+        .term.light-mode .term-brand{background:linear-gradient(135deg,#9c6815,#f5b629);-webkit-background-clip:text;background-clip:text;color:transparent}
         .term-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(5,7,12,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(245,182,41,.18);position:sticky;top:0;z-index:50;gap:10px;flex-wrap:wrap}
         .term-brand{font-weight:900;font-size:17px;letter-spacing:.06em;background:linear-gradient(135deg,#f5b629,#ffd76a);-webkit-background-clip:text;background-clip:text;color:transparent}
         .term-links{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
@@ -360,6 +366,7 @@ function SignalTerminal() {
         .term-links a:hover,.term-links a.active{color:#f5b629}
         .logout-btn{background:transparent;border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-left:10px}
         .logout-btn:hover{background:rgba(239,68,68,.1)}
+        .theme-btn{background:transparent;border:1px solid #f5b629;color:#f5b629;padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:8px;font-size:14px}
         .wrap{max-width:1080px;margin:0 auto;padding:18px 14px 0}
         .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
         @media(max-width:720px){.top-grid{grid-template-columns:1fr}}
@@ -432,6 +439,9 @@ function SignalTerminal() {
           <a href="/performance">Performans</a>
           <a href="/whale">Whale Radar</a>
           <a href="/exchange">Borsa Karşılaştır</a>
+          <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button className="logout-btn" onClick={handleLogout}>Çıkış Yap</button>
         </div>
       </nav>
