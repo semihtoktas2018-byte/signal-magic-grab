@@ -25,6 +25,12 @@ const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_L
 
 /* ============================================================
  * AI SIGNAL INTELLIGENCE CENTER
+ * Tüm veriler gerçek kaynaklardan gelir:
+ *  - Binance ticker/24hr (canlı fiyat + 24s değişim, doğrudan API)
+ *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
+ *  - whale_events     (gerçek balina işlemleri)
+ * Gerçek kaynağı olmayan hiçbir kutuda uydurma değer gösterilmez.
+ * Sinyal motoru, skorlama ve trading mantığı bu dosyada YOKTUR.
  * ============================================================ */
 
 interface SignalRow {
@@ -51,6 +57,7 @@ interface WhaleRow {
   created_at: string;
 }
 
+/* TP/SL oranları cron (sinyal motoru) ile aynıdır — türetilmiş, uydurma değil */
 const TP_PCT = 0.025;
 const SL_PCT = 0.02;
 
@@ -151,45 +158,43 @@ function useRealData() {
   return { signals, whales, loaded };
 }
 
-/* ---------- Canlı fiyatlar (gerçek: Bybit API, doğrudan) ---------- */
-const BYBIT_SYMBOLS = [
+/* ---------- Canlı fiyatlar (gerçek: Binance ticker/24hr, doğrudan API) ---------- */
+const BINANCE_SYMBOLS = [
   "BTCUSDT",
   "ETHUSDT",
   "SOLUSDT",
+  "BNBUSDT",
   "XRPUSDT",
   "ADAUSDT",
   "DOGEUSDT",
   "AVAXUSDT",
   "LINKUSDT",
 ];
+const BINANCE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 
-async function fetchBybitTickers(): Promise<PriceRow[]> {
-  const now = new Date().toISOString();
-  try {
-    const promises = BYBIT_SYMBOLS.map(symbol =>
-      fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
-        .then(res => res.json())
-    );
-
-    const results = await Promise.all(promises);
-    const rows: PriceRow[] = [];
-
-    for (const res of results) {
-      if (res.retCode === 0 && res.result && res.result.list && res.result.list.length > 0) {
-        const item = res.result.list[0];
-        rows.push({
-          coin: item.symbol,
-          price: Number(item.lastPrice),
-          change_pct: Number(item.price24hPcnt) * 100,
-          updated_at: now,
-        });
-      }
+async function fetchBinanceTickers(): Promise<PriceRow[]> {
+  const q = encodeURIComponent(JSON.stringify(BINANCE_SYMBOLS));
+  for (const host of BINANCE_HOSTS) {
+    try {
+      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
+      if (!res.ok) continue;
+      const rows = (await res.json()) as Array<{
+        symbol: string;
+        lastPrice: string;
+        priceChangePercent: string;
+      }>;
+      const now = new Date().toISOString();
+      return rows.map((r) => ({
+        coin: r.symbol,
+        price: Number(r.lastPrice),
+        change_pct: Number(r.priceChangePercent),
+        updated_at: now,
+      }));
+    } catch {
+      // sıradaki host denenir; asla uydurma değer üretilmez
     }
-    return rows;
-  } catch (error) {
-    console.error("Bybit API hatası:", error);
-    return [];
   }
+  return [];
 }
 
 function useLivePrices() {
@@ -199,16 +204,10 @@ function useLivePrices() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      try {
-        const rows = await fetchBybitTickers();
-        if (!cancelled) {
-          setPrices(rows);
-          setLoaded(true);
-        }
-      } catch (error) {
-        console.error("Fiyat çekme hatası:", error);
-        if (!cancelled) setLoaded(true);
-      }
+      const rows = await fetchBinanceTickers();
+      if (cancelled) return;
+      setPrices(rows);
+      setLoaded(true);
     };
     load();
     const id = setInterval(load, 60000);
@@ -221,7 +220,7 @@ function useLivePrices() {
   return { prices, loaded };
 }
 
-/* ---------- Korku & Hırs endeksi ---------- */
+/* ---------- Korku & Hırs endeksi (gerçek: alternative.me -> Supabase cache) ---------- */
 interface FngRow {
   value: number;
   classification: string;
@@ -252,15 +251,18 @@ function useFearGreed() {
     let cancelled = false;
     const load = async () => {
       try {
+        // KELTOŞ kendi Supabase projesindeki (keltos) 'fear-greed' Edge Function
         const { data: body, error } = await keltos.functions.invoke("fear-greed");
         if (cancelled) return;
         if (error || !body) throw new Error("fng_invoke_failed");
         const raw = (body as { data?: unknown }).data;
+        // Şekil 1: Edge Function önbellek formatı { data: { value, classification, source_timestamp } }
         if (raw && !Array.isArray(raw)) {
           const d = raw as FngRow;
           setFng(d && Number.isFinite(Number(d.value)) ? { ...d, value: Number(d.value) } : null);
           return;
         }
+        // Şekil 2: alternative.me ham formatı { data: [{ value, value_classification, timestamp }] }
         const item = Array.isArray(raw)
           ? (raw[0] as { value?: string; value_classification?: string; timestamp?: string } | undefined)
           : undefined;
@@ -290,7 +292,7 @@ function useFearGreed() {
   return { fng, fngLoaded };
 }
 
-/* ---------- Performance chart ---------- */
+/* ---------- Performance chart: gerçek kapanmış sinyallerden kümülatif net ---------- */
 function PerfChart({ series }: { series: number[] }) {
   const ref = useRef<SVGSVGElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.3 });
@@ -366,6 +368,7 @@ export default function AISignalIntelligence() {
   const recentSignals = allSignals.slice(0, 10);
   const lastSignalAt = allSignals.length ? allSignals[0].created_at : null;
 
+  /* Bugünkü performans — sadece kayıtlı gerçek sinyaller */
   const todayKey = new Date().toISOString().slice(0, 10);
   const today = allSignals.filter((s) => s.created_at.slice(0, 10) === todayKey);
   const tWin = today.filter((s) => s.result === "tuttu").length;
@@ -373,6 +376,7 @@ export default function AISignalIntelligence() {
   const tWait = today.filter((s) => s.result === "bekliyor").length;
   const tClosed = tWin + tLoss;
 
+  /* Kümülatif net (tuttu -1/+1) — gerçek kapanmış sinyallerden */
   const closedAsc = allSignals
     .filter((s) => s.result === "tuttu" || s.result === "tutmadi")
     .slice()
@@ -403,7 +407,9 @@ export default function AISignalIntelligence() {
           <p>Tüm veriler gerçek kaynaklardan gelir. Veri yoksa kutu boş kalır — tahmini sayı gösterilmez.</p>
         </motion.div>
 
+        {/* Top grid: canlı fiyatlar / sinyaller / analiz */}
         <div className="aic-top">
+          {/* Canlı fiyatlar (gerçek: Binance ticker/24hr) */}
           <motion.div
             className="glass aic-pulse"
             initial="hidden"
@@ -418,7 +424,7 @@ export default function AISignalIntelligence() {
             {!priceLoaded ? (
               <NoData text="Yükleniyor..." />
             ) : priceRows.length === 0 ? (
-              <NoData text="Veri mevcut değil — Bybit fiyat verisi alınamadı." />
+              <NoData text="Veri mevcut değil — Binance fiyat verisi alınamadı." />
             ) : (
               <>
                 <div className="aic-pulse-list">
@@ -448,6 +454,7 @@ export default function AISignalIntelligence() {
             )}
           </motion.div>
 
+          {/* Kayıtlı sinyaller (kpk_signals) */}
           <motion.div
             className="glass aic-signals"
             initial="hidden"
@@ -524,6 +531,7 @@ export default function AISignalIntelligence() {
 
         </div>
 
+        {/* Bugünkü performans — sadece kayıtlı sinyaller */}
         <motion.div
           className="aic-perf-head"
           initial="hidden"
@@ -575,6 +583,7 @@ export default function AISignalIntelligence() {
           </div>
         )}
 
+        {/* Kümülatif sonuç grafiği */}
         <motion.div
           className="glass aic-chart-card"
           initial="hidden"
@@ -599,6 +608,7 @@ export default function AISignalIntelligence() {
           )}
         </motion.div>
 
+        {/* Balina hareketleri + sentiment */}
         <div className="aic-bottom">
           <motion.div
             className="glass aic-whales"
@@ -847,3 +857,4 @@ const aicCss = `
   .aic-conf-mini{min-width:64px;flex:1}
 }
 `;
+
