@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 export const Route = createFileRoute("/whale")({
   head: () => ({
@@ -60,6 +61,14 @@ function timeAgo(iso: string): string {
 function WhaleRadar() {
   const [events, setEvents] = useState<WhaleEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<LangCode>(getLang());
+
+  const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,35 +91,52 @@ function WhaleRadar() {
   const sellCount = events.filter((e) => e.side === "SELL").length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#05080d", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "#05080d", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "24px" }} dir={lang === "ar" ? "rtl" : "ltr"}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <a href="/" style={{ color: "#8a93a3", fontSize: 13, textDecoration: "none" }}>← Ana Sayfa</a>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <a href="/" style={{ color: "#8a93a3", fontSize: 13, textDecoration: "none" }}>← {t("home")}</a>
+          <select
+            value={lang}
+            onChange={(e) => {
+              const next = e.target.value as LangCode;
+              setLang(next);
+              setLangStorage(next);
+            }}
+            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 8, padding: "6px 10px" }}
+          >
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
+            <option value="de">DE</option>
+            <option value="fr">FR</option>
+            <option value="ar">AR</option>
+          </select>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 4px" }}>
           <span style={{ fontSize: 32 }}>🐋</span>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, background: "linear-gradient(135deg,#f5b629,#ffd76a)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
-            Whale Radar
+            {t("whaleRadar")}
           </h1>
         </div>
         <p style={{ color: "#8a93a3", fontSize: 14, margin: "0 0 24px" }}>
-          Kripto piyasasında $250.000 üstü tekil işlemleri canlı takip eder — kimseyi hedef almaz, sadece büyük paranın nereye gittiğini gösterir.
+          {t("whaleDescription")}
         </p>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
           <div style={{ flex: 1, background: "rgba(34,197,94,.08)", border: "1px solid rgba(34,197,94,.3)", borderRadius: 14, padding: "14px 18px" }}>
-            <div style={{ fontSize: 12, color: "#8a93a3" }}>Büyük Alım</div>
+            <div style={{ fontSize: 12, color: "#8a93a3" }}>{t("largeBuy")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: "#22c55e" }}>{buyCount}</div>
           </div>
           <div style={{ flex: 1, background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.3)", borderRadius: 14, padding: "14px 18px" }}>
-            <div style={{ fontSize: 12, color: "#8a93a3" }}>Büyük Satım</div>
+            <div style={{ fontSize: 12, color: "#8a93a3" }}>{t("largeSell")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: "#ef4444" }}>{sellCount}</div>
           </div>
         </div>
 
         {loading ? (
-          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>Yükleniyor...</p>
+          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>{t("loading")}...</p>
         ) : events.length === 0 ? (
-          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>Henüz büyük bir hareket tespit edilmedi. Sayfa 30 saniyede bir otomatik yenilenir.</p>
+          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>{t("noData")}. {t("refreshInSeconds")}.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {events.map((e) => {
@@ -126,7 +152,7 @@ function WhaleRadar() {
                     <span style={{ fontSize: 20 }}>{isBuy ? "🟢" : "🔴"}</span>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>
-                        {e.coin.replace(/USDT$/, "")} <span style={{ color, fontSize: 12 }}>{isBuy ? "BÜYÜK ALIM" : "BÜYÜK SATIM"}</span>
+                        {e.coin.replace(/USDT$/, "")} <span style={{ color, fontSize: 12 }}>{isBuy ? t("largeBuy").toUpperCase() : t("largeSell").toUpperCase()}</span>
                       </div>
                       <div style={{ fontSize: 11, color: "#8a93a3" }}>Fiyat: {fmtPrice(e.price)} · {timeAgo(e.created_at)}</div>
                     </div>

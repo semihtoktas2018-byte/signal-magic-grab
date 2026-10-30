@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 const supabase = createClient(
   "https://gmwlkkebwpenocatlmty.supabase.co",
@@ -270,30 +271,14 @@ function SignalTerminal() {
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [lang, setLang] = useState<"tr" | "en" | "de" | "fr" | "ar">("tr");
+  const [lang, setLang] = useState<LangCode>(getLang());
 
-  const t = (key: string) => {
-    const translations: Record<string, Record<string, string>> = {
-      marketStatus: { tr: "Piyasa Durumu", en: "Market Status", de: "Marktstatus", fr: "État du marché", ar: "حالة السوق" },
-      livePrice: { tr: "Canlı Fiyat / Fark", en: "Live Price / Change", de: "Live-Preis / Änderung", fr: "Prix en direct / Variation", ar: "السعر المباشر / التغيير" },
-      signals: { tr: "Sinyaller", en: "Signals", de: "Signale", fr: "Signaux", ar: "إشارات" },
-      all: { tr: "Hepsi", en: "All", de: "Alle", fr: "Tous", ar: "الكل" },
-      open: { tr: "açık", en: "open", de: "offen", fr: "ouvert", ar: "مفتوح" },
-      total: { tr: "toplam", en: "total", de: "gesamt", fr: "total", ar: "المجموع" },
-      entry: { tr: "Giriş", en: "Entry", de: "Eintrag", fr: "Entrée", ar: "دخول" },
-      target: { tr: "Hedef", en: "Target", de: "Ziel", fr: "Cible", ar: "هدف" },
-      stop: { tr: "Stop", en: "Stop", de: "Stop", fr: "Arrêt", ar: "إيقاف" },
-      score: { tr: "Skor", en: "Score", de: "Punktzahl", fr: "Score", ar: "نتيجة" },
-      detail: { tr: "Detay", en: "Details", de: "Details", fr: "Détails", ar: "تفاصيل" },
-      hideDetail: { tr: "Detayları gizle", en: "Hide Details", de: "Details ausblenden", fr: "Masquer les détails", ar: "إخفاء التفاصيل" },
-      waiting: { tr: "Bekliyor", en: "Waiting", de: "Warten", fr: "En attente", ar: "في انتظار" },
-      hit: { tr: "Tuttu", en: "Hit", de: "Treffer", fr: "Atteint", ar: "أصاب" },
-      missed: { tr: "Tutmadı", en: "Missed", de: "Verpasst", fr: "Manqué", ar: "أخطأ" },
-      logout: { tr: "Çıkış Yap", en: "Logout", de: "Abmelden", fr: "Déconnexion", ar: "تسجيل الخروج" },
-      signalTime: { tr: "Sinyal zamanı", en: "Signal time", de: "Signalzeit", fr: "Heure du signal", ar: "وقت الإشارة" },
-    };
-    return translations[key]?.[lang] || translations[key]?.["en"] || key;
-  };
+  const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -383,7 +368,7 @@ function SignalTerminal() {
         .term.light-mode .term-nav{background:rgba(255,255,255,0.9);border-bottom:1px solid rgba(0,0,0,0.1)}
         .term.light-mode .mood-sub, .term.light-mode .meta, .term.light-mode .lv-k{color:#555}
         .term.light-mode .term-brand{background:linear-gradient(135deg,#9c6815,#f5b629);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .term-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(5,7,12,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(245,182,41,.18);position:sticky;top:0;z-index:50;gap:10px;flex-wrap:wrap}
+        .term-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(5,7,12,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(245,182,41,.18)}
         .term-brand{font-weight:900;font-size:17px;letter-spacing:.06em;background:linear-gradient(135deg,#f5b629,#ffd76a);-webkit-background-clip:text;background-clip:text;color:transparent}
         .term-links{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
         .term-links a{color:#8a93a3;text-decoration:none;font-size:13px;font-weight:600}
@@ -403,7 +388,7 @@ function SignalTerminal() {
         .mood-bar{height:8px;border-radius:999px;background:rgba(239,68,68,.25);overflow:hidden;margin-top:12px}
         .mood-fill{height:100%;background:linear-gradient(90deg,#22c55e,#4ade80)}
         .radar-box{display:flex;align-items:center;gap:16px}
-        .radar{position:relative;width:96px;height:96px;border-radius:50%;border:1px solid rgba(34,197,94,.35);background:radial-gradient(circle,rgba(34,197,94,.08),transparent 70%);flex-shrink:0;overflow:hidden}
+        .radar{position:relative;width:96px;height:96px;border-radius:50%;border:1px solid rgba(34,197,94,.35);background:radial-gradient(circle,rgba(34,197,94,.08),transparent 70%);flex-shrink:0}
         .radar::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(34,197,94,.5),transparent 25%);animation:sweep 3s linear infinite}
         .radar::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:6px;border-radius:50%;background:#22c55e;transform:translate(-50%,-50%);box-shadow:0 0 8px #22c55e}
         @keyframes sweep{to{transform:rotate(360deg)}}
@@ -459,18 +444,22 @@ function SignalTerminal() {
       <nav className="term-nav">
         <span className="term-brand">⚡ KELTOŞ SİNYAL TERMİNALİ</span>
         <div className="term-links">
-          <a href="/">Ana Sayfa</a>
-          <a href="/signals" className="active">Terminal</a>
-          <a href="/performance">Performans</a>
-          <a href="/whale">Whale Radar</a>
-          <a href="/exchange">Borsa Karşılaştır</a>
+          <a href="/">{t("home")}</a>
+          <a href="/signals" className="active">{t("signalTerminal")}</a>
+          <a href="/performance">{t("performance")}</a>
+          <a href="/whale">{t("whaleRadar")}</a>
+          <a href="/exchange">{t("exchangeCompare")}</a>
           <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
           <select
             className="lang-select"
             value={lang}
-            onChange={(e) => setLang(e.target.value as any)}
+            onChange={(e) => {
+              const next = e.target.value as LangCode;
+              setLang(next);
+              setLangStorage(next);
+            }}
           >
             <option value="tr">TR</option>
             <option value="en">EN</option>
@@ -483,30 +472,30 @@ function SignalTerminal() {
       </nav>
 
       {loading ? (
-        <div className="loading">⏳ {t("waiting")}...</div>
+        <div className="loading">⏳ {t("loading")}...</div>
       ) : (
         <div className="wrap">
           <div className="top-grid">
             <div className="card">
               <div className="card-h">{t("marketStatus")}</div>
               <div className={`mood ${moodCls}`}>{mood}</div>
-              <div className="mood-sub">Sinyallerin %{bullPct}'i AL yönünde ({buyN} AL · {sellN} SAT)</div>
+              <div className="mood-sub">{t("signalDirection").replace("{value}", String(bullPct)).replace("{buy}", String(buyN)).replace("{sell}", String(sellN))}</div>
               <div className="mood-bar">
                 <div className="mood-fill" style={{ width: `${bullPct}%` }} />
               </div>
             </div>
 
             <div className="card">
-              <div className="card-h">KELTOŞ Radar</div>
+              <div className="card-h">{t("keltosRadar")}</div>
               <div className="radar-box">
                 <div className="radar" />
                 <div className="radar-stats">
                   <div>
-                    <div className="radar-k">İzlenen coin</div>
+                    <div className="radar-k">{t("trackedCoins")}</div>
                     <div className="radar-v rv-gold">{prices.length || "—"}</div>
                   </div>
                   <div>
-                    <div className="radar-k">Açık sinyal</div>
+                    <div className="radar-k">{t("openSignal")}</div>
                     <div className="radar-v rv-green">{openCount}</div>
                   </div>
                 </div>
@@ -520,7 +509,7 @@ function SignalTerminal() {
           </div>
 
           {prices.length === 0 ? (
-            <div className="empty">Fiyat verisi bekleniyor…</div>
+            <div className="empty">{t("priceWaiting")}</div>
           ) : (
             <div className="price-strip">
               {prices.map((p) => {
@@ -567,7 +556,7 @@ function SignalTerminal() {
           </div>
 
           {shown.length === 0 ? (
-            <div className="empty">Şu an gösterilecek sinyal yok. Yeni sinyaller geldikçe burada listelenecek.</div>
+            <div className="empty">{t("noSignalsAvailable")}</div>
           ) : (
             <div className="sig-list">
               {shown.map((s) => {
@@ -622,8 +611,8 @@ function SignalTerminal() {
 
                     {isOpen && (
                       <div className="detail">
-                        {det === "loading" && <div className="meta">Göstergeler hesaplanıyor…</div>}
-                        {det === "error" && <div className="meta">Detay verisi şu an alınamadı.</div>}
+                        {det === "loading" && <div className="meta">{t("indicatorsLoading")}</div>}
+                        {det === "error" && <div className="meta">{t("detailDataError")}</div>}
                         {det && det !== "loading" && det !== "error" && (
                           <>
                             <div className="ind-grid">
@@ -647,7 +636,7 @@ function SignalTerminal() {
             </div>
           )}
 
-          <div className="disc">Bu panel otomatik işlem açmaz; yalnızca teknik analiz ve sinyal gösterir. Yatırım tavsiyesi değildir.</div>
+          <div className="disc">{t("panelDisclaimer")}</div>
           <div className="sig-foot">A BAMIR ONLINE STORE'S PRODUCTION</div>
         </div>
       )}

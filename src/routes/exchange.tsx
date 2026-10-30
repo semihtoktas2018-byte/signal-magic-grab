@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 export const Route = createFileRoute("/exchange")({
   head: () => ({
@@ -53,6 +54,14 @@ function timeAgo(iso: string): string {
 function ExchangeCompare() {
   const [prices, setPrices] = useState<ExchangePrice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<LangCode>(getLang());
+
+  const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,23 +85,40 @@ function ExchangeCompare() {
     : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#05080d", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "#05080d", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "24px" }} dir={lang === "ar" ? "rtl" : "ltr"}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <a href="/" style={{ color: "#8a93a3", fontSize: 13, textDecoration: "none" }}>← Ana Sayfa</a>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <a href="/" style={{ color: "#8a93a3", fontSize: 13, textDecoration: "none" }}>← {t("home")}</a>
+          <select
+            value={lang}
+            onChange={(e) => {
+              const next = e.target.value as LangCode;
+              setLang(next);
+              setLangStorage(next);
+            }}
+            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 8, padding: "6px 10px" }}
+          >
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
+            <option value="de">DE</option>
+            <option value="fr">FR</option>
+            <option value="ar">AR</option>
+          </select>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 4px" }}>
           <span style={{ fontSize: 32 }}>⚖️</span>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, background: "linear-gradient(135deg,#f5b629,#ffd76a)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
-            Borsa Karşılaştırma
+            {t("exchangeCompare")}
           </h1>
         </div>
         <p style={{ color: "#8a93a3", fontSize: 14, margin: "0 0 24px" }}>
-          Bybit ve OKX arasındaki anlık fiyat farkını gösterir. Referans amaçlıdır, milisaniyeler içinde değişebilir.
+          {t("exchangeDescription")}
         </p>
 
         {biggestGap && (
           <div style={{ background: "rgba(245,182,41,.08)", border: "1px solid rgba(245,182,41,.3)", borderRadius: 14, padding: "14px 18px", marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: "#8a93a3" }}>En Büyük Fark</div>
+            <div style={{ fontSize: 12, color: "#8a93a3" }}>{t("largestGap")}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#f5b629" }}>
               {biggestGap.coin.replace(/USDT$/, "")}: {biggestGap.diff_pct.toFixed(3)}%
             </div>
@@ -100,9 +126,9 @@ function ExchangeCompare() {
         )}
 
         {loading ? (
-          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>Yükleniyor...</p>
+          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>{t("loading")}...</p>
         ) : prices.length === 0 ? (
-          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>Henüz veri yok. Sayfa 30 saniyede bir otomatik yenilenir.</p>
+          <p style={{ color: "#8a93a3", textAlign: "center", padding: 40 }}>{t("noData")}. {t("refreshInSeconds")}.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {prices.map((p) => {

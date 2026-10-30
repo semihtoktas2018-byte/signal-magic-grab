@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { getLang } from "../i18n";
 
 function NotFoundComponent() {
   return (
@@ -88,8 +89,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
       { name: "twitter:description", content: "Keltos Signal Importer imports GitHub repositories to integrate trading signals into your system." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app-1781188161807.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.app-1781188161807.png" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
     ],
     links: [
       {
@@ -105,8 +106,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const lang = getLang();
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
+
   return (
-    <html lang="en">
+    <html lang={lang} dir={lang === "ar" ? "rtl" : "ltr"}>
       <head>
         <HeadContent />
       </head>

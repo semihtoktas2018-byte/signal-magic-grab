@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+
 const supabase = createClient("https://gmwlkkebwpenocatlmty.supabase.co","sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 export const Route = createFileRoute("/performance")({
   head: () => ({
@@ -45,7 +47,6 @@ interface CoinStat {
 
 const TP_PCT = 0.025;
 const SL_PCT = 0.02;
-// Az örneklem eşiği: bunun altında oranlar "güvenilir değil" uyarısı gösterir
 const MIN_SAMPLE = 20;
 
 function fmtNum(p: number): string {
@@ -70,7 +71,6 @@ function durationText(from: string, to?: string | null): string {
   return `${mins}dk`;
 }
 
-// Canlı fiyatlar: Binance ticker/24hr (doğrudan API; exchange_prices tablosu kullanılmaz)
 const LIVE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
 const LIVE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 
@@ -90,7 +90,6 @@ async function fetchLivePrices(): Promise<Record<string, number>> {
       });
       return map;
     } catch {
-      // sıradaki host denenir; uydurma değer üretilmez
     }
   }
   return {};
@@ -121,6 +120,14 @@ function Performance() {
   const [days, setDays] = useState<7 | 30>(30);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null);
+  const [lang, setLang] = useState<LangCode>(getLang());
+
+  const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,7 +150,6 @@ function Performance() {
   const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
   const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
   const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
-  // Beklenen getiri (EV): TP +2.5 / SL -2 sabit olduğundan orandan türer
   const ev = closed.length > 0 ? (rate / 100) * TP_PCT * 100 - (1 - rate / 100) * SL_PCT * 100 : 0;
   const smallSample = closed.length < MIN_SAMPLE;
 
@@ -177,7 +183,6 @@ function Performance() {
   const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : "#f5b629";
   const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : "⏳ Bekliyor";
 
-  // Bir sinyal için düz Türkçe açıklama üretir
   function explain(s: Signal): { what: string; why: string[] } {
     const entry = Number(s.price);
     const { target, stop } = levels(s.signal, entry);
@@ -205,10 +210,10 @@ function Performance() {
   }
 
   return (
-    <div style={{ background: "#05080d", minHeight: "100vh", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "0 0 60px" }}>
+    <div style={{ background: "#05080d", minHeight: "100vh", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "0 0 60px" }} dir={lang === "ar" ? "rtl" : "ltr"}>
       <style>{`
         * { box-sizing: border-box; }
-        .perf-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:rgba(5,8,13,.85); backdrop-filter:blur(14px); border-bottom:1px solid rgba(245,182,41,.18); position:sticky; top:0; z-index:50; }
+        .perf-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:rgba(5,8,13,.85); backdrop-filter:blur(14px); border-bottom:1px solid rgba(245,182,41,.18); }
         .perf-title { font-weight:900; font-size:17px; letter-spacing:.08em; background:linear-gradient(135deg,#f5b629,#ffd76a); -webkit-background-clip:text; background-clip:text; color:transparent; }
         .perf-back { color:#f5b629; text-decoration:none; font-size:13px; font-weight:600; padding:6px 14px; border:1px solid rgba(245,182,41,.3); border-radius:999px; }
         .container { max-width:1080px; margin:0 auto; padding:22px 14px; }
@@ -277,18 +282,36 @@ function Performance() {
       `}</style>
 
       <nav className="perf-nav">
-        <span className="perf-title">📊 PERFORMANS</span>
-        <a href="/signals" className="perf-back">← Terminal</a>
+        <span className="perf-title">📊 {t("performance")}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a href="/signals" className="perf-back">← {t("signalTerminal")}</a>
+          <select
+            value={lang}
+            onChange={(e) => {
+              const next = e.target.value as LangCode;
+              setLang(next);
+              setLangStorage(next);
+            }}
+            aria-label="Language"
+            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 8, padding: "6px 10px" }}
+          >
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
+            <option value="de">DE</option>
+            <option value="fr">FR</option>
+            <option value="ar">AR</option>
+          </select>
+        </div>
       </nav>
 
       {loading ? (
-        <div className="loading">⏳ Yükleniyor...</div>
+        <div className="loading">⏳ {t("loading")}...</div>
       ) : (
         <div className="container">
           <div className="period-row">
-            <span className="period-label">Dönem:</span>
+            <span className="period-label">{t("period")}</span>
             {([7, 30] as const).map((d) => (
-              <button key={d} className={`period-btn ${days === d ? "active" : ""}`} onClick={() => setDays(d)}>Son {d} Gün</button>
+              <button key={d} className={`period-btn ${days === d ? "active" : ""}`} onClick={() => setDays(d)}>{t("lastDays").replace("{n}", String(d))}</button>
             ))}
           </div>
 
@@ -307,21 +330,21 @@ function Performance() {
           <div className="stat-grid">
             <div className="stat-card">
               <div className="stat-val" style={{ color: rateColor(rate) }}>{closed.length > 0 ? `${rate}%` : "—"}</div>
-              <div className="stat-label">İsabet Oranı</div>
-              <div className="stat-sub">{closed.length} kapalı sinyalde</div>
+              <div className="stat-label">{t("accuracyRate")}</div>
+              <div className="stat-sub">{closed.length} {t("noData")}</div>
             </div>
             <div className="stat-card">
               <div className="stat-val" style={{ color: "#e8eef7" }}>{signals.length}</div>
-              <div className="stat-label">Toplam Sinyal</div>
-              <div className="stat-sub">{bekliyor} bekliyor</div>
+              <div className="stat-label">{t("totalSignals")}</div>
+              <div className="stat-sub">{bekliyor} {t("waiting")}</div>
             </div>
             <div className="stat-card">
               <div className="stat-val" style={{ color: "#22c55e" }}>{tuttu}</div>
-              <div className="stat-label">Tuttu ✅</div>
+              <div className="stat-label">{t("hitYes")}</div>
             </div>
             <div className="stat-card">
               <div className="stat-val" style={{ color: "#ef4444" }}>{tutmadi}</div>
-              <div className="stat-label">Tutmadı ❌</div>
+              <div className="stat-label">{t("missedNo")}</div>
             </div>
           </div>
 
@@ -351,7 +374,7 @@ function Performance() {
             <span style={{ fontSize: 12, color: "#8a93a3", marginLeft: "auto" }}>{openSignals.length} açık</span>
           </div>
           {openSignals.length === 0 ? (
-            <div className="empty">Şu an açık sinyal yok.</div>
+            <div className="empty">{t("noOpenSignals")}</div>
           ) : (
             <div className="live-grid">
               {openSignals.slice(0, 8).map((s) => {
@@ -427,7 +450,7 @@ function Performance() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="empty">Henüz sinyal yok.</div>
+            <div className="empty">{t("noSignalYet")}</div>
           ) : (
             <div className="signal-list">
               {filtered.map((s) => {
