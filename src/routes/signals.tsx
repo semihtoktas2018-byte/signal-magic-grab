@@ -28,7 +28,6 @@ export const Route = createFileRoute("/signals")({
 const TP_PCT = 0.025;
 const SL_PCT = 0.02;
 
-// Coin logoları için CoinGecko ID'leri
 const COIN_LOGO_URLS: Record<string, string> = {
   BTC: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
   ETH: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
@@ -199,14 +198,12 @@ async function loadSignals(): Promise<Signal[]> {
     const { data, error } = await supabase.from("kpk_signals").select("*").order("created_at", { ascending: false }).limit(60);
     if (error) return [];
     const allSignals = (data as Signal[]) || [];
-    
     const latestByCoin: Record<string, Signal> = {};
     allSignals.forEach((s) => {
       if (!latestByCoin[s.coin]) {
         latestByCoin[s.coin] = s;
       }
     });
-    
     return Object.values(latestByCoin);
   } catch (error) {
     return [];
@@ -228,6 +225,41 @@ async function loadPrices(): Promise<PriceRow[]> {
   }
 }
 
+function TradingViewWidget({ symbol }: { symbol: string }) {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      if (typeof (window as any).TradingView !== "undefined") {
+        new (window as any).TradingView.widget({
+          width: "100%",
+          height: 300,
+          symbol: `BYBIT:${symbol.replace("USDT", "")}USDT`,
+          interval: "15",
+          timezone: "Europe/Istanbul",
+          theme: "dark",
+          style: "1",
+          locale: "tr",
+          toolbar_bg: "#05070c",
+          enable_publishing: false,
+          hide_side_toolbar: false,
+          allow_symbol_change: false,
+          container_id: `tradingview_${symbol}`,
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
+      if (existingScript) existingScript.remove();
+    };
+  }, [symbol]);
+
+  return <div id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
+}
+
 function SignalTerminal() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
@@ -235,6 +267,7 @@ function SignalTerminal() {
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
+  const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
 
   useEffect(() => {
     let cancelled = false;
@@ -335,7 +368,9 @@ function SignalTerminal() {
         @keyframes lp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
         .meta{font-size:12px;color:#8a93a3}
         .price-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-        .pchip{background:rgba(255,255,255,.03);border:1px solid rgba(245,182,41,.14);border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+        .pchip{background:rgba(255,255,255,.03);border:1px solid rgba(245,182,41,.14);border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:6px;cursor:pointer}
+        .pchip:hover{border-color:rgba(245,182,41,.5)}
+        .pchip.active{border-color:#f5b629;background:rgba(245,182,41,.1)}
         .pchip .c{font-weight:800;font-size:13px}.pchip .p{font-size:11px;color:#8a93a3}
         .diff{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px}
         .dpos{color:#22c55e;background:rgba(34,197,94,.12)}.dneg{color:#ef4444;background:rgba(239,68,68,.12)}
@@ -369,6 +404,8 @@ function SignalTerminal() {
         .loading{text-align:center;padding:60px;color:#8a93a3}
         .disc{margin-top:22px;font-size:11px;color:#6b7280;text-align:center;line-height:1.5}
         .sig-foot{text-align:center;margin-top:36px;font-size:11px;letter-spacing:.08em;color:#0f7a4d;font-weight:600}
+        .chart-panel{background:rgba(255,255,255,.03);border:1px solid rgba(245,182,41,.12);border-radius:14px;padding:12px;margin-bottom:16px}
+        .chart-panel .card-h{margin-bottom:8px}
       `}</style>
 
       <nav className="term-nav">
@@ -426,7 +463,11 @@ function SignalTerminal() {
               {prices.map((p) => {
                 const logo = getCoinLogo(p.coin);
                 return (
-                  <div className="pchip" key={p.coin}>
+                  <div
+                    className={`pchip ${chartCoin === p.coin ? "active" : ""}`}
+                    key={p.coin}
+                    onClick={() => setChartCoin(p.coin)}
+                  >
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       {logo && <img src={logo} alt={p.coin} className="coin-logo" />}
                       <div>
@@ -443,6 +484,11 @@ function SignalTerminal() {
               })}
             </div>
           )}
+
+          <div className="chart-panel">
+            <div className="card-h">📈 Canlı Grafik — {coinShort(chartCoin)}</div>
+            <TradingViewWidget symbol={chartCoin} />
+          </div>
 
           <div className="sec-h">
             <span className="sec-t">Sinyaller</span>
