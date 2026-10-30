@@ -38,9 +38,8 @@ interface Signal {
 }
 interface PriceRow {
   coin: string;
-  bybit_price: number;
-  okx_price: number;
-  diff_pct: number;
+  price: number;
+  change_pct: number;
   updated_at: string;
 }
 interface Indicators {
@@ -171,12 +170,31 @@ async function loadSignals(): Promise<Signal[]> {
     .limit(60);
   return (data as Signal[]) || [];
 }
+// Canlı fiyatlar: Binance ticker/24hr (doğrudan API; exchange_prices tablosu kullanılmaz)
+const PRICE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
+const PRICE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+
 async function loadPrices(): Promise<PriceRow[]> {
-  const { data } = await supabase
-    .from("exchange_prices")
-    .select("*")
-    .order("coin", { ascending: true });
-  return (data as PriceRow[]) || [];
+  const q = encodeURIComponent(JSON.stringify(PRICE_SYMBOLS));
+  for (const host of PRICE_HOSTS) {
+    try {
+      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
+      if (!res.ok) continue;
+      const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string }>;
+      const now = new Date().toISOString();
+      return rows
+        .map((r) => ({
+          coin: r.symbol,
+          price: Number(r.lastPrice),
+          change_pct: Number(r.priceChangePercent),
+          updated_at: now,
+        }))
+        .sort((a, b) => a.coin.localeCompare(b.coin));
+    } catch {
+      // sıradaki host denenir; uydurma değer üretilmez
+    }
+  }
+  return [];
 }
 
 function SignalTerminal() {
@@ -211,7 +229,7 @@ function SignalTerminal() {
 
   const priceMap: Record<string, number> = {};
   prices.forEach((p) => {
-    if (p.coin && p.bybit_price != null) priceMap[p.coin] = Number(p.bybit_price);
+    if (p.coin && p.price != null) priceMap[p.coin] = Number(p.price);
   });
 
   // Piyasa eğilimi: en güncel sinyallerdeki BUY/SELL dağılımından (gerçek veri)
@@ -366,18 +384,18 @@ function SignalTerminal() {
             {lastUpdate && <span className="meta" style={{ marginLeft: "auto" }}>Son güncelleme: {lastUpdate}</span>}
           </div>
           {prices.length === 0 ? (
-            <div className="empty">Fiyat verisi bekleniyor…</div>
+            <div className="empty">Fiyat verisi alınamadı — Binance'a şu an ulaşılamıyor.</div>
           ) : (
             <div className="price-strip">
               {prices.map((p) => (
                 <div className="pchip" key={p.coin}>
                   <div>
                     <div className="c">{coinShort(p.coin)}</div>
-                    <div className="p">Bybit {fmtNum(Number(p.bybit_price))}</div>
+                    <div className="p">{fmtNum(Number(p.price))} USDT</div>
                   </div>
-                  <span className={`diff ${Number(p.diff_pct) >= 0 ? "dpos" : "dneg"}`}>
-                    {Number(p.diff_pct) >= 0 ? "+" : ""}
-                    {Number(p.diff_pct).toFixed(2)}%
+                  <span className={`diff ${Number(p.change_pct) >= 0 ? "dpos" : "dneg"}`}>
+                    {Number(p.change_pct) >= 0 ? "+" : ""}
+                    {Number(p.change_pct).toFixed(2)}%
                   </span>
                 </div>
               ))}
