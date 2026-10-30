@@ -466,7 +466,13 @@ function SignalTerminal() {
           <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button className="logout-btn" onClick={handleLogout}>Çıkış Yap</button>
+          <button 
+  onClick={() => setLang(lang === "tr" ? "en" : "tr")}
+  style={{ background: "transparent", border: "1px solid #f5b629", color: "#f5b629", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", marginLeft: "8px", fontSize: "12px" }}
+>
+  {lang === "tr" ? "EN" : "TR"}
+</button>
+          <button className="logout-btn" onClick={handleLogout}>{t("logout")}</button>
         </div>
       </nav>
 
@@ -476,7 +482,7 @@ function SignalTerminal() {
         <div className="wrap">
           <div className="top-grid">
             <div className="card">
-              <div className="card-h">Piyasa Durumu</div>
+             <div className="card-h">{t("marketStatus")}</div>
               <div className={`mood ${moodCls}`}>{mood}</div>
               <div className="mood-sub">Sinyallerin %{bullPct}'i AL yönünde ({buyN} AL · {sellN} SAT)</div>
               <div className="mood-bar">
@@ -504,7 +510,7 @@ function SignalTerminal() {
 
           <div className="sec-h">
             <span className="live-dot" />
-            <span className="sec-t">Canlı Fiyat / Fark</span>
+           <span className="sec-t">{t("livePrice")}</span>
           </div>
 
           {prices.length === 0 ? (
@@ -542,14 +548,14 @@ function SignalTerminal() {
           </div>
 
           <div className="sec-h">
-            <span className="sec-t">Sinyaller</span>
+           <span className="sec-t">{t("signals")}</span>
             <span className="meta" style={{ marginLeft: "auto" }}>{openCount} açık · {signals.length} toplam</span>
           </div>
 
           <div className="filters">
             {(["hepsi", "BUY", "SELL"] as const).map((f) => (
               <button key={f} className={`fbtn ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
-                {f === "hepsi" ? "Hepsi" : f}
+                {f === "hepsi" ? t("all") : f}
               </button>
             ))}
           </div>
