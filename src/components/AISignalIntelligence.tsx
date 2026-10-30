@@ -18,6 +18,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 // KELTOŞ kendi Supabase projesi (keltos) — 'fear-greed' Edge Function burada çalışır
 const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
@@ -79,26 +80,22 @@ function statusIcon(s: string) {
   if (s === "tutmadi") return <XCircle size={12} color={c} />;
   return <Clock size={12} color={c} />;
 }
-function statusText(s: string) {
-  if (s === "tuttu") return "HEDEF";
-  if (s === "tutmadi") return "STOP";
-  return "BEKLİYOR";
-}
-function timeAgo(iso: string) {
+function timeAgo(iso: string, lang: LangCode) {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return "—";
   const m = Math.round((Date.now() - t) / 60000);
-  if (m < 1) return "az önce";
-  if (m < 60) return `${m} dk önce`;
+  if (m < 1) return translations.justNow[lang];
+  if (m < 60) return `${m} ${translations.minutesAgo[lang]}`;
   const h = Math.round(m / 60);
-  if (h < 24) return `${h} sa önce`;
-  return `${Math.round(h / 24)} gün önce`;
+  if (h < 24) return `${h} ${translations.hoursAgo[lang]}`;
+  return `${Math.round(h / 24)} ${translations.daysAgo[lang]}`;
 }
-function stamp(iso?: string | null) {
+function stamp(iso?: string | null, lang: LangCode = "tr") {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const locale = lang === "tr" ? "tr-TR" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : lang === "ar" ? "ar-EG" : "en-US";
+  return d.toLocaleString(locale, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 /* ---------- boş durum ---------- */
@@ -233,16 +230,6 @@ function fngColor(v: number) {
   if (v <= 75) return "#22c55e";
   return "#16a34a";
 }
-function fngLabel(c: string) {
-  const map: Record<string, string> = {
-    "Extreme Fear": "Aşırı Korku",
-    Fear: "Korku",
-    Neutral: "Nötr",
-    Greed: "Hırs",
-    "Extreme Greed": "Aşırı Hırs",
-  };
-  return map[c] ?? c;
-}
 function useFearGreed() {
   const [fng, setFng] = useState<FngRow | null>(null);
   const [fngLoaded, setFngLoaded] = useState(false);
@@ -357,6 +344,15 @@ const fadeUp = {
 };
 
 export default function AISignalIntelligence() {
+  const [lang, setLang] = useState<LangCode>(getLang());
+  const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    setLangStorage(lang);
+  }, [lang]);
+
   const { signals, whales, loaded } = useRealData();
   const { prices, loaded: priceLoaded } = useLivePrices();
   const { fng, fngLoaded } = useFearGreed();
@@ -388,8 +384,25 @@ export default function AISignalIntelligence() {
 
   const whaleRows = whales ?? [];
 
+  const fngLabel = (c: string) => {
+    const map: Record<string, string> = {
+      "Extreme Fear": t("fngExtremeFear"),
+      Fear: t("fngFear"),
+      Neutral: t("fngNeutral"),
+      Greed: t("fngGreed"),
+      "Extreme Greed": t("fngExtremeGreed"),
+    };
+    return map[c] ?? c;
+  };
+
+  const statusText = (s: string) => {
+    if (s === "tuttu") return t("targetReached");
+    if (s === "tutmadi") return t("stopLoss");
+    return t("waitingShort");
+  };
+
   return (
-    <section className="aic" aria-label="AI Signal Intelligence Center">
+    <section className="aic" aria-label={t("aiSignalIntelligenceCenter")}>
       <style>{aicCss}</style>
       <div className="aic-bg" aria-hidden />
       <div className="aic-wrap">
@@ -401,10 +414,10 @@ export default function AISignalIntelligence() {
           variants={fadeUp}
         >
           <span className="aic-eyebrow">
-            <Sparkles size={12} /> AI SIGNAL INTELLIGENCE CENTER
+            <Sparkles size={12} /> {t("aiSignalIntelligenceCenter")}
           </span>
-          <h2>Yapay Zeka Destekli Piyasa Kontrol Merkezi</h2>
-          <p>Tüm veriler gerçek kaynaklardan gelir. Veri yoksa kutu boş kalır — tahmini sayı gösterilmez.</p>
+          <h2>{t("aiSignalIntelligenceTitle")}</h2>
+          <p>{t("aiSignalIntelligenceDescription")}</p>
         </motion.div>
 
         {/* Top grid: canlı fiyatlar / sinyaller / analiz */}
@@ -418,13 +431,13 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Waves size={16} /> Canlı Fiyat / 24s Fark
-              {priceRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> LIVE</span>}
+              <Waves size={16} /> {t("livePrice24Change")}
+              {priceRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> {t("live")}</span>}
             </div>
             {!priceLoaded ? (
-              <NoData text="Yükleniyor..." />
+              <NoData text={t("loadingData")} />
             ) : priceRows.length === 0 ? (
-              <NoData text="Veri mevcut değil — Binance fiyat verisi alınamadı." />
+              <NoData text={t("dataUnavailable")} />
             ) : (
               <>
                 <div className="aic-pulse-list">
@@ -438,7 +451,7 @@ export default function AISignalIntelligence() {
                           {fmt(Number(p.price))} USDT
                         </div>
                         <div className="aic-pulse-conf">
-                          <span style={{ color: "#8a93a3", minWidth: 0 }}>24s değişim</span>
+                          <span style={{ color: "#8a93a3", minWidth: 0 }}>24s {t("change")}</span>
                         </div>
                         <div className="aic-chip" style={{ color: col, background: col + "1f", borderColor: col + "4d" }}>
                           {chg >= 0 ? "+" : ""}{chg.toFixed(2)}%
@@ -448,7 +461,7 @@ export default function AISignalIntelligence() {
                   })}
                 </div>
                 <div className="aic-sent-foot" style={{ marginTop: 10, paddingTop: 10 }}>
-                  Son güncelleme: {stamp(lastPriceUpdate)}
+                  {t("lastUpdated")} {stamp(lastPriceUpdate, lang)}
                 </div>
               </>
             )}
@@ -463,13 +476,13 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Zap size={16} /> Kayıtlı Sinyaller
-              {recentSignals.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> DB</span>}
+              <Zap size={16} /> {t("recordedSignals")}
+              {recentSignals.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> {t("db")}</span>}
             </div>
             {!loaded ? (
-              <NoData text="Yükleniyor..." />
+              <NoData text={t("loadingData")} />
             ) : recentSignals.length === 0 ? (
-              <NoData text="Veri mevcut değil — kayıtlı sinyal bulunamadı." />
+              <NoData text={t("dataUnavailable")} />
             ) : (
               <>
                 <div className="aic-table-scroll">
@@ -477,16 +490,16 @@ export default function AISignalIntelligence() {
                     <thead>
                       <tr>
                         <th>Coin</th>
-                        <th>Yön</th>
-                        <th>Giriş</th>
-                        <th>Hedef</th>
-                        <th>Stop</th>
-                        <th>Skor</th>
-                        <th>Durum</th>
+                        <th>{t("direction")}</th>
+                        <th>{t("entry")}</th>
+                        <th>{t("target")}</th>
+                        <th>{t("stop")}</th>
+                        <th>{t("score")}</th>
+                        <th>{t("status")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {recentSignals.map((s, i) => {
+                      {recentSignals.map((s) => {
                         const isBuy = s.signal === "BUY";
                         const entry = Number(s.price);
                         const tp = isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT);
@@ -496,22 +509,22 @@ export default function AISignalIntelligence() {
                             <td className="aic-td-coin" data-label="Coin">
                               {s.coin.replace("USDT", "")}<span className="aic-td-quote">/USDT</span>
                             </td>
-                            <td data-label="Yön">
+                            <td data-label={t("direction")}>
                               <span className="aic-dir" style={{
                                 background: isBuy ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
                                 color: isBuy ? "#22c55e" : "#ef4444",
                               }}>{s.signal}</span>
                             </td>
-                            <td data-label="Giriş">{fmt(entry)}</td>
-                            <td data-label="Hedef" style={{ color: "#22c55e" }}>{fmt(tp)}</td>
-                            <td data-label="Stop" style={{ color: "#ef4444" }}>{fmt(sl)}</td>
-                            <td data-label="Skor">
+                            <td data-label={t("entry")}>{fmt(entry)}</td>
+                            <td data-label={t("target")} style={{ color: "#22c55e" }}>{fmt(tp)}</td>
+                            <td data-label={t("stop")} style={{ color: "#ef4444" }}>{fmt(sl)}</td>
+                            <td data-label={t("score")}>
                               <div className="aic-conf-mini">
                                 <div className="aic-conf-mini-fill" style={{ width: `${Math.min(100, s.score)}%` }} />
                                 <span>{s.score}</span>
                               </div>
                             </td>
-                            <td data-label="Durum">
+                            <td data-label={t("status")}>
                               <span className="aic-status" style={{ color: statusColor(s.result), borderColor: statusColor(s.result) + "44", background: statusColor(s.result) + "18" }}>
                                 {statusIcon(s.result)} {statusText(s.result)}
                               </span>
@@ -523,7 +536,7 @@ export default function AISignalIntelligence() {
                   </table>
                 </div>
                 <div className="aic-sent-foot" style={{ marginTop: 8, paddingTop: 10 }}>
-                  En son sinyal: {stamp(lastSignalAt)}
+                  {t("latestSignals")}: {stamp(lastSignalAt, lang)}
                 </div>
               </>
             )}
@@ -539,26 +552,26 @@ export default function AISignalIntelligence() {
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeUp}
         >
-          <BarChart3 size={16} /> Bugünkü Performans
+          <BarChart3 size={16} /> {t("todayPerformance")}
         </motion.div>
         {!loaded ? (
-          <div style={{ marginBottom: 22 }}><NoData text="Yükleniyor..." /></div>
+          <div style={{ marginBottom: 22 }}><NoData text={t("loadingData")} /></div>
         ) : today.length === 0 ? (
           <div style={{ marginBottom: 22 }}>
-            <NoData text="Bugün kayıtlı sinyal yok — performans hesaplanamaz." />
+            <NoData text={t("noData")} />
           </div>
         ) : (
           <div className="aic-perf-grid">
             {[
-              { icon: <Activity size={16} />, label: "Bugünkü Sinyal", value: String(today.length), color: "#f5b629" },
-              { icon: <CheckCircle2 size={16} />, label: "Hedefe Ulaşan", value: String(tWin), color: "#22c55e" },
-              { icon: <XCircle size={16} />, label: "Stop Olan", value: String(tLoss), color: "#ef4444" },
-              { icon: <Clock size={16} />, label: "Bekleyen", value: String(tWait), color: "#8a93a3" },
-              { icon: <Target size={16} />, label: "Sonuçlanan", value: String(tClosed), color: "#8b5cf6" },
+              { icon: <Activity size={16} />, label: t("todaySignalCount"), value: String(today.length), color: "#f5b629" },
+              { icon: <CheckCircle2 size={16} />, label: t("reachedTarget"), value: String(tWin), color: "#22c55e" },
+              { icon: <XCircle size={16} />, label: t("stoppedLoss"), value: String(tLoss), color: "#ef4444" },
+              { icon: <Clock size={16} />, label: t("pending"), value: String(tWait), color: "#8a93a3" },
+              { icon: <Target size={16} />, label: t("completed"), value: String(tClosed), color: "#8b5cf6" },
               {
                 icon: <TrendingUp size={16} />,
-                label: "İsabet Oranı",
-                value: tClosed > 0 ? `${Math.round((tWin / tClosed) * 100)}%` : "Yetersiz veri",
+                label: t("accuracyRate"),
+                value: tClosed > 0 ? `${Math.round((tWin / tClosed) * 100)}%` : t("insufficientData"),
                 color: tClosed > 0 ? "#22c55e" : "#8a93a3",
               },
             ].map((s, i) => (
@@ -576,7 +589,7 @@ export default function AISignalIntelligence() {
                 </span>
                 <div className="aic-stat-txt">
                   <div className="aic-stat-lbl">{s.label}</div>
-                  <div className="aic-stat-val" style={{ color: s.color, fontSize: s.value === "Yetersiz veri" ? 13 : undefined }}>{s.value}</div>
+                  <div className="aic-stat-val" style={{ color: s.color, fontSize: s.value === t("insufficientData") ? 13 : undefined }}>{s.value}</div>
                 </div>
               </motion.div>
             ))}
@@ -592,17 +605,17 @@ export default function AISignalIntelligence() {
           variants={fadeUp}
         >
           <div className="aic-title">
-            <Cpu size={16} /> Kümülatif Sinyal Sonucu
+            <Cpu size={16} /> {t("cumulativeSignalResult")}
           </div>
           {!loaded ? (
-            <NoData text="Yükleniyor..." />
+            <NoData text={t("loadingData")} />
           ) : closedAsc.length < 3 ? (
-            <NoData text="Yetersiz veri — grafik için en az 3 sonuçlanmış sinyal gerekiyor." />
+            <NoData text={t("insufficientData") + " — " + t("noData")} />
           ) : (
             <>
               <PerfChart series={series} />
               <div className="aic-chart-foot">
-                <span>{closedAsc.length} sonuçlanmış sinyal · net {series[series.length - 1] >= 0 ? "+" : ""}{series[series.length - 1]}</span>
+                <span>{closedAsc.length} {t("signals")} · net {series[series.length - 1] >= 0 ? "+" : ""}{series[series.length - 1]}</span>
               </div>
             </>
           )}
@@ -618,16 +631,16 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Flame size={16} /> Balina Hareketleri
-              {whaleRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> DB</span>}
+              <Flame size={16} /> {t("whaleMovements")}
+              {whaleRows.length > 0 && <span className="aic-live"><span className="aic-live-dot" /> {t("db")}</span>}
             </div>
             {!loaded ? (
-              <NoData text="Yükleniyor..." />
+              <NoData text={t("loadingData")} />
             ) : whaleRows.length === 0 ? (
-              <NoData text="Gerçek whale verisi bağlantısı mevcut değil." />
+              <NoData text={t("noRealWhaleData")} />
             ) : (
               <div className="aic-whale-list">
-                {whaleRows.map((w, i) => {
+                {whaleRows.map((w) => {
                   const buy = String(w.side).toUpperCase().startsWith("B") || String(w.side).toLowerCase() === "alım";
                   const amt = Number(w.amount_usd);
                   const amtTxt = `${buy ? "+" : "-"}${(Math.abs(amt) / 1_000_000).toFixed(2)}M`;
@@ -637,11 +650,11 @@ export default function AISignalIntelligence() {
                       <div className="aic-whale-txt">
                         <div className="aic-whale-line">
                           <b style={{ color: buy ? "#22c55e" : "#ef4444" }}>
-                            Balina {buy ? "Alımı" : "Satışı"}
+                            {buy ? t("whaleBuy") : t("whaleSell")}
                           </b>
                           <span className="aic-whale-coin">{w.coin.replace("USDT", "")}</span>
                         </div>
-                        <div className="aic-whale-sub">{timeAgo(w.created_at)} · {stamp(w.created_at)}</div>
+                        <div className="aic-whale-sub">{timeAgo(w.created_at, lang)} · {stamp(w.created_at, lang)}</div>
                       </div>
                       <div className="aic-whale-amt" style={{ color: buy ? "#22c55e" : "#ef4444" }}>
                         {amtTxt}
@@ -661,14 +674,14 @@ export default function AISignalIntelligence() {
             variants={fadeUp}
           >
             <div className="aic-title">
-              <Shield size={16} /> Piyasa Duyarlılığı
+              <Shield size={16} /> {t("marketSentiment")}
             </div>
             {!fng ? (
               <NoData
                 text={
                   fngLoaded
-                    ? "Veri bekleniyor — Korku & Hırs endeksi kaynağına şu anda ulaşılamıyor."
-                    : "Veri yükleniyor…"
+                    ? t("marketDataWaiting")
+                    : t("loadingData")
                 }
               />
             ) : (
@@ -681,7 +694,7 @@ export default function AISignalIntelligence() {
                   <span style={{ width: `${Math.min(100, Math.max(0, fng.value))}%`, background: fngColor(fng.value) }} />
                 </div>
                 <div className="aic-fng-sub">
-                  Crypto Fear &amp; Greed Index · {stamp(fng.source_timestamp)}
+                  {t("fearGreedIndex")} · {stamp(fng.source_timestamp, lang)}
                 </div>
               </div>
             )}
@@ -704,13 +717,13 @@ const aicCss = `
   radial-gradient(60% 40% at 50% 100%,rgba(34,197,94,.06),transparent 60%);}
 .aic-wrap{position:relative;max-width:1320px;margin:0 auto}
 
-.aic-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.22em;color:#f5b629;padding:6px 14px;border:1px solid rgba(245,182,41,.25);border-radius:999px;background:rgba(245,182,41,.06);font-weight:800;margin-bottom:14px}
+.aic-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.22em;color:#f5b629;padding:6px 14px;border:1px solid rgba(245,182,41,.25);border-radius:999px;background:rgba(245,182,41,.05);text-transform:uppercase}
 .aic-head{text-align:center;margin-bottom:34px}
 .aic-head h2{font-size:clamp(24px,3.6vw,38px);margin:0 0 8px;font-weight:900;background:linear-gradient(135deg,#f5b629,#ffd76a);-webkit-background-clip:text;background-clip:text;color:transparent}
 .aic-head p{color:#8a93a3;margin:0;font-size:14px;max-width:640px;margin-inline:auto}
 
-.glass{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(245,182,41,.18);border-radius:20px;padding:18px;backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);box-shadow:0 20px 50px -30px rgba(245,182,41,.35),inset 0 1px 0 rgba(255,255,255,.05);transition:border-color .3s,box-shadow .3s,transform .3s}
-.glass::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;background:linear-gradient(135deg,rgba(245,182,41,.35),transparent 40%,transparent 60%,rgba(245,182,41,.2));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6}
+.glass{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(245,182,41,.18);border-radius:20px;padding:18px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;background:linear-gradient(135deg,rgba(245,182,41,.35),transparent 40%,transparent 60%,rgba(245,182,41,.2));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
 .glass:hover{border-color:rgba(245,182,41,.4);box-shadow:0 30px 70px -30px rgba(245,182,41,.55),inset 0 1px 0 rgba(255,255,255,.06)}
 
 .aic-title{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f5b629;margin-bottom:14px}
@@ -720,7 +733,7 @@ const aicCss = `
 .aic-fng-bar{margin:12px 0 8px;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
 .aic-fng-bar span{display:block;height:100%;border-radius:999px}
 .aic-fng-sub{font-size:11px;color:#8a93a3}
-.aic-live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.15em;color:#8a93a3;padding:3px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03)}
+.aic-live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.15em;color:#8a93a3;padding:3px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.02)}
 .aic-live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:aicPulse 1.6s infinite}
 @keyframes aicPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 
@@ -731,7 +744,7 @@ const aicCss = `
 
 /* pulse */
 .aic-pulse-list{display:flex;flex-direction:column;gap:8px}
-.aic-pulse-row{display:grid;grid-template-columns:44px 1fr 1.4fr auto auto;gap:10px;align-items:center;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;transition:background .2s,border-color .2s,transform .2s}
+.aic-pulse-row{display:grid;grid-template-columns:44px 1fr 1.4fr auto auto;gap:10px;align-items:center;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;transition:background .2s, border-color .2s, transform .2s}
 .aic-pulse-row:hover{background:rgba(245,182,41,.06);border-color:rgba(245,182,41,.35);transform:translateX(2px)}
 .aic-pulse-coin{font-weight:900;font-size:13px;color:#f0f4fa;letter-spacing:.03em}
 .aic-pulse-trend{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800}
@@ -741,12 +754,6 @@ const aicCss = `
 .aic-conf-bar{position:relative;flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
 .aic-conf-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,#f5b629,#ffd76a);box-shadow:0 0 8px rgba(245,182,41,.6)}
 .aic-chip{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.04em;border:1px solid transparent;white-space:nowrap}
-.vol-low{color:#22c55e;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3)}
-.vol-medium{color:#f5b629;background:rgba(245,182,41,.12);border-color:rgba(245,182,41,.3)}
-.vol-high{color:#ef4444;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3)}
-.mom-weak{color:#8a93a3;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
-.mom-normal{color:#60a5fa;background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.3)}
-.mom-strong{color:#22c55e;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3)}
 
 /* signals table */
 .aic-signals{min-width:0}
@@ -761,25 +768,10 @@ const aicCss = `
 .aic-td-coin{font-weight:900}
 .aic-td-quote{color:#8a93a3;font-weight:600;font-size:11px}
 .aic-dir{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.04em}
-.aic-risk{font-size:11.5px;font-weight:800}
-.aic-conf-mini{display:flex;align-items:center;gap:6px;min-width:80px}
-.aic-conf-mini{position:relative;height:16px;border-radius:6px;background:rgba(255,255,255,.05);overflow:hidden;padding:0 6px}
+.aic-conf-mini{display:flex;align-items:center;gap:6px;min-width:80px;position:relative;height:16px;border-radius:6px;background:rgba(255,255,255,.05);overflow:hidden;padding:0 6px}
 .aic-conf-mini-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,rgba(245,182,41,.35),rgba(245,182,41,.15));border-right:1px solid rgba(245,182,41,.6)}
 .aic-conf-mini span{position:relative;font-size:10.5px;font-weight:800;color:#f5b629;line-height:16px}
 .aic-status{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
-
-/* analysis */
-.aic-analysis-body{display:flex;flex-direction:column;gap:10px}
-.aic-line{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#dfe4ec;line-height:1.5;font-family:'JetBrains Mono',ui-monospace,monospace}
-.aic-line-dot{width:6px;height:6px;border-radius:50%;background:#f5b629;box-shadow:0 0 6px rgba(245,182,41,.7);margin-top:6px;flex:none}
-.aic-caret{color:#f5b629;animation:aicCaret 1s steps(1) infinite;margin-left:2px}
-@keyframes aicCaret{50%{opacity:0}}
-.aic-analysis-foot{margin-top:6px;padding-top:12px;border-top:1px dashed rgba(245,182,41,.2);display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.aic-analysis-foot>div{display:flex;flex-direction:column;gap:2px}
-.aic-analysis-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a93a3;font-weight:700}
-.aic-analysis-val{font-size:20px;font-weight:900}
-.aic-analysis-val.up{color:#22c55e}
-.aic-analysis-val.gold{color:#f5b629}
 
 /* perf */
 .aic-perf-head{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f5b629;margin:6px 4px 12px}
@@ -803,7 +795,7 @@ const aicCss = `
 .aic-bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
 @media(max-width:820px){.aic-bottom{grid-template-columns:1fr}}
 .aic-whale-list{display:flex;flex-direction:column;gap:8px}
-.aic-whale{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;transition:background .2s,transform .2s,border-color .2s}
+.aic-whale{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;transition:background .2s,border-color .2s,transform .2s}
 .aic-whale:hover{background:rgba(245,182,41,.06);border-color:rgba(245,182,41,.35);transform:translateX(2px)}
 .aic-whale-emoji{font-size:20px;filter:drop-shadow(0 0 6px rgba(96,165,250,.5))}
 .aic-whale-line{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}
@@ -840,7 +832,6 @@ const aicCss = `
   .aic-chart-card{margin-bottom:14px}
   .aic-chart{height:170px}
   .aic-bottom{gap:12px}
-  .aic-analysis-val{font-size:17px}
   .aic-gauge-val{font-size:30px}
 }
 /* Live Signals: table -> card list on small screens */
