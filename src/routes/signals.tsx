@@ -262,6 +262,30 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
 
 function SignalTerminal() {
   const navigate = useNavigate();
+    const [lang, setLang] = useState<"tr" | "en">("tr");
+
+  const t = (key: string) => {
+    const translations: Record<string, { tr: string; en: string }> = {
+      marketStatus: { tr: "Piyasa Durumu", en: "Market Status" },
+      livePrice: { tr: "Canlı Fiyat / Fark", en: "Live Price / Change" },
+      signals: { tr: "Sinyaller", en: "Signals" },
+      all: { tr: "Hepsi", en: "All" },
+      open: { tr: "açık", en: "open" },
+      total: { tr: "toplam", en: "total" },
+      entry: { tr: "Giriş", en: "Entry" },
+      target: { tr: "Hedef", en: "Target" },
+      stop: { tr: "Stop", en: "Stop" },
+      score: { tr: "Skor", en: "Score" },
+      detail: { tr: "Detay", en: "Details" },
+      hideDetail: { tr: "Detayları gizle", en: "Hide Details" },
+      waiting: { tr: "Bekliyor", en: "Waiting" },
+      hit: { tr: "Tuttu", en: "Hit" },
+      missed: { tr: "Tutmadı", en: "Missed" },
+      logout: { tr: "Çıkış Yap", en: "Logout" },
+      signalTime: { tr: "Sinyal zamanı", en: "Signal time" },
+    };
+    return translations[key]?.[lang] || key;
+  };
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [loading, setLoading] = useState(true);
