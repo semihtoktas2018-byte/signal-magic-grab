@@ -156,6 +156,8 @@ export default function KeltosLogin({
         .kl-alert.ok{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.30);color:#86efac}
         .kl-foot{margin-top:18px;text-align:center;font-size:13px;color:var(--muted)}
         .kl-legal{margin-top:14px;text-align:center;font-size:11.5px;color:#5f6878;line-height:1.5}
+        @keyframes kl-spin{to{transform:rotate(360deg)}}
+        .kl-root .animate-spin{animation:kl-spin 1s linear infinite}
         @media (max-width:860px){
           .kl-wrap{grid-template-columns:1fr;gap:18px;max-width:420px}
           .kl-brand{padding:0;text-align:center}
