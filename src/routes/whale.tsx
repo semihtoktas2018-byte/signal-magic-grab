@@ -292,7 +292,18 @@ function WhaleRadar() {
       .kt-page-shell .promo { flex-direction: column; align-items: flex-start; }
       .kt-page-shell .promo-btn { width: 100%; text-align: center; }
     }
-  `;
+  
+/* Unified KELTOS premium whale radar layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .panel{max-width:1000px;margin:34px auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(245,182,41,.16);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.kt-page-shell .topbar{padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.kt-page-shell .headline{gap:14px;margin:28px 0 8px}.kt-page-shell .headline h1{font-size:clamp(25px,4vw,36px);letter-spacing:-.035em}
+.kt-page-shell .stat-strip{gap:14px;margin:24px 0}.kt-page-shell .stat-box{border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.1);padding:18px}
+.kt-page-shell .item{border-radius:13px!important;background:rgba(255,255,255,.025);padding:16px 18px;margin-bottom:10px}
+.kt-page-shell .empty-state{border:1px dashed rgba(245,182,41,.24);border-radius:14px;background:rgba(255,255,255,.02);padding:28px}
+.kt-page-shell .promo{margin-top:28px;border:1px solid rgba(245,182,41,.18);border-radius:16px;background:rgba(245,182,41,.045);padding:18px}
+@media(max-width:600px){.kt-page-shell .panel{margin:10px;padding:16px;border-radius:16px}.kt-page-shell .headline{margin-top:20px}.kt-page-shell .item{padding:13px 12px}.kt-page-shell .promo{flex-direction:column;align-items:flex-start}.kt-page-shell .promo-btn{width:100%;text-align:center}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
