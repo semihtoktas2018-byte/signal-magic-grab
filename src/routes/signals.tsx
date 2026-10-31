@@ -338,7 +338,7 @@ function SignalTerminal() {
     };
 
     void load();
-    const timer = setInterval(() => { void load(); }, 30000);
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30000);
     return () => {
       cancelled = true;
       clearInterval(timer);
