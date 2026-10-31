@@ -279,7 +279,19 @@ function Performance() {
         .d-chip { font-size:11px; background:rgba(255,255,255,.05); border:1px solid rgba(245,182,41,.15); border-radius:999px; padding:3px 10px; color:#c7cfdb; }
         .d-meta { font-size:11px; color:#8a93a3; }
         .loading { text-align:center; padding:80px; color:#f5b629; font-size:18px; }
-      `}</style>
+        /* Premium performance dashboard refinements */
+        .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom-color:rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2)}
+        .perf-title{letter-spacing:.12em;font-size:15px}.perf-back{border-radius:10px;padding:8px 14px}
+        .container{max-width:1160px;padding:28px 18px}
+        .stat-card,.ev-card,.live-card,.coin-card,.signal-card,.type-card{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.035)}
+        .stat-card{border-radius:16px;padding:20px 16px}.stat-val{font-size:clamp(25px,3vw,34px)}
+        .stat-label,.ev-k{letter-spacing:.1em}.ev-card,.live-card{border-radius:16px;padding:18px}
+        .section-title{color:#f0c568;letter-spacing:.06em}.signal-card{border-radius:14px}
+        .signal-row{padding:16px 18px}.detail{background:rgba(0,0,0,.22)}
+        .period-btn,.filter-btn{border-radius:10px;padding:8px 14px}
+        .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+        @media(max-width:640px){.perf-nav{padding:13px 14px;gap:10px;flex-wrap:wrap}.perf-title{font-size:13px}.container{padding:18px 12px}.period-row{flex-wrap:wrap}.signal-row{padding:13px 12px}}
+            `}</style>
 
       <nav className="perf-nav">
         <span className="perf-title">📊 {t("performance")}</span>
