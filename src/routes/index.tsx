@@ -1,4 +1,5 @@
 // Force rebuild for i18n
+
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
