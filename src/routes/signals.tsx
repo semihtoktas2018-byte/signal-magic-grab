@@ -776,6 +776,11 @@ function SignalTerminal() {
 .kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
 @media(max-width:760px){.kt-page-shell .term-nav{align-items:flex-start;gap:10px;flex-wrap:wrap}.kt-page-shell .term-links{width:100%;overflow-x:auto;flex-wrap:nowrap;padding:4px 0}.kt-page-shell .term-links a{white-space:nowrap}.kt-page-shell .wrap{padding:18px 12px 0}}
 @media(max-width:640px){.kt-page-shell .sig-main{grid-template-columns:auto 1fr;gap:10px;padding:14px}.kt-page-shell .levels{grid-column:1/-1;justify-content:space-between}.kt-page-shell .score{justify-self:start}.kt-page-shell .term-brand{font-size:13px}.kt-page-shell .card{padding:16px}}
+/* Fix oversized remote coin marks in signal rows. */
+.kt-page-shell .coin-name{display:inline-flex;align-items:center;gap:9px;min-width:0;white-space:nowrap}
+.kt-page-shell .coin-logo{display:block;width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;min-width:38px;object-fit:contain;flex:0 0 38px;border-radius:10px;background:rgba(255,255,255,.96);padding:3px}
+@media(max-width:640px){.kt-page-shell .coin-logo{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important;min-width:32px;flex-basis:32px}}
+
 `;
 
   return (
