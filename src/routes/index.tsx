@@ -219,7 +219,7 @@ function Landing() {
     };
 
     load();
-    const id = setInterval(load, 60000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -230,7 +230,7 @@ function Landing() {
     let cancelled = false;
     const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
     load();
-    const id = setInterval(load, 60000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
@@ -682,6 +682,12 @@ const css = `
 .footer{border-top-color:rgba(255,255,255,.08)}.bell-dropdown{border-color:rgba(245,182,41,.25);box-shadow:0 24px 70px rgba(0,0,0,.55)}
 @media(max-width:640px){.nav{padding:12px 14px}.brand-logo{font-size:18px}.nav-cta{padding:9px 12px;font-size:11px}.hero-compact{padding:42px 16px 30px}.hero-head-row{margin-bottom:16px}.hero-title{font-size:clamp(30px,9vw,42px);line-height:1.08}.hero-sub{display:block;-webkit-line-clamp:unset;font-size:13px;line-height:1.65;margin:14px 0 18px}.hero-cta .btn-primary{flex:1 1 100%;padding:14px}.hero-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;text-align:left}.hero-stats div{align-items:flex-start;padding-left:10px}.hero-stats b{font-size:18px}.hero-stats span{font-size:9px}.section{padding:34px 15px}.feature-card{padding:20px}.plan{padding:25px 20px}.final-cta{padding:34px 20px}}
 
+
+/* Performance: reduce continuous paint work without hiding page content. */
+[data-reveal]{opacity:1;transform:none;transition:none}
+.shimmer,.live-dot-lg{animation:none}
+.live-dot-lg{box-shadow:none}
+.nav{backdrop-filter:none}
 `;
 
 export default Landing;
