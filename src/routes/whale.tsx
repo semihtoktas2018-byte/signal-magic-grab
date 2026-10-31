@@ -80,7 +80,7 @@ function WhaleRadar() {
       }
     };
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -91,7 +91,7 @@ function WhaleRadar() {
   const sellCount = events.filter((e) => e.side === "SELL").length;
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
@@ -112,11 +112,11 @@ function WhaleRadar() {
         radial-gradient(circle at 82% 72%, rgba(185, 125, 25, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 24px;
     }
     .kt-page-shell .kt-grid { position:absolute; inset:0; opacity:.18; background-image:linear-gradient(rgba(245,182,41,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,182,41,.07) 1px, transparent 1px); background-size:64px 64px; mask-image:radial-gradient(ellipse at center, #000 0%, transparent 78%); }
-    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:blur(110px); pointer-events:none; }
+    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:none;opacity:.45; pointer-events:none; }
     .kt-page-shell .kt-orb-one { top:-180px; left:-120px; background:rgba(245,182,41,.12); }
     .kt-page-shell .kt-orb-two { right:-180px; bottom:-220px; background:rgba(170,118,25,.12); }
     .kt-page-shell .panel {
@@ -146,7 +146,7 @@ function WhaleRadar() {
       border-radius: 999px;
       padding: 0.6rem 0.9rem;
       font-weight: 700;
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .kt-page-shell .headline {
       display: flex;
@@ -182,7 +182,7 @@ function WhaleRadar() {
       border-radius: 16px;
       border: 1px solid var(--kt-line);
       background: rgba(15, 19, 28, 0.72);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .stat-label {
       color: var(--kt-muted);
@@ -210,7 +210,7 @@ function WhaleRadar() {
       border-radius: 14px;
       border: 1px solid var(--kt-line);
       background: rgba(15, 19, 28, 0.72);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .item-main { display:flex; align-items:center; gap:12px; }
     .kt-page-shell .side-badge {
