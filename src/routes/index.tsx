@@ -163,7 +163,7 @@ function AnimatedBrand() {
   const texts = ["KELTOŞ", "PARAYA KOŞ", "SİNYALE KOŞ"];
   const [index, setIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % texts.length), 2500);
+    const id = setInterval(() => { if (document.visibilityState === "visible") setIndex((i) => (i + 1) % texts.length); }, 5000);
     return () => clearInterval(id);
   }, []);
   return (
