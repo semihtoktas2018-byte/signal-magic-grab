@@ -141,7 +141,7 @@ function Performance() {
     let cancelled = false;
     const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
     load();
-    const id = setInterval(load, 60000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
@@ -210,7 +210,7 @@ function Performance() {
   }
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
@@ -233,7 +233,7 @@ function Performance() {
         radial-gradient(circle at 83% 74%, rgba(168, 113, 20, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .kt-page-shell .kt-grid {
       position: absolute;
@@ -252,7 +252,7 @@ function Performance() {
       width: 440px;
       height: 440px;
       border-radius: 50%;
-      filter: blur(110px);
+      filter:none;opacity:.45;
       pointer-events: none;
     }
     .kt-page-shell .kt-orb-one { top: -200px; left: -140px; background: rgba(245, 182, 41, 0.12); }
@@ -266,7 +266,7 @@ function Performance() {
       gap: 12px;
       padding: 14px 18px 16px;
       background: rgba(7, 12, 18, 0.78);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
       border-bottom: 1px solid var(--kt-line);
     }
     .kt-page-shell .perf-title {
@@ -307,7 +307,7 @@ function Performance() {
       background: rgba(15, 19, 28, 0.72);
       border: 1px solid rgba(245, 182, 41, 0.18);
       box-shadow: 0 16px 28px -24px rgba(0,0,0,0.9);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .stat-card,
     .kt-page-shell .ev-card,
@@ -333,7 +333,7 @@ function Performance() {
       background: rgba(255,255,255,0.02);
       color: var(--kt-muted);
       font-weight: 700;
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 0.6rem 0.9rem;
       cursor: pointer;
     }
