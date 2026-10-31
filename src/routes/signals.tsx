@@ -757,7 +757,26 @@ function SignalTerminal() {
       .kt-page-shell .term-nav { padding-inline: 14px; }
       .kt-page-shell .term-links { gap: 8px; }
     }
-  `;
+  
+/* Unified KELTOS premium terminal layer */
+.kt-page-shell.term{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .term-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
+.kt-page-shell .term-brand{letter-spacing:.11em;font-size:15px}
+.kt-page-shell .term-links{gap:clamp(8px,1.5vw,18px)}
+.kt-page-shell .term-links a{font-size:12px;transition:color .2s,border-color .2s}
+.kt-page-shell .wrap{max-width:1160px;padding:26px 18px 0}
+.kt-page-shell .card,.kt-page-shell .sig-card,.kt-page-shell .chart-panel{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);border-radius:16px;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.kt-page-shell .card{padding:20px}.kt-page-shell .card-h,.kt-page-shell .sec-t{color:#f0c568;letter-spacing:.1em}
+.kt-page-shell .pchip{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.09);border-radius:12px;padding:11px 12px}
+.kt-page-shell .pchip.active{border-color:rgba(245,182,41,.65);background:rgba(245,182,41,.1)}
+.kt-page-shell .sig-card{overflow:hidden}.kt-page-shell .sig-main{padding:16px 18px;gap:14px}
+.kt-page-shell .detail{background:rgba(0,0,0,.22);border-top-color:rgba(245,182,41,.16)}
+.kt-page-shell .detail-btn{background:rgba(245,182,41,.055);padding:11px}.kt-page-shell .chart-panel{padding:16px}
+.kt-page-shell .fbtn,.kt-page-shell .theme-btn,.kt-page-shell .lang-select,.kt-page-shell .logout-btn{border-radius:10px}
+.kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+@media(max-width:760px){.kt-page-shell .term-nav{align-items:flex-start;gap:10px;flex-wrap:wrap}.kt-page-shell .term-links{width:100%;overflow-x:auto;flex-wrap:nowrap;padding:4px 0}.kt-page-shell .term-links a{white-space:nowrap}.kt-page-shell .wrap{padding:18px 12px 0}}
+@media(max-width:640px){.kt-page-shell .sig-main{grid-template-columns:auto 1fr;gap:10px;padding:14px}.kt-page-shell .levels{grid-column:1/-1;justify-content:space-between}.kt-page-shell .score{justify-self:start}.kt-page-shell .term-brand{font-size:13px}.kt-page-shell .card{padding:16px}}
+`;
 
   return (
     <div className={`kt-page-shell term ${theme === "light" ? "light-mode" : ""}`} dir={lang === "ar" ? "rtl" : "ltr"}>
