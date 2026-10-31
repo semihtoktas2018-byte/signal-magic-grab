@@ -245,35 +245,39 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
+    const renderWidget = () => {
+      if (cancelled || typeof (window as any).TradingView === "undefined") return;
+      const host = hostRef.current;
+      if (!host) return;
+      host.innerHTML = "";
+      new (window as any).TradingView.widget({
+        width: "100%",
+        height: 300,
+        symbol: `BYBIT:${symbol.replace("USDT", "")}USDT`,
+        interval: "15",
+        timezone: "Europe/Istanbul",
+        theme: "dark",
+        style: "1",
+        locale: "tr",
+        toolbar_bg: "#05070c",
+        enable_publishing: false,
+        hide_side_toolbar: false,
+        allow_symbol_change: false,
+        container_id: `tradingview_${symbol}`,
+      });
+    };
     const existing = document.querySelector<HTMLScriptElement>('script[src="https://s3.tradingview.com/tv.js"]');
-    const script = existing || document.createElement("script");
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    script.onload = () => {
-      if (typeof (window as any).TradingView !== "undefined") {
-        new (window as any).TradingView.widget({
-          width: "100%",
-          height: 300,
-          symbol: `BYBIT:${symbol.replace("USDT", "")}USDT`,
-          interval: "15",
-          timezone: "Europe/Istanbul",
-          theme: "dark",
-          style: "1",
-          locale: "tr",
-          toolbar_bg: "#05070c",
-          enable_publishing: false,
-          hide_side_toolbar: false,
-          allow_symbol_change: false,
-          container_id: `tradingview_${symbol}`,
-        });
-      }
-    };
-    if (!existing) document.head.appendChild(script);
-
-    return () => {
-      const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
-      if (existingScript) existingScript.remove();
-    };
+    if ((window as any).TradingView) {
+      renderWidget();
+    } else {
+      const script = existing || document.createElement("script");
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.async = true;
+      script.addEventListener("load", renderWidget, { once: true });
+      if (!existing) document.head.appendChild(script);
+    }
+    return () => { cancelled = true; };
   }, [symbol, visible]);
 
   return <div ref={hostRef} id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
