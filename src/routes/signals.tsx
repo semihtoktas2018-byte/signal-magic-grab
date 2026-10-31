@@ -439,7 +439,23 @@ function SignalTerminal() {
         .sig-foot{text-align:center;margin-top:36px;font-size:11px;letter-spacing:.08em;color:#0f7a4d;font-weight:600}
         .chart-panel{background:rgba(255,255,255,.03);border:1px solid rgba(245,182,41,.12);border-radius:14px;padding:12px;margin-bottom:16px}
         .chart-panel .card-h{margin-bottom:8px}
-      `}</style>
+        /* Premium terminal refinements */
+        .term{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.12),transparent 55%),#05070b;color:#f2f3f5}
+        .term-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom-color:rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2)}
+        .term-brand{letter-spacing:.11em;font-size:15px}.term-links{gap:clamp(8px,1.5vw,18px)}.term-links a{font-size:12px}
+        .wrap{max-width:1160px;padding:26px 18px 0}
+        .card,.sig-card,.chart-panel{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);border-radius:16px;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+        .card{padding:20px}.card-h,.sec-t{color:#f0c568;letter-spacing:.1em}
+        .pchip{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.09);border-radius:12px;padding:11px 12px}
+        .pchip.active{border-color:rgba(245,182,41,.65);background:rgba(245,182,41,.1)}
+        .sig-card{overflow:hidden}.sig-main{padding:16px 18px;gap:14px}
+        .detail{background:rgba(0,0,0,.22);border-top-color:rgba(245,182,41,.16)}
+        .detail-btn{background:rgba(245,182,41,.055);padding:11px}.chart-panel{padding:16px}
+        .fbtn,.theme-btn,.lang-select,.logout-btn{border-radius:10px}
+        .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+        @media(max-width:760px){.term-nav{align-items:flex-start;gap:10px;flex-wrap:wrap}.term-links{width:100%;overflow-x:auto;flex-wrap:nowrap;padding:4px 0}.term-links a{white-space:nowrap}.wrap{padding:18px 12px 0}}
+        @media(max-width:640px){.sig-main{grid-template-columns:auto 1fr;gap:10px;padding:14px}.levels{grid-column:1/-1;justify-content:space-between}.score{justify-self:start}.term-brand{font-size:13px}.card{padding:16px}}
+            `}</style>
 
       <nav className="term-nav">
         <span className="term-brand">⚡ KELTOŞ SİNYAL TERMİNALİ</span>
