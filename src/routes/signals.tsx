@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
@@ -227,8 +227,26 @@ async function loadPrices(): Promise<PriceRow[]> {
 }
 
 function TradingViewWidget({ symbol }: { symbol: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
   useEffect(() => {
-    const script = document.createElement("script");
+    const host = hostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "160px" });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://s3.tradingview.com/tv.js"]');
+    const script = existing || document.createElement("script");
     script.src = "https://s3.tradingview.com/tv.js";
     script.async = true;
     script.onload = () => {
@@ -250,15 +268,15 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
         });
       }
     };
-    document.head.appendChild(script);
+    if (!existing) document.head.appendChild(script);
 
     return () => {
       const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
       if (existingScript) existingScript.remove();
     };
-  }, [symbol]);
+  }, [symbol, visible]);
 
-  return <div id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
+  return <div ref={hostRef} id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
 }
 
 function SignalTerminal() {
@@ -360,7 +378,7 @@ function SignalTerminal() {
   }
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
@@ -781,6 +799,10 @@ function SignalTerminal() {
 .kt-page-shell .coin-logo{display:block;width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;min-width:38px;object-fit:contain;flex:0 0 38px;border-radius:10px;background:rgba(255,255,255,.96);padding:3px}
 @media(max-width:640px){.kt-page-shell .coin-logo{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important;min-width:32px;flex-basis:32px}}
 
+
+/* Reduce expensive paint effects. */
+.kt-page-shell .kt-orb{filter:none;opacity:.45}
+.kt-page-shell .term-nav,.kt-page-shell .sig-card,.kt-page-shell .chart-panel{backdrop-filter:none}
 `;
 
   return (
