@@ -91,7 +91,9 @@ function WhaleRadar() {
   const sellCount = events.filter((e) => e.side === "SELL").length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#05080d", color: "#e8eef7", fontFamily: "'Inter',system-ui,sans-serif", padding: "24px" }} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="kt-data-page" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <style>{".kt-data-page{min-height:100vh;padding:clamp(16px,4vw,42px);background:radial-gradient(ellipse at 50% -10%,rgba(245,182,41,.13),transparent 58%),#05070b;color:#f0f2f5;font-family:Inter,system-ui,sans-serif}.kt-data-shell{max-width:1000px;margin:0 auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(245,182,41,.16);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:0 24px 80px rgba(0,0,0,.28)}.kt-data-page select{background:#0d1118!important;color:#f0c568!important;border:1px solid rgba(245,182,41,.28)!important;border-radius:10px!important;padding:8px 12px!important}.kt-data-page h1{letter-spacing:-.035em}@media(max-width:600px){.kt-data-page{padding:10px}.kt-data-shell{padding:16px;border-radius:16px}}"}</style>
+      <div className="kt-data-shell">
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <a href="/" style={{ color: "#8a93a3", fontSize: 13, textDecoration: "none" }}>← {t("home")}</a>
@@ -200,6 +202,7 @@ function WhaleRadar() {
             A BAMIR ONLINE STORE'S PRODUCTION
           </span>
         </div>
+      </div>
       </div>
     </div>
   );
