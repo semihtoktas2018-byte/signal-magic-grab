@@ -411,7 +411,21 @@ function Performance() {
       .kt-page-shell .perf-nav { padding-inline: 14px; }
       .kt-page-shell .perf-title { font-size: 0.82rem; }
     }
-  `;
+  
+/* Unified KELTOS premium performance layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
+.kt-page-shell .perf-title{letter-spacing:.12em;font-size:15px}.kt-page-shell .perf-back{border-radius:10px;padding:8px 14px}
+.kt-page-shell .container{max-width:1160px;padding:28px 18px}
+.kt-page-shell .stat-card,.kt-page-shell .ev-card,.kt-page-shell .live-card,.kt-page-shell .coin-card,.kt-page-shell .signal-card,.kt-page-shell .type-card{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.kt-page-shell .stat-card{border-radius:16px;padding:20px 16px}.kt-page-shell .stat-val{font-size:clamp(25px,3vw,34px)}
+.kt-page-shell .stat-label,.kt-page-shell .ev-k{letter-spacing:.1em}.kt-page-shell .ev-card,.kt-page-shell .live-card{border-radius:16px;padding:18px}
+.kt-page-shell .section-title{color:#f0c568;letter-spacing:.06em}.kt-page-shell .signal-card{border-radius:14px}
+.kt-page-shell .signal-row{padding:16px 18px}.kt-page-shell .detail{background:rgba(0,0,0,.22)}
+.kt-page-shell .period-btn,.kt-page-shell .filter-btn{border-radius:10px;padding:8px 14px}
+.kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+@media(max-width:640px){.kt-page-shell .perf-nav{padding:13px 14px;gap:10px;flex-wrap:wrap}.kt-page-shell .perf-title{font-size:13px}.kt-page-shell .container{padding:18px 12px}.kt-page-shell .period-row{flex-wrap:wrap}.kt-page-shell .signal-row{padding:13px 12px}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
