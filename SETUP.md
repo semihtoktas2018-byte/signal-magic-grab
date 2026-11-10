@@ -112,13 +112,12 @@ select * from cron.job;                          -- iş kayıtlı mı
 select * from cron.job_run_details order by start_time desc limit 10;  -- son koşular
 ```
 
-> **Sıfırdan kurulum notu:** Daha eski bir migration
-> (`20260905191345_...sql`) `select cron.unschedule(1)` satırı içerir. Bu satır,
-> henüz hiç cron işi olmayan **bomboş** bir projede "job 1 not found" hatası
-> verebilir ve `db push`'u durdurabilir. Karşılaşırsanız güvenle atlayabilir
-> (o satırı geçici olarak yorum satırı yapıp devam edebilir) ya da önce boş bir
-> job kaydı oluşturabilirsiniz; nihai zamanlamayı zaten bu dosyadaki yeni
-> migration (`20260926120000_...`) doğru adrese kurar.
+> **Cron migration notu:** İlk cron migration'ı artık sabit job ID kullanmaz;
+> `kpk-signals-cron` adlı işi kaldırıp geçici Lovable endpoint'ini tanımlar.
+> Sonraki `20260926120000_...` migration'ı aynı adlı işi Supabase Edge Function
+> adresine taşır. Supabase pg_cron, isimli `schedule` ve `unschedule` işlevlerini
+> destekler. İkinci migration'daki proje URL'si ve publishable key, alıcının
+> Supabase projesine göre düzenlenmeden çalıştırılmamalıdır.
 
 ---
 
