@@ -13,8 +13,8 @@
 --     CRON_SECRET ortam değişkeniyle AYNI olmalı):
 --
 --       select vault.create_secret('CRON_SECRET_DEGERI', 'cron_secret');
-select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'supabase_url');
-select vault.create_secret('sb_publishable_<PROJECT_KEY>', 'supabase_publishable_key');
+-- select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'supabase_url');
+-- select vault.create_secret('sb_publishable_<PROJECT_KEY>', 'supabase_publishable_key');
 --
 --   Aynı değeri Supabase Dashboard → Edge Functions → Secrets içine de
 --   CRON_SECRET olarak girin. İkisi eşleşmezse edge function 401 döner.
