@@ -393,6 +393,7 @@ export default function AISignalIntelligence() {
   const statusText = (s: string) => {
     if (s === "tuttu") return t("targetReached");
     if (s === "tutmadi") return t("stopLoss");
+    if (s === "suresi_doldu") return ({ tr: "Süresi doldu", en: "Expired", de: "Abgelaufen", fr: "Expiré", ar: "انتهت المدة" } as Record<LangCode, string>)[lang];
     return t("waitingShort");
   };
 
