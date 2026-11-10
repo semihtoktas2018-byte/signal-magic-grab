@@ -67,41 +67,25 @@ interface MergedSignal {
 }
 
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
-  let local: MergedSignal[] = [];
-  try {
-    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-    if (Array.isArray(raw)) {
-      local = raw.map((w: any) => ({ ...w, src: "local" as const }));
-    }
-  } catch {
-    local = [];
-  }
-
-  let remote: MergedSignal[] = [];
   try {
     const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/kpk_signals?select=*&order=created_at.asc&limit=500`,
+      `${KPK_SB_URL}/rest/v1/kpk_signals?select=coin,signal,price,created_at,result,score&order=created_at.asc&limit=500`,
       { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
     );
-    if (res.ok) {
-      const rows = await res.json();
-      remote = (rows || []).map((row: any) => ({
-        coin: row.coin,
-        signal: row.signal,
-        price: String(row.price),
-        date: row.created_at,
-        result: row.result || "bekliyor",
-        score: row.score,
-        src: "remote" as const,
-      }));
-    }
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return (rows || []).map((row: any) => ({
+      coin: row.coin,
+      signal: row.signal,
+      price: String(row.price),
+      date: row.created_at,
+      result: row.result || "bekliyor",
+      score: row.score,
+      src: "remote" as const,
+    })).sort((a: MergedSignal, b: MergedSignal) => new Date(a.date).getTime() - new Date(b.date).getTime());
   } catch {
-    remote = [];
+    return [];
   }
-
-  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
-  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`));
-  return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 const TP_PCT = 0.025;
@@ -380,6 +364,7 @@ function Landing() {
           <h2 className="live-h2">Canlı Sinyal Takibi</h2>
           <span className="live-count">{openSignals.length} açık pozisyon · özet</span>
         </div>
+        <p className="live-source-note">Referans fiyatı Binance spot verisidir; sinyal giriş fiyatı Bybit kaynaklıdır. Farklı borsalar nedeniyle gösterilen yüzde yaklaşık karşılaştırmadır, gerçekleşmiş getiri değildir.</p>
         {openSignals.length === 0 ? (
           <div className="live-empty">{t("noOpenSignals")}</div>
         ) : (
