@@ -477,7 +477,14 @@ async function fetchKlines(symbol: string) {
   const j = await r.json() as any
   if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
   const list = (j.result?.list ?? []) as string[][]
-  return list.slice().reverse()
+  const now = Date.now()
+  const closedCandles = list
+    .filter((k) => Number(k[0]) + 15 * 60 * 1000 <= now)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+  if (closedCandles.length < 50) {
+    throw new Error(`klines ${symbol}: insufficient closed candles (${closedCandles.length})`)
+  }
+  return closedCandles
 }
 
 async function analyzeCoin(symbol: string, klines: any[][]) {
@@ -725,12 +732,14 @@ async function runCron() {
         .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
         .limit(1)
       if (dup && dup.length > 0) continue
-      const entrySnap = await fetchTicker(c.coin)
+      const tickerPrice = await fetchTicker(c.coin)
+      const entryPrice = tickerPrice ?? c.price
+      const entrySnapshotAt = new Date().toISOString()
       const { error } = await supabase.from('kpk_signals').insert({
         coin: c.coin, signal: c.signal, score: c.score,
-        quality: c.quality, price: c.price,
-        entry_snapshot: entrySnap,
-        entry_snapshot_at: new Date().toISOString(),
+        quality: c.quality, price: entryPrice,
+        entry_snapshot: entryPrice,
+        entry_snapshot_at: entrySnapshotAt,
         components: c.components,
         score_band: c.scoreBand,
       })
@@ -740,7 +749,7 @@ async function runCron() {
       }
       inserted.push(`${c.coin} ${c.signal} ${c.score}`)
       try {
-        await sendTelegram(c.coin, c.signal, c.quality, c.score, c.price, c.whale)
+        await sendTelegram(c.coin, c.signal, c.quality, c.score, entryPrice, c.whale)
       } catch (te: any) {
         errors.push(`${c.coin} telegram: ${te.message}`)
       }
