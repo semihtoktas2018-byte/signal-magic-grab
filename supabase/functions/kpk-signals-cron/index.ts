@@ -279,28 +279,40 @@ interface WhaleActivity {
   sellUsd: number
   biggestUsd: number
   biggestSide: 'BUY' | 'SELL' | null
+  biggestTradeId: string | null
+  biggestTradeAt: string | null
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
   const r = await fetch(url)
-  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null }
   const j = await r.json() as any
-  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
   let biggestSide: 'BUY' | 'SELL' | null = null
+  let biggestTradeId: string | null = null
+  let biggestTradeAt: string | null = null
   for (const t of trades) {
     const price = parseFloat(t.price)
     const qty = parseFloat(t.size)
     const usd = price * qty
     const isBuy = t.side === 'Buy'
     if (usd >= WHALE_THRESHOLD_USD) {
-      if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isBuy ? 'BUY' : 'SELL' }
+      if (usd > biggestUsd) {
+        biggestUsd = usd
+        biggestSide = isBuy ? 'BUY' : 'SELL'
+        biggestTradeId = String(t.execId ?? '')
+        const tradeTime = Number(t.time)
+        biggestTradeAt = Number.isFinite(tradeTime) && tradeTime > 0
+          ? new Date(tradeTime).toISOString()
+          : null
+      }
       if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
-  return { buyUsd, sellUsd, biggestUsd, biggestSide }
+  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt }
 }
 
 // ---------- Exchange comparison (Bybit vs OKX) ----------
@@ -694,11 +706,13 @@ async function runCron() {
         errors.push(`${coin} okx: ${ee.message}`)
       }
 
-      if (a.whale.biggestUsd > 0 && a.whale.biggestSide) {
-        const { error: whaleErr } = await supabase.from('whale_events').insert({
+      if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt) {
+        const { error: whaleErr } = await supabase.from('whale_events').upsert({
+          source_trade_id: a.whale.biggestTradeId,
           coin, side: a.whale.biggestSide,
           amount_usd: a.whale.biggestUsd, price: a.price,
-        })
+          created_at: a.whale.biggestTradeAt,
+        }, { onConflict: 'source_trade_id', ignoreDuplicates: true })
         if (whaleErr) errors.push(`${coin} whale insert: ${whaleErr.message}`)
         else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
       }
