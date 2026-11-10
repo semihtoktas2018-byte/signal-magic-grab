@@ -1,10 +1,10 @@
-# KELTOŞ — Satış ve Devir Teslim Dosyası
+# White-Label Market Analysis Terminal — Satış ve Devir Teslim Dosyası
 
 Bu belge, alıcı görüşmesinde ürün kapsamını ve teslimat sınırlarını netleştirmek için hazırlanmıştır. Ticari sözleşme veya hukukî lisans metni değildir.
 
 ## 1. Ürün tanımı
 
-KELTOŞ; kripto spot piyasa verilerini, teknik gösterge tabanlı BUY / SELL / WAIT sinyallerini, sinyal geçmişini, tanımlı TP/SL seviyelerine göre teorik sonuç takibini, piyasa karşılaştırmasını ve Bybit spot işlemlerindeki eşik üstü tekil işlemleri görüntüleyen web panelidir.
+Ürün; kripto spot piyasa verilerini, teknik gösterge tabanlı BUY / SELL / WAIT sinyallerini, sinyal geçmişini, tanımlı TP/SL seviyelerine göre teorik sonuç takibini, piyasa karşılaştırmasını ve Bybit spot işlemlerindeki eşik üstü tekil işlemleri görüntüleyen web panelidir.
 
 Otomatik emir göndermez. Yatırım danışmanlığı değildir. Kâr, doğruluk oranı veya belirli getiri taahhüt etmez.
 
@@ -34,6 +34,9 @@ Teslim kapsamı, yazılı anlaşmaya göre aşağıdaki maddeleri içerebilir:
 Domain, hosting, Supabase, Telegram, borsa hesapları/API erişimi ve üçüncü taraf servis ücretleri ayrıca kararlaştırılmalıdır. Gizli anahtarlar veya mevcut işletme hesapları kaynak kodla birlikte devredilmez.
 
 ## 4. Alıcıya özel yapılandırma
+
+Her alıcı için bağımsız deployment ve ayrı Supabase projesi kurulur. Ortak çok kiracılı veri altyapısı bu teslim modelinin parçası değildir. Marka adı, logo, slogan, ana renk, vurgu rengi ve alt bilgi alıcı kurulumundaki `/branding` yönetim ekranından ayarlanır. Yönetim yetkisi `user_metadata` üzerinden değil, sunucu tarafından yönetilen `app_metadata.role = admin` claim'i üzerinden verilir.
+
 
 Alıcı kendi değerlerini sağlamalıdır:
 
