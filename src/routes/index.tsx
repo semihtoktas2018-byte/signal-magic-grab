@@ -179,7 +179,7 @@ function AnimatedBrand() {
 
 function Landing() {
   const ref = useReveal();
-  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
+  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 0 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
@@ -201,15 +201,7 @@ function Landing() {
       const merged = await fetchMergedSignals();
       if (cancelled) return;
 
-      const hit = computeHitRate(merged);
-      let coins = 9;
-      try {
-        const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
-        if (Array.isArray(coinsRaw) && coinsRaw.length) coins = coinsRaw.length;
-      } catch {
-        coins = 9;
-      }
-      setStats({ hit, coins });
+      setStats({ hit: "--", coins: 0 });
       setNotifSignals(merged.slice(-3).reverse());
       const open = merged
         .filter((s) => (s.result || "bekliyor") === "bekliyor")
@@ -367,21 +359,21 @@ function Landing() {
             <div className="hero-head-row">
               <div>
                 <span className="eyebrow">◆ {t("professionalCryptoSignal")}</span>
-                <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">{t("raceToMoney")}</span></h1>
+                <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">Kripto Analiz Paneli</span></h1>
               </div>
             </div>
             <p className="hero-sub">
-              {t("heroWhaleText")} <b>{t("keltosBrand")}</b> {t("heroWhaleHighlight")} {t("heroMarketAnalysis")}
+              <b>{t("keltosBrand")}</b> teknik göstergeler, kayıtlı sinyaller ve piyasa verilerini tek panelde sunar.
             </p>
             <div className="hero-cta">
               <a href="/signals" className="btn btn-primary">{t("enterSignalTerminal")}</a>
               <a href="/performance" className="btn btn-ghost">📊 {t("performanceShort")}</a>
             </div>
             <div className="hero-stats">
-              <div><b>{stats.coins}</b><span>{t("coinTracking")}</span></div>
-              <div><b>%{stats.hit}</b><span>{t("hitRate")}</span></div>
-              <div><b>{t("liveLabel")}</b><span>{t("bybitData")}</span></div>
-              <div><b>{t("transparent")}</b><span>{t("openHistory")}</span></div>
+              <div><b>EMA · RSI</b><span>Teknik göstergeler</span></div>
+              <div><b>BUY / SELL</b><span>Sinyal yönü</span></div>
+              <div><b>TP / SL</b><span>Hedef ve stop seviyeleri</span></div>
+              <div><b>Geçmiş</b><span>Kaydedilmiş sinyal sonuçları</span></div>
             </div>
           </div>
         </div>
@@ -474,17 +466,17 @@ function Landing() {
           <div className="card trust-card" data-reveal>
             <div className="t-icon">🔒</div>
             <h3>Verilerin Güvende</h3>
-            <p>Sinyaller Supabase altyapısında saklanır, hesabın korunur.</p>
+            <p>Sinyal kayıtları mevcut Supabase projesinde tutulur. Erişim ve güvenlik ayarları alıcı kurulumunda ayrıca doğrulanmalıdır.</p>
           </div>
           <div className="card trust-card" data-reveal style={{ transitionDelay: "60ms" }}>
             <div className="t-icon">📊</div>
             <h3>Şeffaf Geçmiş</h3>
-            <p>Her sinyalin sonucu (tuttu/tutmadı) açıkça performans sayfasında.</p>
+            <p>Kaydedilen sinyallerin sonuç durumları performans sayfasında listelenir.</p>
           </div>
           <div className="card trust-card" data-reveal style={{ transitionDelay: "120ms" }}>
             <div className="t-icon">⚡</div>
             <h3>Gerçek Veri</h3>
-            <p>Fiyatlar Bybit'ten canlı çekilir. Uydurma sayı yok, spekülasyon yok.</p>
+            <p>Ana sayfadaki canlı fiyat bileşeni Binance piyasa verisini kullanır. Diğer veri akışları kurulumda ayrıca doğrulanmalıdır.</p>
           </div>
         </div>
         <div className="disclaimer-bar" data-reveal>
