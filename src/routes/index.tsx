@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligence"));
 
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "KELTOŞ — Kripto Sinyal ve Piyasa Analiz Paneli" },
       { name: "description", content: "Teknik göstergeler, kripto sinyalleri, piyasa karşılaştırması ve geçmiş sinyal sonuçlarını izleme paneli." },
-      { property: "og:title", content: "KELTOŞ Kripto Analiz Paneli" },
+      { property: "og:title", content: "{brand.brand_name || "Kripto Analiz Paneli"}" },
       { property: "og:description", content: "Teknik göstergeler ve sinyal geçmişini izlemek için kripto analiz paneli." },
       { property: "og:image", content: "/keltos-hero.png" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
@@ -125,7 +126,7 @@ function computeLive(sig: MergedSignal, curPrice: number) {
 }
 
 function AnimatedBrand() {
-  const texts = ["KELTOŞ", "KRİPTO ANALİZ", "SİNYAL TERMİNALİ"];
+  const texts = ["MARKET ANALYSIS", "SIGNAL TERMINAL"];
   const [index, setIndex] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => (i + 1) % texts.length), 2500);
@@ -143,6 +144,7 @@ function AnimatedBrand() {
 }
 
 function Landing() {
+  const brand = useBranding();
   const ref = useReveal();
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -239,7 +241,7 @@ function Landing() {
 
       <nav className="nav">
         <div className="brand-logo">
-          <span className="crown">♛</span> {t("keltosBrand")}
+          <span className="crown">♛</span> {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : (brand.brand_name || "Market Analysis Terminal")}
         </div>
         <div className="nav-links">
           <a href="/" className="nav-active">{t("home")}</a>
@@ -407,7 +409,7 @@ function Landing() {
 
       <section id="features" className="section">
         <div className="sec-head" data-reveal>
-          <h2>KELTOŞ Nasıl Çalışır?</h2>
+          <h2>Nasıl Çalışır?</h2>
           <p>Tek bir panelde profesyonel kripto analiz cephaneliği.</p>
         </div>
         <div className="grid features">
@@ -425,7 +427,7 @@ function Landing() {
 
       <section id="how" className="section">
         <div className="sec-head" data-reveal>
-          <h2>Neden KELTOŞ?</h2>
+          <h2>Neden Bu Panel?</h2>
           <p>Süslü rakamlar yok. Sadece şeffaflık.</p>
         </div>
         <div className="grid trust">
@@ -456,7 +458,7 @@ function Landing() {
           <p>Kaynak kod, kurulum kapsamı ve alıcıya özel yapılandırma için iletişime geçin.</p>
         </div>
         <div className="grid pricing">
-          {[{ name: "KELTOŞ Paneli", price: "Lisans / devir", tag: "Ürün teslimi", features: ["Web paneli kaynak kodu", "Supabase ve Edge Function kurulum dokümanları", "Alıcıya özel yapılandırma kapsamı ayrıca belirlenir"], highlight: true }].map((p, i) => (
+          {[{ name: "Analiz Paneli", price: "Lisans / devir", tag: "Ürün teslimi", features: ["Web paneli kaynak kodu", "Supabase ve Edge Function kurulum dokümanları", "Alıcıya özel yapılandırma kapsamı ayrıca belirlenir"], highlight: true }].map((p, i) => (
             <div key={i} className={`card plan ${p.highlight ? "plan-pop" : ""}`} data-reveal style={{ transitionDelay: `${i * 80}ms` }}>
               <div className="plan-tag">{p.tag}</div>
               <h3>{p.name}</h3>
@@ -483,15 +485,15 @@ function Landing() {
       </section>
 
       <footer className="footer">
-        <div className="shimmer">A BAMIR ONLINE STORE'S PRODUCTION</div>
-        <div className="copy">© {new Date().getFullYear()} KELTOŞ · Tüm hakları saklıdır</div>
+        <div className="shimmer">{brand.footer_text || brand.brand_name || ""}</div>
+        <div className="copy">© {new Date().getFullYear()} {brand.brand_name || "Market Analysis Terminal"}</div>
       </footer>
     </div>
   );
 }
 
 const css = `
-.landing{--bg:#05070c;--bg2:#0a0e16;--gold:#f5b629;--gold2:#ffd76a;--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:rgba(245,182,41,.18);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
+.landing{--bg:#05070c;--bg2:#0a0e16;--gold:var(--brand-accent,#f5b629);--gold2:#ffd76a;--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:rgba(245,182,41,.18);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
 .landing::before{content:"";position:fixed;inset:0;background:radial-gradient(70% 55% at 60% 0%,rgba(245,182,41,.10),transparent 60%),radial-gradient(50% 40% at 15% 90%,rgba(245,182,41,.06),transparent 60%);pointer-events:none}
 .landing>*{position:relative;z-index:1}
 *{box-sizing:border-box}
