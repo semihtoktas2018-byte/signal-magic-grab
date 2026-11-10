@@ -203,11 +203,13 @@ function Landing() {
   const badgeColor = (result?: string) => {
     if (result === "tuttu") return "#22c55e";
     if (result === "tutmadi") return "#ef4444";
+    if (result === "suresi_doldu") return "#94a3b8";
     return "#f5b629";
   };
   const badgeText = (result?: string) => {
     if (result === "tuttu") return "Tuttu";
     if (result === "tutmadi") return "Tutmadı";
+    if (result === "suresi_doldu") return "Süresi doldu";
     return "Bekliyor";
   };
   const signalTypeColor = (type?: string) => {
