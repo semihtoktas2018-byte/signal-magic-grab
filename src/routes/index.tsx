@@ -153,7 +153,21 @@ function Landing() {
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const bellRef = useRef<HTMLDivElement>(null);
   const [lang, setLang] = useState<LangCode>(getLang());
+  const [isAdmin, setIsAdmin] = useState(false);
   const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    let active = true;
+    const syncAdmin = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (active) setIsAdmin(data.user?.app_metadata?.role === "admin");
+    };
+    void syncAdmin();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setIsAdmin(session?.user?.app_metadata?.role === "admin");
+    });
+    return () => { active = false; listener.subscription.unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -249,6 +263,7 @@ function Landing() {
           <a href="/performance">{t("performance")}</a>
           <a href="/whale">{t("whaleRadar")}</a>
           <a href="/exchange">{t("exchangeCompare")}</a>
+          {isAdmin && <a href="/branding">Marka ayarları</a>}
           <a href="#pricing">{t("pricing")}</a>
         </div>
 
