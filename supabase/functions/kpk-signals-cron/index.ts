@@ -485,15 +485,17 @@ async function resolveTPSLWithKlines(
   // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
   const intervalMs = 15 * 60 * 1000
   const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
-  const expectedCount = Math.max(0, Math.ceil((endMs - firstExpected) / intervalMs))
+  const expectedTimes: number[] = []
+  for (let time = firstExpected; time + intervalMs <= endMs; time += intervalMs) {
+    expectedTimes.push(time)
+  }
   const observedTimes = new Set(unique
-    .filter((candle) => candle.openTime >= firstExpected && candle.openTime < endMs &&
-      candle.openTime + intervalMs <= endMs)
+    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
     .map((candle) => candle.openTime))
-  let complete = expectedCount > 0 && observedTimes.size === expectedCount
+  let complete = expectedTimes.length > 0 && observedTimes.size === expectedTimes.length
   if (complete) {
-    for (let i = 0; i < expectedCount; i++) {
-      if (!observedTimes.has(firstExpected + i * intervalMs)) {
+    for (const time of expectedTimes) {
+      if (!observedTimes.has(time)) {
         complete = false
         break
       }
