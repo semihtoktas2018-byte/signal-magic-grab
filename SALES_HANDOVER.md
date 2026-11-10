@@ -56,8 +56,8 @@ Teslim tamamlandı olarak işaretlenmeden önce aşağıdakiler alıcı ortamın
 - Cron'un tetiklenmesi ve fonksiyonun beklenen sonucu üretmesi
 - Bybit/OKX/alternative.me kaynaklarının erişilebilirliği ve rate-limit davranışı
 - Gerçek sinyal kaydının oluşması ve terminalde görünmesi
-- TP/SL sonuç çözümleme ve 48 saatlik süre dolumu senaryoları
-- Eksik mum verisinde sinyalin yanlışlıkla süresi doldu sayılmaması
+- TP/SL sonucu, temas mumuna kadar tüm gerekli 15 dakikalık mumlar eksiksizse kesinleştirilir
+- 48 saat sonunda yalnızca pencerenin tamamı eksiksizse `suresi_doldu` yazılır; veri boşluğu varsa sinyal beklemede kalır
 - Telegram test bildiriminin alıcı botu/kanalına ulaşması
 - Whale Radar migration sonrası olayların görüntülenmesi
 - Mobil ve masaüstü görünüm kontrolü
