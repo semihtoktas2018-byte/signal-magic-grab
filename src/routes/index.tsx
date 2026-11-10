@@ -10,10 +10,10 @@ const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligenc
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ PARAYA KOŞ — Profesyonel Kripto Sinyal Paneli" },
-      { name: "description", content: "Kripto piyasasını senin yerine analiz eden profesyonel sinyal paneli. Canlı sinyaller, smart money, paper trade ve daha fazlası." },
-      { property: "og:title", content: "KELTOŞ PARAYA KOŞ" },
-      { property: "og:description", content: "Kripto piyasasını senin yerine analiz eden profesyonel sinyal paneli." },
+      { title: "KELTOŞ — Kripto Sinyal ve Piyasa Analiz Paneli" },
+      { name: "description", content: "Teknik göstergeler, kripto sinyalleri, piyasa karşılaştırması ve geçmiş sinyal sonuçlarını izleme paneli." },
+      { property: "og:title", content: "KELTOŞ Kripto Analiz Paneli" },
+      { property: "og:description", content: "Teknik göstergeler ve sinyal geçmişini izlemek için kripto analiz paneli." },
       { property: "og:image", content: "/keltos-hero.png" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
     ],
@@ -160,7 +160,7 @@ function computeLive(sig: MergedSignal, curPrice: number) {
 }
 
 function AnimatedBrand() {
-  const texts = ["KELTOŞ", "PARAYA KOŞ", "SİNYALE KOŞ"];
+  const texts = ["KELTOŞ", "KRİPTO ANALİZ", "SİNYAL TERMİNALİ"];
   const [index, setIndex] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => (i + 1) % texts.length), 2500);
@@ -263,23 +263,17 @@ function Landing() {
   };
 
   const features = [
-    { icon: "🧠", title: "Yapay Zeka Destekli Analiz", desc: "Piyasa verilerini saniyeler içinde analiz eder, en güçlü fırsatları senin için belirler." },
-    { icon: "🎯", title: "Canlı Sinyal Takibi", desc: "Anlık üretilen yüksek isabetli sinyallerle kazanç fırsatlarını kaçırma." },
-    { icon: "🛡️", title: "Risk Yönetimi", desc: "Otomatik stop-loss ve take-profit seviyeleriyle sermayeni koru." },
-    { icon: "📈", title: "Kazanca Odaklı Strateji", desc: "Trendleri yakala, doğru zamanda giriş yap, kazanca koş!" },
+    { icon: "📊", title: "Teknik Gösterge Analizi", desc: "EMA, RSI, MACD ve Bollinger göstergeleriyle piyasa koşullarını inceler." },
+    { icon: "🎯", title: "Sinyal Takibi", desc: "BUY ve SELL sinyallerini giriş fiyatı, hedef ve stop seviyeleriyle listeler." },
+    { icon: "🔎", title: "Piyasa Karşılaştırması", desc: "Kodda tanımlı Bybit ve OKX fiyat karşılaştırma akışını sunar; canlı erişim kurulumda doğrulanmalıdır." },
+    { icon: "📈", title: "Geçmiş Sonuçlar", desc: "Kaydedilen sinyallerin hedef/stop sonuçlarını ve teorik performans metriklerini görüntüler." },
   ];
 
   const steps = [
-    { n: "1️⃣", t: "Panele Gir" },
-    { n: "2️⃣", t: "Sinyali Gör" },
-    { n: "3️⃣", t: "Tutanlar'a Kaydet" },
-    { n: "4️⃣", t: "VIP ile Kazan" },
-  ];
-
-  const plans = [
-    { name: "Ücretsiz", price: "0₺", tag: "Başla", features: ["Panel erişimi", "Temel sinyaller", "Paper trade"], highlight: false },
-    { name: "VIP Günlük", price: "50₺", tag: "Popüler", features: ["Özel sinyaller", "Telegram kanalı", "Anlık uyarılar"], highlight: true },
-    { name: "VIP Aylık", price: "499₺", tag: "En Avantajlı", features: ["Tüm özellikler", "Öncelikli destek", "1 ay sınırsız"], highlight: false },
+    { n: "1", t: "Piyasa verisini incele" },
+    { n: "2", t: "Sinyal ve teknik detayları görüntüle" },
+    { n: "3", t: "Hedef ve stop seviyelerini takip et" },
+    { n: "4", t: "Geçmiş sonuçları performans ekranında değerlendir" },
   ];
 
   return (
@@ -500,11 +494,11 @@ function Landing() {
 
       <section id="pricing" className="section">
         <div className="sec-head" data-reveal>
-          <h2>Üyelik Planları</h2>
-          <p>İhtiyacına göre seç, hemen başla. Kredi kartı gerekmez, istediğin zaman iptal et.</p>
+          <h2>Lisans ve Kurulum Bilgisi</h2>
+          <p>Kaynak kod, kurulum kapsamı ve alıcıya özel yapılandırma için iletişime geçin.</p>
         </div>
         <div className="grid pricing">
-          {plans.map((p, i) => (
+          {[{ name: "KELTOŞ Paneli", price: "Lisans / devir", tag: "Ürün teslimi", features: ["Web paneli kaynak kodu", "Supabase ve Edge Function kurulum dokümanları", "Alıcıya özel yapılandırma kapsamı ayrıca belirlenir"], highlight: true }].map((p, i) => (
             <div key={i} className={`card plan ${p.highlight ? "plan-pop" : ""}`} data-reveal style={{ transitionDelay: `${i * 80}ms` }}>
               <div className="plan-tag">{p.tag}</div>
               <h3>{p.name}</h3>
@@ -513,13 +507,11 @@ function Landing() {
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
               <a href={
-                p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662"
-                : p.name === "VIP Günlük" ? "https://www.shopier.com/bamironlinestore/48843519"
-                : "/signals"
+                p.name === "KELTOŞ Paneli" ? WHATSAPP : "/signals"
               }
-                target={p.name === "Ücretsiz" ? "_self" : "_blank"} rel="noreferrer" className="btn btn-primary plan-cta"
+                target={p.name === "KELTOŞ Paneli" ? "_blank" : "_self"} rel="noreferrer" className="btn btn-primary plan-cta"
               >
-                {p.name === "Ücretsiz" ? "🚀 Ücretsiz Başla" : "💳 Hemen Satın Al"}
+                {p.name === "KELTOŞ Paneli" ? "Lisans için iletişime geç" : "Panele gir"}
               </a>
             </div>
           ))}
@@ -527,9 +519,9 @@ function Landing() {
       </section>
 
       <section className="final-cta" data-reveal>
-        <h2>Bugün Kazanmaya Başla</h2>
-        <p>Balinaları önden gör, doğru zamanda giriş yap.</p>
-        <a href="/signals" className="btn btn-primary final-btn">⚡ HEMEN PANELE GİR</a>
+        <h2>KELTOŞ Kripto Analiz Paneli</h2>
+        <p>Teknik analiz ve sinyal takibi için web tabanlı panel. Otomatik emir göndermez; yatırım tavsiyesi veya kârlılık garantisi sunmaz.</p>
+        <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-primary final-btn">Lisans ve kurulum için iletişim</a>
       </section>
 
       <footer className="footer">
