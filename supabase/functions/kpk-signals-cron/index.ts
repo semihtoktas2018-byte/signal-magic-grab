@@ -281,19 +281,21 @@ interface WhaleActivity {
   biggestSide: 'BUY' | 'SELL' | null
   biggestTradeId: string | null
   biggestTradeAt: string | null
+  biggestTradePrice: number | null
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
   const r = await fetch(url)
-  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null }
+  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
   const j = await r.json() as any
-  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null }
+  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
   let biggestSide: 'BUY' | 'SELL' | null = null
   let biggestTradeId: string | null = null
   let biggestTradeAt: string | null = null
+  let biggestTradePrice: number | null = null
   for (const t of trades) {
     const price = parseFloat(t.price)
     const qty = parseFloat(t.size)
@@ -304,6 +306,7 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
         biggestUsd = usd
         biggestSide = isBuy ? 'BUY' : 'SELL'
         biggestTradeId = String(t.execId ?? '')
+        biggestTradePrice = price
         const tradeTime = Number(t.time)
         biggestTradeAt = Number.isFinite(tradeTime) && tradeTime > 0
           ? new Date(tradeTime).toISOString()
@@ -312,7 +315,7 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
       if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
-  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt }
+  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt, biggestTradePrice }
 }
 
 // ---------- Exchange comparison (Bybit vs OKX) ----------
@@ -706,11 +709,11 @@ async function runCron() {
         errors.push(`${coin} okx: ${ee.message}`)
       }
 
-      if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt) {
+      if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt && a.whale.biggestTradePrice !== null) {
         const { error: whaleErr } = await supabase.from('whale_events').upsert({
           source_trade_id: a.whale.biggestTradeId,
           coin, side: a.whale.biggestSide,
-          amount_usd: a.whale.biggestUsd, price: a.price,
+          amount_usd: a.whale.biggestUsd, price: a.whale.biggestTradePrice,
           created_at: a.whale.biggestTradeAt,
         }, { onConflict: 'source_trade_id', ignoreDuplicates: true })
         if (whaleErr) errors.push(`${coin} whale insert: ${whaleErr.message}`)
