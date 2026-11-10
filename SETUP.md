@@ -95,16 +95,18 @@ Migration'lar (`supabase/migrations/`) tabloları, RLS'i ve `pg_cron` işini kur
 (düz metin saklanmaz). SQL Editor'de:
 
 ```sql
-select vault.create_secret('EDGE-FUNCTION-CRON_SECRET-ILE-AYNI-DEGER', 'cron_secret');
+select vault.create_secret('CRON_SECRET_DEGERI', 'cron_secret');
+select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'supabase_url');
+select vault.create_secret('sb_publishable_<PROJECT_KEY>', 'supabase_publishable_key');
 ```
 
 Bu değer, edge function'ın `CRON_SECRET` secret'iyle **birebir aynı** olmalıdır.
 Eşleşmezse fonksiyon 401 döner ve sinyal üretilmez.
 
-`20260926120000_reschedule_cron_to_edge_function.sql` migration'ı, cron işini
-5 dakikada bir şu adrese POST atacak şekilde kurar:
-`https://<PROJECT_REF>.supabase.co/functions/v1/kpk-signals-cron`
-(URL'yi kendi ref'inizle güncelleyin. Aynı SQL içindeki `apikey` ve `Authorization` başlıklarında bulunan publishable key'i de kendi Supabase projenizin publishable key'iyle değiştirin. Bu migration şu anda mevcut proje ref'i ve public key ile sabitlenmiştir; yeni alıcı kurulumunda olduğu gibi kullanılamaz.)
+`20260926120000_reschedule_cron_to_edge_function.sql` migration'ı URL'yi,
+publishable key'i ve CRON_SECRET değerini Vault'tan okur. Bu nedenle üç Vault
+secret'ı migration çalıştırılmadan önce oluşturulmalıdır; SQL dosyasını alıcıya
+özel URL veya anahtarla elle düzenlemek gerekmez.
 
 Cron'un çalıştığını kontrol:
 ```sql
@@ -112,12 +114,9 @@ select * from cron.job;                          -- iş kayıtlı mı
 select * from cron.job_run_details order by start_time desc limit 10;  -- son koşular
 ```
 
-> **Cron migration notu:** İlk cron migration'ı artık sabit job ID kullanmaz;
-> `kpk-signals-cron` adlı işi kaldırıp geçici Lovable endpoint'ini tanımlar.
-> Sonraki `20260926120000_...` migration'ı aynı adlı işi Supabase Edge Function
-> adresine taşır. Supabase pg_cron, isimli `schedule` ve `unschedule` işlevlerini
-> destekler. İkinci migration'daki proje URL'si ve publishable key, alıcının
-> Supabase projesine göre düzenlenmeden çalıştırılmamalıdır.
+> **Cron migration notu:** İlk migration yalnızca eski isimli işi temizler; eski
+> Lovable endpoint'ine istek göndermez. Sonraki migration, alıcıya ait Vault
+> secret'ları kullanarak `kpk-signals-cron` işini oluşturur.
 
 ---
 
@@ -140,7 +139,7 @@ unutmayın.
 - [ ] `.env` dolduruldu, `VITE_SUPABASE_URL` doğru.
 - [ ] Edge Function Secrets girildi (`SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET`).
 - [ ] Vault'ta `cron_secret` var ve `CRON_SECRET` ile aynı.
-- [ ] `config.toml` ve cron migration'ındaki proje ref'i sizinki.
+- [ ] `config.toml` yerel proje adı geneldir; Vault'taki `supabase_url` ve `supabase_publishable_key` sizin projenize aittir.
 - [ ] `supabase functions deploy` iki fonksiyonu da deploy etti.
 - [ ] `cron.job_run_details` başarılı koşu gösteriyor.
 - [ ] Panelde sinyaller, fiyatlar ve Fear & Greed görünüyor.
