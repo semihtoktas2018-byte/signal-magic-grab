@@ -1,5 +1,11 @@
 -- lovable-cron-fallback-reviewed: 288 runs/day; existing production signal scan on 15m candles, cadence preserved, only the request timeout is fixed
-select cron.unschedule(1);
+-- Remove only this application's named job. Never assume job id 1 belongs to KELTOŞ.
+do $$
+begin
+  perform cron.unschedule('kpk-signals-cron');
+exception when others then
+  raise notice 'kpk-signals-cron job not found, skipping unschedule';
+end $$;
 
 select cron.schedule(
   'kpk-signals-cron',
