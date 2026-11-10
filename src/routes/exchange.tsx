@@ -90,9 +90,9 @@ function ExchangeCompare() {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -136,7 +136,7 @@ function ExchangeCompare() {
     .kt-page-shell .promo-title { font-weight:800; font-size:0.96rem; margin-bottom:2px; }
     .kt-page-shell .promo-sub { color: var(--kt-muted); font-size:0.78rem; line-height:1.5; }
     .kt-page-shell .promo-btn { background: linear-gradient(135deg, #7dd3fc, #4ade80); color: #04121f; text-decoration:none; font-weight:900; border-radius:12px; padding:0.85rem 1.1rem; white-space:nowrap; }
-    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:#7dd3fc; }
+    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:var(--brand-accent, #7dd3fc); }
     @media (max-width:620px) {
       .kt-page-shell { padding:16px; }
       .kt-page-shell .promo { flex-direction:column; align-items:flex-start; }
