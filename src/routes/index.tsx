@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Market Analysis Terminal" },
       { name: "description", content: "Teknik göstergeler, kripto sinyalleri, piyasa karşılaştırması ve geçmiş sinyal sonuçlarını izleme paneli." },
-      { property: "og:title", content: "{brand.brand_name || "Kripto Analiz Paneli"}" },
+      { property: "og:title", content: "Market Analysis Terminal" },
       { property: "og:description", content: "Teknik göstergeler ve sinyal geçmişini izlemek için kripto analiz paneli." },
       { property: "og:image", content: "/keltos-hero.png" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
