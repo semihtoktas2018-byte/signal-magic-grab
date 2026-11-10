@@ -48,7 +48,7 @@ interface Signal {
   score: number;
   quality: string;
   price: number;
-  result: "tuttu" | "tutmadi" | "bekliyor";
+  result: "tuttu" | "tutmadi" | "bekliyor" | "suresi_doldu";
   created_at: string;
 }
 
@@ -186,6 +186,7 @@ function targetStop(signal: "BUY" | "SELL", entry: number) {
 function resultLabel(r: Signal["result"]) {
   if (r === "tuttu") return { text: "✓ Tuttu", cls: "res-win" };
   if (r === "tutmadi") return { text: "✗ Tutmadı", cls: "res-loss" };
+  if (r === "suresi_doldu") return { text: "⌛ Süresi doldu", cls: "res-wait" };
   return { text: "⏳ Bekliyor", cls: "res-wait" };
 }
 
