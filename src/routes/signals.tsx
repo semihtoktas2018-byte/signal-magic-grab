@@ -768,7 +768,7 @@ function SignalTerminal() {
         .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip, .term.light-mode .chart-panel { background: rgba(255,255,255,0.06); }
       `}</style>
       <nav className="term-nav">
-        <span className="term-brand">{brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 30, maxWidth: 140, objectFit: "contain", verticalAlign: "middle" }} /> : (brand.brand_name || "Market Analysis Terminal")}</span>
+        <span className="term-brand">{brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 30, maxWidth: 140, objectFit: "contain", verticalAlign: "middle" }} /> : <span>{brand.brand_name || "Market Analysis Terminal"}{brand.tagline && <small style={{ display: "block", fontSize: 10, letterSpacing: "0.02em", opacity: 0.7, marginTop: 2 }}>{brand.tagline}</small>}</span>}</span>
         <div className="term-links">
           <a href="/">{t("home")}</a>
           <a href="/signals" className="active">{t("signalTerminal")}</a>
