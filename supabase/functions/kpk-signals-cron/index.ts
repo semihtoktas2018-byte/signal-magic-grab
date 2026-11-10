@@ -431,7 +431,7 @@ async function fetchResolveKlines(symbol: string, startMs: number, endMs: number
 
 // ---------- TP/SL resolution using historical klines ----------
 interface TPSLResolution {
-  result: 'tuttu' | 'tutmadi' | null
+  result: 'tuttu' | 'tutmadi' | 'suresi_doldu' | null
   closedAt: string | null
   error?: string
 }
@@ -450,38 +450,59 @@ async function resolveTPSLWithKlines(
   const batch = await fetchResolveKlines(symbol, createdAtMs, endMs)
   const parsed: Array<{ openTime: number; high: number; low: number }> = []
   for (const k of batch) {
-    parsed.push({ openTime: parseInt(k[0], 10), high: parseFloat(k[2]), low: parseFloat(k[3]) })
+    const openTime = Number(k[0])
+    const high = Number(k[2])
+    const low = Number(k[3])
+    if (Number.isFinite(openTime) && Number.isFinite(high) && Number.isFinite(low) && high > 0 && low > 0) {
+      parsed.push({ openTime, high, low })
+    }
   }
 
-  if (parsed.length === 0) {
-    return { result: null, closedAt: null }
-  }
+  if (parsed.length === 0) return { result: null, closedAt: null }
 
   parsed.sort((a, b) => a.openTime - b.openTime)
+  const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime)
 
   const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
   const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
 
-  let prevOpen = -1
-  for (const candle of parsed) {
-    if (candle.openTime === prevOpen) continue
-    prevOpen = candle.openTime
+  for (const candle of unique) {
+    // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
     if (candle.openTime < createdAtMs) continue
-    if (candle.openTime >= endMs) break
+    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > Date.now()) break
 
     const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
     const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
 
-    if (tpHit && slHit) {
-      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-    } else if (tpHit) {
-      return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
-    } else if (slHit) {
-      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+    // Aynı 15 dakikalık mumda TP ve SL birlikte görülürse muhafazakâr olarak SL say.
+    if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+    if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
+    if (slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+  }
+
+  if (Date.now() < endMs) return { result: null, closedAt: null }
+
+  // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
+  const intervalMs = 15 * 60 * 1000
+  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
+  const expectedCount = Math.max(0, Math.ceil((endMs - firstExpected) / intervalMs))
+  const observedTimes = new Set(unique
+    .filter((candle) => candle.openTime >= firstExpected && candle.openTime < endMs &&
+      candle.openTime + intervalMs <= endMs)
+    .map((candle) => candle.openTime))
+  let complete = expectedCount > 0 && observedTimes.size === expectedCount
+  if (complete) {
+    for (let i = 0; i < expectedCount; i++) {
+      if (!observedTimes.has(firstExpected + i * intervalMs)) {
+        complete = false
+        break
+      }
     }
   }
 
-  return { result: null, closedAt: null }
+  return complete
+    ? { result: 'suresi_doldu', closedAt: new Date(endMs).toISOString() }
+    : { result: null, closedAt: null }
 }
 
 // ---------- Bybit fetchers ----------
@@ -803,10 +824,12 @@ async function runCron() {
         if (error) errors.push(`update ${row.id}: ${error.message}`)
         else {
           closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
-          try {
-            await sendResult(row.coin, row.signal, resolution.result, createdAt)
-          } catch (te: any) {
-            errors.push(`${row.coin} sonuç telegram: ${te.message}`)
+          if (resolution.result !== 'suresi_doldu') {
+            try {
+              await sendResult(row.coin, row.signal, resolution.result, createdAt)
+            } catch (te: any) {
+              errors.push(`${row.coin} sonuç telegram: ${te.message}`)
+            }
           }
         }
       }
