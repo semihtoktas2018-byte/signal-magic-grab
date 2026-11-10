@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BrandingRouteImport } from './routes/branding'
 import { Route as ExchangeRouteImport } from './routes/exchange'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as WhaleRouteImport } from './routes/whale'
 
+const BrandingRoute = BrandingRouteImport.update({
+  id: '/branding',
+  path: '/branding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,6 +55,7 @@ const WhaleRoute = WhaleRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/branding': typeof BrandingRoute
   '/exchange': typeof ExchangeRoute
   '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/branding': typeof BrandingRoute
   '/exchange': typeof ExchangeRoute
   '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/branding': typeof BrandingRoute
   '/exchange': typeof ExchangeRoute
   '/login': typeof LoginRoute
   '/performance': typeof PerformanceRoute
@@ -75,12 +84,13 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
+    '/' | '/branding' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
+  to: '/' | '/branding' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
   id:
     | '__root__'
     | '/'
+    | '/branding'
     | '/exchange'
     | '/login'
     | '/performance'
@@ -90,6 +100,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BrandingRoute: typeof BrandingRoute
   ExchangeRoute: typeof ExchangeRoute
   LoginRoute: typeof LoginRoute
   PerformanceRoute: typeof PerformanceRoute
@@ -104,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/branding': {
+      id: '/branding'
+      path: '/branding'
+      fullPath: '/branding'
+      preLoaderRoute: typeof BrandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exchange': {
@@ -146,6 +164,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BrandingRoute: BrandingRoute,
   ExchangeRoute: ExchangeRoute,
   LoginRoute: LoginRoute,
   PerformanceRoute: PerformanceRoute,
