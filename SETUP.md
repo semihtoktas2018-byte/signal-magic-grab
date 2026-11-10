@@ -47,6 +47,7 @@ Bu değerler **repoya girilmez**, yalnızca Supabase Secrets'a elle eklenir:
 | `SUPABASE_URL` | Project Settings → API | Fonksiyonların DB'ye bağlanması |
 | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API (service_role) | Cron'un tablolara yazması |
 | `TELEGRAM_BOT_TOKEN` | Telegram @BotFather | Sinyal/sonuç bildirimi |
+| `TELEGRAM_CHAT_ID` | Hedef Telegram kanal/grup kimliği | Bildirimlerin gönderileceği hedef |
 | `CRON_SECRET` | Kendiniz üretin (uzun rastgele değer) | pg_cron → fonksiyon doğrulaması |
 
 > `SUPABASE_URL` ve `SUPABASE_SERVICE_ROLE_KEY` çoğu Supabase projesinde edge
@@ -54,9 +55,7 @@ Bu değerler **repoya girilmez**, yalnızca Supabase Secrets'a elle eklenir:
 >
 > `CRON_SECRET` üretmek için örn: `openssl rand -hex 32`
 
-Telegram kanal kimliği (`TELEGRAM_CHAT_ID`) kodda sabittir
-(`supabase/functions/kpk-signals-cron/index.ts`). Kendi kanalınızı kullanmak
-için oradaki değeri değiştirin.
+Her alıcı kendi Telegram bot token'ını ve hedef kanal/grup kimliğini (`TELEGRAM_CHAT_ID`) Supabase Edge Function Secrets bölümüne eklemelidir. Kanal/grupta botun mesaj gönderme yetkisi bulunmalıdır. Bildirim başlığı, `app_branding` tablosundaki marka adını kullanır; marka kaydı yoksa genel ürün adı gösterilir.
 
 ---
 
@@ -143,7 +142,7 @@ unutmayın.
 ## 5. Doğrulama Kontrol Listesi
 
 - [ ] `.env` dolduruldu, `VITE_SUPABASE_URL` doğru.
-- [ ] Edge Function Secrets girildi (`SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET`).
+- [ ] Edge Function Secrets girildi (`SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `CRON_SECRET`).
 - [ ] Vault'ta `cron_secret` var ve `CRON_SECRET` ile aynı.
 - [ ] `config.toml` yerel proje adı geneldir; Vault'taki `supabase_url` ve `supabase_publishable_key` sizin projenize aittir.
 - [ ] `supabase functions deploy` iki fonksiyonu da deploy etti.
