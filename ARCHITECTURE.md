@@ -45,7 +45,8 @@ Gizli değerler Supabase Edge Function Secrets içinde tutulmalıdır. `SUPABASE
 - Canlı Bybit/OKX erişimi, Supabase proje ayarları, cron çalışma geçmişi ve Telegram teslimatı bu kod incelemesinde doğrulanmadı.
 - `exchange_prices` tablosunun canlı veriyle beslenmesi ve ekranın dolu görünmesi ayrı doğrulama gerektirir.
 - Sinyal performans metrikleri geçmiş kayıtların ve sabit TP/SL kurallarının teorik değerlendirmesidir. Komisyon, spread, kayma ve gerçek emir gerçekleşmesi dahil değildir.
-- Resolver 48 saatlik TP/SL penceresi dışında kalan ve hedef/stop görmeyen sinyalleri ayrı bir zaman aşımı durumu ile kapatmıyor. Bu kayıtlar bekliyor olarak kalabilir; performans istatistikleri yorumlanırken bu sınırlama dikkate alınmalıdır.
+- Resolver 48 saatlik TP/SL penceresinden sonra yalnızca eksiksiz 15 dakikalık mum kapsamı doğrulanırsa `suresi_doldu` durumunu yazar. Eksik mum varsa kayıt beklemede kalır. Süresi dolan kayıtlar isabet oranı ve teorik EV paydasına dahil edilmez.
+- Bu yeni resolver davranışı feature branch kodundadır; canlı Edge Function dağıtımı yapılmış olduğu anlamına gelmez.
 - Otomatik işlem/emir iletimi bu dokümanda mevcut özellik olarak sunulmaz.
 - CI üretim derlemesini kontrol eder. Genel ESLint kontrolü şu anda başarısızdır; lint temizliği tamamlanmış değildir.
 
