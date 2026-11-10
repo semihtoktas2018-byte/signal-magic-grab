@@ -95,4 +95,4 @@ Bu maddeler kararlaştırılmadan depoya varsayımsal bir açık kaynak veya tic
 
 ## 8. Satış görüşmesinde kullanılabilecek doğru ifade
 
-“KELTOŞ, teknik gösterge tabanlı kripto sinyallerini ve piyasa izleme verilerini tek panelde sunan, kendi altyapınıza kurulabilen bir yazılım projesidir. Kaynak kod ve kurulum dokümantasyonu teslim edilebilir. Canlı kullanım, alıcıya ait Supabase, Telegram ve veri kaynağı ayarlarıyla kurulum ve kabul testlerinden sonra doğrulanır. Yazılım kâr veya sinyal başarısı garantisi vermez.”
+“Bu yazılım, teknik gösterge tabanlı kripto sinyallerini ve piyasa izleme verilerini tek panelde sunan, kendi altyapınıza kurulabilen bir üründür. Kaynak kod ve kurulum dokümantasyonu teslim edilebilir. Canlı kullanım, alıcıya ait Supabase, Telegram ve veri kaynağı ayarlarıyla kurulum ve kabul testlerinden sonra doğrulanır. Yazılım kâr veya sinyal başarısı garantisi vermez.”
