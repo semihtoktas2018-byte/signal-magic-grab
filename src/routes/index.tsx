@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligence"));
 
@@ -22,9 +23,6 @@ export const Route = createFileRoute("/")({
 });
 
 const WHATSAPP = "https://wa.me/905446452430";
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
-
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -59,20 +57,20 @@ interface MergedSignal {
 
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/kpk_signals?select=coin,signal,price,created_at,result,score&order=created_at.asc&limit=500`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    const rows = await res.json();
-    return (rows || []).map((row: any) => ({
+    const { data, error } = await supabase
+      .from("kpk_signals")
+      .select("coin,signal,price,created_at,result,score")
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) return [];
+    return (data ?? []).map((row) => ({
       coin: row.coin,
       signal: row.signal,
       price: String(row.price),
       date: row.created_at,
       result: row.result || "bekliyor",
       score: row.score,
-    })).sort((a: MergedSignal, b: MergedSignal) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }));
   } catch {
     return [];
   }
