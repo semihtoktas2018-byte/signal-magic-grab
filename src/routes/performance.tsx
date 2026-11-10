@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Performans & İsabet Oranı" },
+      { title: "Performance & Signal History" },
       { name: "description", content: "Sinyal performansı, isabet oranı, beklenen getiri (EV) ve coin bazında başarı — her sinyalin tıklanabilir açıklamasıyla." },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],
@@ -113,6 +114,7 @@ async function loadSignals(since: Date): Promise<Signal[]> {
 }
 
 function Performance() {
+  const brand = useBranding();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
@@ -654,7 +656,7 @@ function Performance() {
             Bu panel yatırım tavsiyesi değildir; geçmiş performans gelecek getiriyi garanti etmez.
           </div>
           <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, letterSpacing: ".08em", color: "#0f7a4d", fontWeight: 600 }}>
-            A BAMIR ONLINE STORE'S PRODUCTION
+            {brand.footer_text || brand.brand_name || ""}
           </div>
         </div>
       )}
