@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { getLang } from "../i18n";
+import { BrandingProvider } from "../branding";
 
 function NotFoundComponent() {
   return (
@@ -79,15 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Keltos Signal Importer imports GitHub repositories to integrate trading signals into your system." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
+      { title: "Market Analysis Terminal" },
+      { name: "description", content: "Technical market analysis, signal monitoring and historical performance dashboard." },
+      { name: "author", content: "Market Analysis Terminal" },
+      { property: "og:title", content: "Market Analysis Terminal" },
       { property: "og:description", content: "Keltos Signal Importer imports GitHub repositories to integrate trading signals into your system." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:site", content: "" },
+      { name: "twitter:title", content: "Market Analysis Terminal" },
       { name: "twitter:description", content: "Keltos Signal Importer imports GitHub repositories to integrate trading signals into your system." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
@@ -131,7 +132,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      {/* Required: nested routes render here. Removing <BrandingProvider><Outlet /></BrandingProvider> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );
