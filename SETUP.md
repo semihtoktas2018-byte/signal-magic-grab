@@ -150,10 +150,16 @@ unutmayın.
 - [ ] `supabase functions deploy` iki fonksiyonu da deploy etti.
 - [ ] `cron.job_run_details` başarılı koşu gösteriyor.
 - [ ] Panelde sinyaller, fiyatlar ve Fear & Greed görünüyor.
+- [ ] Whale Radar migration uygulanmış ve olay kayıtları doğrulanmış.
+- [ ] 48 saatlik sinyal resolver davranışı, tam mum kapsamı ve eksik veri senaryolarıyla test edilmiş.
+- [ ] `suresi_doldu` kayıtlarının isabet oranı ve EV hesaplarına girmediği doğrulanmış.
+- [ ] Alıcıya ait Telegram botu ve hedef kanalına test bildirimi ulaştığı doğrulanmış.
+- [ ] Alıcıya ait Supabase projesinde RLS, cron, Edge Function logları ve API rate-limit davranışı doğrulanmış.
+- [ ] Mobil ve masaüstü ekranları gerçek veriyle kontrol edilmiş.
 
 ---
 
-## Marka Notu
+## Satış Öncesi Teslimat Sınırı\n\nBu rehber kaynak kodun kendi altyapısına kurulumu içindir. Kaynak kodun derlenmesi, canlı servislerin çalıştığını kanıtlamaz. Alıcıya teslimden önce kendi Supabase projesi, domain/hosting, Telegram botu ve API erişimiyle ayrı bir kurulum ve kabul testi yapılmalıdır. Üçüncü taraf servis ücretleri ve hesapları alıcıya aittir. Canlıya geçiş için tüm kontrol listesi tamamlanmalıdır.\n\n## Marka Notu
 
 Footer imzası **"A BAMIR ONLINE STORE'S PRODUCTION"** korunur. "KELTOŞ" markası,
 Shopier ödeme linkleri, WhatsApp numarası ve Telegram kanalı kod içinde
