@@ -45,6 +45,7 @@ Gizli değerler Supabase Edge Function Secrets içinde tutulmalıdır. `SUPABASE
 - Canlı Bybit/OKX erişimi, Supabase proje ayarları, cron çalışma geçmişi ve Telegram teslimatı bu kod incelemesinde doğrulanmadı.
 - `exchange_prices` tablosunun canlı veriyle beslenmesi ve ekranın dolu görünmesi ayrı doğrulama gerektirir.
 - Sinyal performans metrikleri geçmiş kayıtların ve sabit TP/SL kurallarının teorik değerlendirmesidir. Komisyon, spread, kayma ve gerçek emir gerçekleşmesi dahil değildir.
+- Resolver 48 saatlik TP/SL penceresi dışında kalan ve hedef/stop görmeyen sinyalleri ayrı bir zaman aşımı durumu ile kapatmıyor. Bu kayıtlar bekliyor olarak kalabilir; performans istatistikleri yorumlanırken bu sınırlama dikkate alınmalıdır.
 - Otomatik işlem/emir iletimi bu dokümanda mevcut özellik olarak sunulmaz.
 - CI üretim derlemesini kontrol eder. Genel ESLint kontrolü şu anda başarısızdır; lint temizliği tamamlanmış değildir.
 
@@ -52,6 +53,6 @@ Gizli değerler Supabase Edge Function Secrets içinde tutulmalıdır. `SUPABASE
 
 1. Temiz Supabase projesinde migration'ları test etmek ve cron kurulumunu idempotent hale getirmek.
 2. Dış API hataları, eksik veri ve rate-limit durumlarında görünür sağlık durumu/uyarı eklemek.
-3. Sinyal resolver'ı için testler ve geçmiş mumlarla kontrollü doğrulama eklemek.
+3. Sinyal resolver'ı için testler ve geçmiş mumlarla kontrollü doğrulama eklemek; 48 saat sonunda hedef/stop görmeyen sinyaller için ayrı bir zaman aşımı durumu tasarlamak.
 4. RLS, Edge Function erişimi ve secret rotasyonu için güvenlik incelemesi yapmak.
 5. Alıcıya özel marka, kanal, Supabase proje ref'i ve dağıtım ayarlarını yapılandırılabilir hale getirmek.
