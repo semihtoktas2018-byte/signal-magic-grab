@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/whale")({
   head: () => ({
     meta: [
-      { title: "Whale Radar — KELTOŞ" },
+      { title: "Whale Radar" },
       { name: "description", content: "Bybit spot piyasasında izlenen coinlerin son 1000 işlemi içinde 250.000 USD ve üzerindeki tekil işlemleri listeler; cüzdan hareketlerini izlemez." },
     ],
   }),
@@ -58,6 +59,7 @@ function timeAgo(iso: string): string {
 }
 
 function WhaleRadar() {
+  const brand = useBranding();
   const [events, setEvents] = useState<WhaleEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -361,7 +363,7 @@ function WhaleRadar() {
           </div>
         )}
 
-        <div className="footer-mark">KELTOŞ SIGNAL TERMINAL</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || "Whale Radar"}</div>
       </div>
     </div>
   );
