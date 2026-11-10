@@ -33,7 +33,7 @@ interface Signal {
   score: number;
   quality: string;
   price: number;
-  result: "tuttu" | "tutmadi" | "bekliyor";
+  result: "tuttu" | "tutmadi" | "bekliyor" | "suresi_doldu";
   created_at: string;
   closed_at?: string | null;
   components?: SignalComponents | null;
@@ -41,7 +41,7 @@ interface Signal {
   score_band?: string | null;
 }
 interface CoinStat {
-  coin: string; total: number; tuttu: number; tutmadi: number; bekliyor: number; rate: number; closed: number;
+  coin: string; total: number; tuttu: number; tutmadi: number; bekliyor: number; expired: number; rate: number; closed: number;
 }
 
 const TP_PCT = 0.025;
@@ -144,10 +144,11 @@ function Performance() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const closed = signals.filter((s) => s.result !== "bekliyor");
+  const closed = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
   const tuttu = signals.filter((s) => s.result === "tuttu").length;
   const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
   const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
+  const expired = signals.filter((s) => s.result === "suresi_doldu").length;
   const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
   const ev = closed.length > 0
     ? ((tuttu * TP_PCT - tutmadi * SL_PCT) / closed.length) * 100
@@ -159,17 +160,18 @@ function Performance() {
 
   const buySignals = signals.filter((s) => s.signal === "BUY");
   const sellSignals = signals.filter((s) => s.signal === "SELL");
-  const buyClosed = buySignals.filter((s) => s.result !== "bekliyor");
-  const sellClosed = sellSignals.filter((s) => s.result !== "bekliyor");
+  const buyClosed = buySignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
+  const sellClosed = sellSignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
   const buyRate = buyClosed.length > 0 ? Math.round((buySignals.filter((s) => s.result === "tuttu").length / buyClosed.length) * 100) : 0;
   const sellRate = sellClosed.length > 0 ? Math.round((sellSignals.filter((s) => s.result === "tuttu").length / sellClosed.length) * 100) : 0;
 
   const coinMap = new Map<string, CoinStat>();
   signals.forEach((s) => {
-    const e = coinMap.get(s.coin) || { coin: s.coin, total: 0, tuttu: 0, tutmadi: 0, bekliyor: 0, rate: 0, closed: 0 };
+    const e = coinMap.get(s.coin) || { coin: s.coin, total: 0, tuttu: 0, tutmadi: 0, bekliyor: 0, expired: 0, rate: 0, closed: 0 };
     e.total++;
     if (s.result === "tuttu") e.tuttu++;
     else if (s.result === "tutmadi") e.tutmadi++;
+    else if (s.result === "suresi_doldu") e.expired++;
     else e.bekliyor++;
     e.closed = e.tuttu + e.tutmadi;
     e.rate = e.closed > 0 ? Math.round((e.tuttu / e.closed) * 100) : 0;
@@ -180,9 +182,9 @@ function Performance() {
   const filtered = filter === "hepsi" ? signals : signals.filter((s) => s.signal === filter);
 
   const rateColor = (r: number) => r >= 70 ? "#22c55e" : r >= 45 ? "#f5b629" : "#ef4444";
-  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : "rgba(245,182,41,.1)";
-  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : "#f5b629";
-  const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : "⏳ Bekliyor";
+  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : r === "suresi_doldu" ? "rgba(148,163,184,.15)" : "rgba(245,182,41,.1)";
+  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : r === "suresi_doldu" ? "#94a3b8" : "#f5b629";
+  const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : r === "suresi_doldu" ? "⌛ Süresi doldu" : "⏳ Bekliyor";
 
   function explain(s: Signal): { what: string; why: string[] } {
     const entry = Number(s.price);
@@ -190,6 +192,7 @@ function Performance() {
     let what = "";
     if (s.result === "tuttu") what = `Fiyat hedefe (${fmtNum(target)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kazanç +%2.5.`;
     else if (s.result === "tutmadi") what = `Fiyat stop seviyesine (${fmtNum(stop)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kayıp -%2.`;
+    else if (s.result === "suresi_doldu") what = "48 saatlik izleme süresi tamamlandı; eksiksiz mum verisinde hedef veya stop görülmedi. İsabet oranı ve EV hesabına dahil edilmez.";
     else {
       const cur = livePrices[s.coin];
       const live = cur ? computeLive(s, cur) : null;
@@ -485,6 +488,11 @@ function Performance() {
               <div className="stat-val" style={{ color: "#ef4444" }}>{tutmadi}</div>
               <div className="stat-label">{t("missedNo")}</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{ color: "#94a3b8" }}>{expired}</div>
+              <div className="stat-label">Süresi doldu</div>
+              <div className="stat-sub">İsabet oranı ve EV dışında</div>
+            </div>
           </div>
 
           <div className="ev-row">
@@ -569,7 +577,7 @@ function Performance() {
                   <div key={c.coin} className="coin-card">
                     <div>
                       <div className="coin-name">{coinShort(c.coin)}</div>
-                      <div className="coin-sub">{c.closed} kapalı · {c.tuttu}✅ {c.tutmadi}❌ · {c.bekliyor}⏳</div>
+                      <div className="coin-sub">{c.closed} kapalı · {c.tuttu}✅ {c.tutmadi}❌ · {c.bekliyor}⏳ · {c.expired} süre doldu</div>
                     </div>
                     <div className="rate-badge" style={{ color: c.closed > 0 ? rateColor(c.rate) : "#8a93a3" }}>{c.closed > 0 ? `${c.rate}%` : "—"}</div>
                   </div>
