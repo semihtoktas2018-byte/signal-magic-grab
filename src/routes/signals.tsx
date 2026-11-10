@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 export const Route = createFileRoute("/signals")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Sinyal Terminali" },
+      { title: "Signal Terminal" },
       {
         name: "description",
         content:
@@ -766,7 +767,7 @@ function SignalTerminal() {
         .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip, .term.light-mode .chart-panel { background: rgba(255,255,255,0.06); }
       `}</style>
       <nav className="term-nav">
-        <span className="term-brand">⚡ KELTOŞ SİNYAL TERMİNALİ</span>
+        <span className="term-brand">⚡ {brand.brand_name || "Signal Terminal"}</span>
         <div className="term-links">
           <a href="/">{t("home")}</a>
           <a href="/signals" className="active">{t("signalTerminal")}</a>
@@ -961,7 +962,7 @@ function SignalTerminal() {
           )}
 
           <div className="disc">{t("panelDisclaimer")}</div>
-          <div className="sig-foot">A BAMIR ONLINE STORE'S PRODUCTION</div>
+          <div className="sig-foot">{brand.footer_text || brand.brand_name || ""}</div>
         </div>
       )}
     </div>
