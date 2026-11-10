@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/exchange")({
   head: () => ({
     meta: [
-      { title: "Borsa Karşılaştırma — KELTOŞ" },
+      { title: "Exchange Comparison" },
       { name: "description", content: "Bybit ve OKX arasındaki anlık fiyat farkını canlı takip et." },
     ],
   }),
@@ -50,6 +51,7 @@ function timeAgo(iso: string): string {
 }
 
 function ExchangeCompare() {
+  const brand = useBranding();
   const [prices, setPrices] = useState<ExchangePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -206,13 +208,13 @@ function ExchangeCompare() {
         <div className="promo">
           <div style={{ fontSize: 30 }}>🛍️</div>
           <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
+            <div className="promo-title"></div>
+            <div className="promo-sub"></div>
           </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
+          <a href="/" target="_blank" rel="noreferrer" className="promo-btn"></a>
         </div>
 
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || ""}</div>
       </div>
     </div>
   );
