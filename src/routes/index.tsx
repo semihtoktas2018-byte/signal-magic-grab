@@ -12,7 +12,7 @@ const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligenc
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Kripto Sinyal ve Piyasa Analiz Paneli" },
+      { title: "Market Analysis Terminal" },
       { name: "description", content: "Teknik göstergeler, kripto sinyalleri, piyasa karşılaştırması ve geçmiş sinyal sonuçlarını izleme paneli." },
       { property: "og:title", content: "{brand.brand_name || "Kripto Analiz Paneli"}" },
       { property: "og:description", content: "Teknik göstergeler ve sinyal geçmişini izlemek için kripto analiz paneli." },
@@ -467,11 +467,11 @@ function Landing() {
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
               <a href={
-                p.name === "KELTOŞ Paneli" ? WHATSAPP : "/signals"
+                WHATSAPP
               }
-                target={p.name === "KELTOŞ Paneli" ? "_blank" : "_self"} rel="noreferrer" className="btn btn-primary plan-cta"
+                target={p.name === "Market Analysis Paneli" ? "_blank" : "_self"} rel="noreferrer" className="btn btn-primary plan-cta"
               >
-                {p.name === "KELTOŞ Paneli" ? "Lisans için iletişime geç" : "Panele gir"}
+                {p.name === "Market Analysis Paneli" ? "Lisans için iletişime geç" : "Panele gir"}
               </a>
             </div>
           ))}
@@ -479,7 +479,7 @@ function Landing() {
       </section>
 
       <section className="final-cta" data-reveal>
-        <h2>KELTOŞ Kripto Analiz Paneli</h2>
+        <h2>{brand.brand_name || "Kripto Analiz Paneli"}</h2>
         <p>Teknik analiz ve sinyal takibi için web tabanlı panel. Otomatik emir göndermez; yatırım tavsiyesi veya kârlılık garantisi sunmaz.</p>
         <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-primary final-btn">Lisans ve kurulum için iletişim</a>
       </section>
