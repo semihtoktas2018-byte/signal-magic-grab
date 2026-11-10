@@ -219,7 +219,7 @@ function Landing() {
     if (result === "tuttu") return "#22c55e";
     if (result === "tutmadi") return "#ef4444";
     if (result === "suresi_doldu") return "#94a3b8";
-    return "#f5b629";
+    return "var(--brand-accent, #f5b629)";
   };
   const badgeText = (result?: string) => {
     if (result === "tuttu") return "Tuttu";
@@ -254,7 +254,7 @@ function Landing() {
 
       <nav className="nav">
         <div className="brand-logo">
-          <span className="crown">♛</span> {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : (brand.brand_name || "Market Analysis Terminal")}
+          {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : (brand.brand_name || "Market Analysis Terminal")}
         </div>
         <div className="nav-links">
           <a href="/" className="nav-active">{t("home")}</a>
@@ -275,7 +275,7 @@ function Landing() {
               setLangStorage(next);
             }}
             aria-label="Language"
-            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 999, padding: "8px 10px", fontWeight: 700 }}
+            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "var(--brand-accent, #f5b629)", borderRadius: 999, padding: "8px 10px", fontWeight: 700 }}
           >
             <option value="tr">TR</option>
             <option value="en">EN</option>
@@ -507,7 +507,7 @@ function Landing() {
 }
 
 const css = `
-.landing{--bg:#05070c;--bg2:#0a0e16;--gold:var(--brand-accent,#f5b629);--gold2:#ffd76a;--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:rgba(245,182,41,.18);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
+.landing{--bg:#05070c;--bg2:#0a0e16;--gold:var(--brand-accent,#f5b629);--gold2:color-mix(in srgb,var(--brand-accent,#f5b629) 65%,white);--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:color-mix(in srgb,var(--brand-accent,#f5b629) 18%,transparent);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
 .landing::before{content:"";position:fixed;inset:0;background:radial-gradient(70% 55% at 60% 0%,rgba(245,182,41,.10),transparent 60%),radial-gradient(50% 40% at 15% 90%,rgba(245,182,41,.06),transparent 60%);pointer-events:none}
 .landing>*{position:relative;z-index:1}
 *{box-sizing:border-box}
