@@ -104,13 +104,6 @@ async function fetchMergedSignals(): Promise<MergedSignal[]> {
   return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
-function computeHitRate(signals: MergedSignal[]): string {
-  const done = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
-  if (done.length === 0) return "--";
-  const wins = done.filter((s) => s.result === "tuttu").length;
-  return String(Math.round((wins / done.length) * 100));
-}
-
 const TP_PCT = 0.025;
 const SL_PCT = 0.02;
 
@@ -179,7 +172,6 @@ function AnimatedBrand() {
 
 function Landing() {
   const ref = useReveal();
-  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 0 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
@@ -201,7 +193,6 @@ function Landing() {
       const merged = await fetchMergedSignals();
       if (cancelled) return;
 
-      setStats({ hit: "--", coins: 0 });
       setNotifSignals(merged.slice(-3).reverse());
       const open = merged
         .filter((s) => (s.result || "bekliyor") === "bekliyor")
@@ -302,7 +293,7 @@ function Landing() {
             <option value="fr">FR</option>
             <option value="ar">AR</option>
           </select>
-          <a href="/signals" className="nav-cta">{t("raceToMoney")} ⚡</a>
+          <a href="/signals" className="nav-cta">Sinyal terminali</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
               <Bell size={20} />
@@ -358,7 +349,7 @@ function Landing() {
           <div className="hero-text">
             <div className="hero-head-row">
               <div>
-                <span className="eyebrow">◆ {t("professionalCryptoSignal")}</span>
+                <span className="eyebrow">◆ Kripto analiz ve sinyal paneli</span>
                 <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">Kripto Analiz Paneli</span></h1>
               </div>
             </div>
