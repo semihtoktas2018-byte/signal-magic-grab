@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/whale")({
   head: () => ({
@@ -11,9 +12,6 @@ export const Route = createFileRoute("/whale")({
   }),
   component: WhaleRadar,
 });
-
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 interface WhaleEvent {
   id: string;
@@ -26,12 +24,13 @@ interface WhaleEvent {
 
 async function fetchWhaleEvents(): Promise<WhaleEvent[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/whale_events?select=*&order=created_at.desc&limit=100`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as WhaleEvent[];
+    const { data, error } = await supabase
+      .from("whale_events")
+      .select("id,coin,side,amount_usd,price,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) return [];
+    return (data ?? []) as WhaleEvent[];
   } catch {
     return [];
   }
