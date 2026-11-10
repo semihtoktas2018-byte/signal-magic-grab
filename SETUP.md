@@ -104,7 +104,7 @@ Eşleşmezse fonksiyon 401 döner ve sinyal üretilmez.
 `20260926120000_reschedule_cron_to_edge_function.sql` migration'ı, cron işini
 5 dakikada bir şu adrese POST atacak şekilde kurar:
 `https://<PROJECT_REF>.supabase.co/functions/v1/kpk-signals-cron`
-(URL'yi kendi ref'inizle güncelleyin.)
+(URL'yi kendi ref'inizle güncelleyin. Aynı SQL içindeki `apikey` ve `Authorization` başlıklarında bulunan publishable key'i de kendi Supabase projenizin publishable key'iyle değiştirin. Bu migration şu anda mevcut proje ref'i ve public key ile sabitlenmiştir; yeni alıcı kurulumunda olduğu gibi kullanılamaz.)
 
 Cron'un çalıştığını kontrol:
 ```sql
