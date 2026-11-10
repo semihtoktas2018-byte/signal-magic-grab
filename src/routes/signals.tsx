@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "../branding";
-import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
 export const Route = createFileRoute("/signals")({
