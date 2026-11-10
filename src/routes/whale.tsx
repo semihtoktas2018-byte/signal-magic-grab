@@ -97,9 +97,9 @@ function WhaleRadar() {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
