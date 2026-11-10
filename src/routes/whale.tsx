@@ -6,7 +6,7 @@ export const Route = createFileRoute("/whale")({
   head: () => ({
     meta: [
       { title: "Whale Radar — KELTOŞ" },
-      { name: "description", content: "Kripto piyasasında büyük cüzdan hareketlerini canlı takip et." },
+      { name: "description", content: "Bybit spot piyasasında izlenen coinlerin son 1000 işlemi içinde 250.000 USD ve üzerindeki tekil işlemleri listeler; cüzdan hareketlerini izlemez." },
     ],
   }),
   component: WhaleRadar,
@@ -362,16 +362,7 @@ function WhaleRadar() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
-          </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
-        </div>
-
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">KELTOŞ SIGNAL TERMINAL</div>
       </div>
     </div>
   );
