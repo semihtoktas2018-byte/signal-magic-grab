@@ -1,4 +1,4 @@
-# KELTOŞ Panel — Kurulum Rehberi
+# White-Label Market Analysis Terminal — Kurulum Rehberi
 
 Bu panel, kripto sinyalleri üreten bir Supabase Edge Function (cron) + TanStack
 Start tabanlı bir frontend'den oluşur. Aşağıdaki adımlar, paneli **kendi Supabase
@@ -75,8 +75,7 @@ için oradaki değeri değiştirin.
      supabase functions deploy kpk-signals-cron
      supabase functions deploy fear-greed
      ```
-3. **`config.toml`**: `project_id` sizin ref'iniz olmalı. Bu repoda
-   `keltos` örnek proje adı kullanılır; gerçek Supabase bağlantısı `.env` ve Vault secret'larından gelir.
+3. **`config.toml`**: `project_id` sizin ref'iniz olmalı. Bu repoda örnek proje kimliği kullanılır; gerçek Supabase bağlantısı `.env` ve Vault secret'larından gelir.
 4. **Edge Function Secrets**'i girin (bkz. 1b).
 
 > `config.toml` içinde her iki fonksiyon için `verify_jwt = false` ayarlıdır:
@@ -159,8 +158,8 @@ unutmayın.
 
 ---
 
-## Satış Öncesi Teslimat Sınırı\n\nBu rehber kaynak kodun kendi altyapısına kurulumu içindir. Kaynak kodun derlenmesi, canlı servislerin çalıştığını kanıtlamaz. Alıcıya teslimden önce kendi Supabase projesi, domain/hosting, Telegram botu ve API erişimiyle ayrı bir kurulum ve kabul testi yapılmalıdır. Üçüncü taraf servis ücretleri ve hesapları alıcıya aittir. Canlıya geçiş için tüm kontrol listesi tamamlanmalıdır.\n\n## Marka Notu
+## Satış Öncesi Teslimat Sınırı
 
-Footer imzası **"A BAMIR ONLINE STORE'S PRODUCTION"** korunur. "KELTOŞ" markası,
-Shopier ödeme linkleri, WhatsApp numarası ve Telegram kanalı kod içinde
-tanımlıdır; kendi markanıza uyarlamak için ilgili dosyalarda güncelleyin.
+Bu rehber, alıcının kendi altyapısına kurulum içindir. Kaynak kodun derlenmesi canlı servislerin çalıştığını kanıtlamaz. Her alıcı ayrı Supabase projesi, domain/hosting ve Telegram botu kullanmalıdır. Marka adı, logo, slogan, ana renk, vurgu rengi ve alt bilgi `/branding` yönetim ekranından yapılandırılır. Marka ayarları yalnızca ilgili kurulumun `app_metadata.role = "admin"` yetkisine sahip yöneticisi tarafından değiştirilebilir.
+
+Her satışta alıcıya özel deployment ve ayrı veri altyapısı kullanılmalıdır; bu paket ortak çok kiracılı (multi-tenant) hizmet olarak tasarlanmamıştır. Canlıya geçişten önce yukarıdaki kontrol listesi tamamlanmalıdır.
