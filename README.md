@@ -51,7 +51,7 @@ bun run dev
 bun run build
 ```
 
-Ayrıntılı kurulum ve doğrulama adımları için [SETUP.md](./SETUP.md) dosyasına bakın.
+Ayrıntılı kurulum ve doğrulama adımları için [SETUP.md](./SETUP.md), mimari için [ARCHITECTURE.md](./ARCHITECTURE.md), satış ve devir kapsamı için [SALES_HANDOVER.md](./SALES_HANDOVER.md) dosyalarına bakın.
 
 ## Yapılandırma ve devralma notları
 
@@ -70,4 +70,4 @@ Depoda otomatik üretim derlemesi kontrolü bulunmaktadır. Mevcut ESLint yapıl
 
 ## Lisans ve satış
 
-Bu depo için alıcıya sunulacak lisans, kullanım hakkı, yeniden satış, destek ve üçüncü taraf bağımlılık koşulları ayrıca yazılı sözleşmede belirlenmelidir. Üçüncü taraf paketlerin ve servislerin kendi lisans/şartları geçerlidir.
+Alıcıya sunum ve devir kapsamı için [SALES_HANDOVER.md](./SALES_HANDOVER.md) dosyasına bakın. Lisans türü, kullanım hakkı, yeniden satış, destek, ücret ve üçüncü taraf bağımlılık koşulları taraflar arasında yazılı sözleşmeyle belirlenmelidir. Bu depo için henüz alıcıya özel ticari lisans veya münhasır hak devri taahhüdü verilmemektedir. Üçüncü taraf paketlerin ve servislerin kendi lisans/şartları geçerlidir.
