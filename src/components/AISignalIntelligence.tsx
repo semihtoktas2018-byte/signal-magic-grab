@@ -25,7 +25,7 @@ const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
 const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 
 /* ============================================================
- * AI SIGNAL INTELLIGENCE CENTER
+ * MARKET DATA & SIGNAL OVERVIEW
  * Tüm veriler gerçek kaynaklardan gelir:
  *  - Binance ticker/24hr (canlı fiyat + 24s değişim, doğrudan API)
  *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
@@ -402,7 +402,7 @@ export default function AISignalIntelligence() {
   };
 
   return (
-    <section className="aic" aria-label={t("aiSignalIntelligenceCenter")}>
+    <section className="aic" aria-label={t("aiSignalIntelligenceTitle")}>
       <style>{aicCss}</style>
       <div className="aic-bg" aria-hidden />
       <div className="aic-wrap">
