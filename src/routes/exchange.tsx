@@ -205,15 +205,6 @@ function ExchangeCompare() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title"></div>
-            <div className="promo-sub"></div>
-          </div>
-          <a href="/" target="_blank" rel="noreferrer" className="promo-btn"></a>
-        </div>
-
         <div className="footer-mark">{brand.footer_text || brand.brand_name || ""}</div>
       </div>
     </div>
