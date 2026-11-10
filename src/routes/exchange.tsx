@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/exchange")({
   head: () => ({
@@ -12,9 +13,6 @@ export const Route = createFileRoute("/exchange")({
   component: ExchangeCompare,
 });
 
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
-
 interface ExchangePrice {
   coin: string;
   bybit_price: number;
@@ -25,12 +23,12 @@ interface ExchangePrice {
 
 async function fetchExchangePrices(): Promise<ExchangePrice[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/exchange_prices?select=*&order=coin.asc`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as ExchangePrice[];
+    const { data, error } = await supabase
+      .from("exchange_prices")
+      .select("*")
+      .order("coin", { ascending: true });
+    if (error) return [];
+    return (data ?? []) as ExchangePrice[];
   } catch {
     return [];
   }
