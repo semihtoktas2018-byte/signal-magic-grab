@@ -48,14 +48,6 @@ function useReveal() {
   return ref;
 }
 
-function dayKey(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return "";
-  }
-}
-
 interface MergedSignal {
   coin: string;
   signal: string;
@@ -63,7 +55,6 @@ interface MergedSignal {
   date: string;
   result: string;
   score?: number | null;
-  src: "local" | "remote";
 }
 
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
@@ -81,7 +72,6 @@ async function fetchMergedSignals(): Promise<MergedSignal[]> {
       date: row.created_at,
       result: row.result || "bekliyor",
       score: row.score,
-      src: "remote" as const,
     })).sort((a: MergedSignal, b: MergedSignal) => new Date(a.date).getTime() - new Date(b.date).getTime());
   } catch {
     return [];
