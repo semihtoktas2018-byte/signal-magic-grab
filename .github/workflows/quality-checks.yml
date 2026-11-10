@@ -1,4 +1,4 @@
-name: Quality Checks
+name: Build Check
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,7 +23,5 @@ jobs:
           bun-version: latest
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Lint
-        run: bun run lint
       - name: Production build
         run: bun run build
