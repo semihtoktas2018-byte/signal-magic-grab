@@ -183,9 +183,9 @@ function Performance() {
 
   const filtered = filter === "hepsi" ? signals : signals.filter((s) => s.signal === filter);
 
-  const rateColor = (r: number) => r >= 70 ? "#22c55e" : r >= 45 ? "#f5b629" : "#ef4444";
-  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : r === "suresi_doldu" ? "rgba(148,163,184,.15)" : "rgba(245,182,41,.1)";
-  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : r === "suresi_doldu" ? "#94a3b8" : "#f5b629";
+  const rateColor = (r: number) => r >= 70 ? "#22c55e" : r >= 45 ? "var(--brand-accent, #f5b629)" : "#ef4444";
+  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : r === "suresi_doldu" ? "rgba(148,163,184,.15)" : "color-mix(in srgb, var(--brand-accent, #f5b629) 10%, transparent)";
+  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : r === "suresi_doldu" ? "#94a3b8" : "var(--brand-accent, #f5b629)";
   const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : r === "suresi_doldu" ? "⌛ Süresi doldu" : "⏳ Bekliyor";
 
   function explain(s: Signal): { what: string; why: string[] } {
@@ -222,9 +222,9 @@ function Performance() {
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
       --kt-panel-strong: rgba(11, 14, 22, 0.96);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -437,7 +437,7 @@ function Performance() {
               setLangStorage(next);
             }}
             aria-label="Language"
-            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 999, padding: "6px 10px" }}
+            style={{ background: "transparent", border: "1px solid color-mix(in srgb, var(--brand-accent, #f5b629) 25%, transparent)", color: "var(--brand-accent, #f5b629)", borderRadius: 999, padding: "6px 10px" }}
           >
             <option value="tr">TR</option>
             <option value="en">EN</option>
