@@ -90,6 +90,13 @@ için oradaki değeri değiştirin.
 Migration'lar (`supabase/migrations/`) tabloları, RLS'i ve `pg_cron` işini kurar.
 `supabase db push` (veya GitHub entegrasyonu) bunları uygular.
 
+**Whale Radar veri tablosu:** `20261110090000_create_whale_events.sql`,
+Bybit spot işlemlerinden eşik üstü tekil işlemleri saklayan `whale_events`
+tablosunu oluşturur. Kaynak işlem kimliği benzersizdir; aynı işlem sonraki
+cron taramalarında tekrar yazılmaz. Bu tabloya herkese açık SELECT, yalnızca
+`service_role` için INSERT izni verilir. Bu migration uygulanmadan Whale Radar
+ekranında olay listesi veri alamaz.
+
 **Önemli — cron migration'ından ÖNCE Vault secret'i ekleyin.**
 `pg_cron` işi, `x-cron-secret` değerini çalışma anında Supabase Vault'tan okur
 (düz metin saklanmaz). SQL Editor'de:
