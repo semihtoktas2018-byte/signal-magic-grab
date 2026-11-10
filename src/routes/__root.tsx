@@ -87,11 +87,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Technical market analysis, signal monitoring and historical performance dashboard." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "" },
       { name: "twitter:title", content: "Market Analysis Terminal" },
       { name: "twitter:description", content: "Technical market analysis, signal monitoring and historical performance dashboard." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/532915aa-13c6-4a34-a3cc-d462a6458445/id-preview-27d31ccf--984c0451-4eb3-4420-8cfb-fba99bbb94e9.lovable.png" },
     ],
     links: [
       {
