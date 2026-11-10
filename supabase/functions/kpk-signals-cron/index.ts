@@ -6,7 +6,7 @@
 // ve Telegram bildirimleri.
 //
 // Gizli anahtarlar YALNIZCA ortam değişkeninden okunur (Supabase Secrets):
-//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_BOT_TOKEN, CRON_SECRET
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CRON_SECRET
 // Hiçbir gizli anahtar bu dosyada gömülü değildir.
 //
 // Güvenlik: pg_cron çağrısı x-cron-secret header'ında CRON_SECRET göndermelidir;
@@ -214,8 +214,6 @@ const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGE
 const RECORD_THRESHOLD = 75
 const MAX_SIGNALS_PER_RUN = 2
 
-// TELEGRAM_CHAT_ID kanal kimliğidir (gizli anahtar değil) — kod içinde kalır.
-const TELEGRAM_CHAT_ID = '-1003733127546'
 
 // ---------- indicator helpers ----------
 function ema(values: number[], period: number): number[] {
@@ -616,9 +614,10 @@ function fmtUsd(n: number): string {
   return `$${(n / 1000).toFixed(0)}K`
 }
 
-async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number, whale: WhaleActivity) {
+async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number, whale: WhaleActivity, brandName: string, chatId: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN not configured')
+  if (!chatId) throw new Error('TELEGRAM_CHAT_ID not configured')
   const symbol = coin.replace(/USDT$/, '')
   const isBuy = signal === 'BUY'
   const emoji = isBuy ? '🟢' : '🔴'
@@ -629,7 +628,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
     ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
     : ''
   const text =
-`${emoji} KELTOŞ SİNYAL · ${signal}
+`${emoji} ${brandName} · ${signal}
 ━━━━━━━━━━━━━━
 💰 Coin: ${symbol}/USDT
 ⭐ Kalite: ${quality} · Skor: ${score}/100${whaleLine}
@@ -643,7 +642,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
   if (!r.ok) {
     const body = await r.text()
@@ -652,9 +651,9 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
 }
 
 // Faz 1: sinyal kapanınca anlık sonuç bildirimi (tuttu/tutmadı)
-async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string) {
+async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string, brandName: string, chatId: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
-  if (!token) return
+  if (!token || !chatId) return
   const symbol = coin.replace(/USDT$/, '')
   const win = result === 'tuttu'
   const emoji = win ? '✅' : '❌'
@@ -663,7 +662,7 @@ async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutma
   const dur = mins >= 60 ? `${Math.floor(mins / 60)}s ${mins % 60}dk` : `${mins}dk`
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
   const text =
-`${emoji} SONUÇ · ${win ? 'TUTTU' : 'TUTMADI'}
+`${emoji} ${brandName} · SONUÇ · ${win ? 'TUTTU' : 'TUTMADI'}
 ━━━━━━━━━━━━━━
 💰 ${symbol}/USDT · ${signal}
 ${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
@@ -691,6 +690,16 @@ async function runCron() {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     { auth: { persistSession: false, autoRefreshToken: false } }
   )
+
+  const { data: branding } = await supabase
+    .from('app_branding')
+    .select('brand_name')
+    .eq('singleton', true)
+    .maybeSingle()
+  const brandName = typeof branding?.brand_name === 'string' && branding.brand_name.trim()
+    ? branding.brand_name.trim()
+    : 'Market Analysis Terminal'
+  const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID') ?? ''
 
   const inserted: string[] = []
   const closed: string[] = []
@@ -792,7 +801,7 @@ async function runCron() {
       }
       inserted.push(`${c.coin} ${c.signal} ${c.score}`)
       try {
-        await sendTelegram(c.coin, c.signal, c.quality, c.score, entryPrice, c.whale)
+        await sendTelegram(c.coin, c.signal, c.quality, c.score, entryPrice, c.whale, brandName, telegramChatId)
       } catch (te: any) {
         errors.push(`${c.coin} telegram: ${te.message}`)
       }
@@ -831,7 +840,7 @@ async function runCron() {
           closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
           if (resolution.result !== 'suresi_doldu') {
             try {
-              await sendResult(row.coin, row.signal, resolution.result, createdAt)
+              await sendResult(row.coin, row.signal, resolution.result, createdAt, brandName, telegramChatId)
             } catch (te: any) {
               errors.push(`${row.coin} sonuç telegram: ${te.message}`)
             }
