@@ -1,12 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
-
-const supabase = createClient(
-  "https://gmwlkkebwpenocatlmty.supabase.co",
-  "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1"
-);
 
 export const Route = createFileRoute("/signals")({
   head: () => ({
