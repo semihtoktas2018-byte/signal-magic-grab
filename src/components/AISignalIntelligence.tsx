@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
 import {
   Activity,
   Brain,
@@ -19,10 +18,6 @@ import {
   Clock,
 } from "lucide-react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
-
-// KELTOŞ kendi Supabase projesi (keltos) — 'fear-greed' Edge Function burada çalışır
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 
 /* ============================================================
  * MARKET DATA & SIGNAL OVERVIEW
@@ -239,7 +234,7 @@ function useFearGreed() {
     const load = async () => {
       try {
         // KELTOŞ kendi Supabase projesindeki (keltos) 'fear-greed' Edge Function
-        const { data: body, error } = await keltos.functions.invoke("fear-greed");
+        const { data: body, error } = await supabase.functions.invoke("fear-greed");
         if (cancelled) return;
         if (error || !body) throw new Error("fng_invoke_failed");
         const raw = (body as { data?: unknown }).data;
