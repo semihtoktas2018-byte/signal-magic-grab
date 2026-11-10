@@ -76,7 +76,7 @@ için oradaki değeri değiştirin.
      supabase functions deploy fear-greed
      ```
 3. **`config.toml`**: `project_id` sizin ref'iniz olmalı. Bu repoda
-   `gmwlkkebwpenocatlmty` olarak ayarlıdır; kendi ref'inizle değiştirin.
+   `keltos` örnek proje adı kullanılır; gerçek Supabase bağlantısı `.env` ve Vault secret'larından gelir.
 4. **Edge Function Secrets**'i girin (bkz. 1b).
 
 > `config.toml` içinde her iki fonksiyon için `verify_jwt = false` ayarlıdır:
