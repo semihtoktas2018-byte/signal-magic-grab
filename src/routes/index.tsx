@@ -254,7 +254,7 @@ function Landing() {
 
       <nav className="nav">
         <div className="brand-logo">
-          {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : (brand.brand_name || "Market Analysis Terminal")}
+          {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : <span className="brand-copy"><span>{brand.brand_name || "Market Analysis Terminal"}</span>{brand.tagline && <small className="brand-tagline">{brand.tagline}</small>}</span>}
         </div>
         <div className="nav-links">
           <a href="/" className="nav-active">{t("home")}</a>
@@ -512,7 +512,7 @@ const css = `
 .landing>*{position:relative;z-index:1}
 *{box-sizing:border-box}
 .nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 32px;background:rgba(5,7,12,.82);backdrop-filter:blur(16px);border-bottom:1px solid rgba(245,182,41,.12)}
-.brand-logo{font-size:24px;font-weight:900;letter-spacing:.04em;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:center;gap:8px}
+.brand-copy{display:flex;flex-direction:column;line-height:1.15}.brand-tagline{font-size:10px;font-weight:600;letter-spacing:.02em;opacity:.72;margin-top:3px}.brand-logo{font-size:24px;font-weight:900;letter-spacing:.04em;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:center;gap:8px}
 .crown{color:var(--gold);font-size:18px;-webkit-text-fill-color:var(--gold)}
 .nav-links{display:flex;gap:22px;align-items:center}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;transition:color .2s;white-space:nowrap}
