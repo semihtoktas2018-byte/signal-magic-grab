@@ -469,7 +469,9 @@ async function resolveTPSLWithKlines(
   for (const candle of unique) {
     // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
     if (candle.openTime < createdAtMs) continue
-    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > Date.now()) break
+    // 48 saatlik pencerenin dışına taşan mumları sonuç hesabına katma.
+    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > endMs) break
+    if (candle.openTime + 15 * 60 * 1000 > Date.now()) break
 
     const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
     const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
