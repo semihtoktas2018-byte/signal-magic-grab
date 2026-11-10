@@ -150,7 +150,9 @@ function Performance() {
   const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
   const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
   const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
-  const ev = closed.length > 0 ? (rate / 100) * TP_PCT * 100 - (1 - rate / 100) * SL_PCT * 100 : 0;
+  const ev = closed.length > 0
+    ? ((tuttu * TP_PCT - tutmadi * SL_PCT) / closed.length) * 100
+    : 0;
   const smallSample = closed.length < MIN_SAMPLE;
 
   const openSignals = signals.filter((s) => s.result === "bekliyor")
@@ -488,12 +490,12 @@ function Performance() {
 
           <div className="ev-row">
             <div className="ev-card">
-              <div className="ev-k">Sinyal başına beklenen getiri (EV)</div>
+              <div className="ev-k">Sinyal başına brüt teorik EV</div>
               <div className="ev-v" style={{ color: closed.length === 0 ? "#8a93a3" : ev >= 0 ? "#22c55e" : "#ef4444" }}>
                 {closed.length === 0 ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(2)}%`}
               </div>
               <div className="ev-note">
-                TP +%2.5 / SL −%2 ile hesaplanır. Kârlılık için isabet oranının <b>%44.4</b> üstünde olması gerekir (başabaş noktası).
+                Kapanan sinyallerin sabit TP +%2.5 / SL −%2 sonuçlarından hesaplanır. Brüt teorik değerdir; komisyon, spread, kayma ve gerçek emir gerçekleşmesini içermez. Başabaş isabet oranı yaklaşık <b>%44.4</b>.
                 {closed.length > 0 && ev < 0 && " Şu an başabaşın altında."}
               </div>
             </div>
@@ -502,7 +504,7 @@ function Performance() {
               <div className="ev-v" style={{ color: "#e8eef7" }}>
                 <span style={{ color: "#22c55e" }}>+2.5%</span> / <span style={{ color: "#ef4444" }}>−2%</span>
               </div>
-              <div className="ev-note">Hedef ve stop sabit olduğu için ortalama kazanç/kayıp bu değerlerde. Sistemin kârlılığı isabet oranına bağlı.</div>
+              <div className="ev-note">Varsayılan hedef/stop seviyeleri. Gerçekleşen net işlem getirisi değildir; işlem maliyetleri dahil değildir.</div>
             </div>
           </div>
 
