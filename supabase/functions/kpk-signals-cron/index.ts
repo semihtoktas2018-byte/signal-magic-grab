@@ -463,6 +463,19 @@ async function resolveTPSLWithKlines(
   parsed.sort((a, b) => a.openTime - b.openTime)
   const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime)
 
+  const intervalMs = 15 * 60 * 1000
+  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
+  const observedTimes = new Set(unique
+    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
+    .map((candle) => candle.openTime))
+  const hasCompleteCoverageThrough = (lastOpenTime: number): boolean => {
+    if (lastOpenTime < firstExpected) return false
+    for (let time = firstExpected; time <= lastOpenTime; time += intervalMs) {
+      if (time + intervalMs > endMs || !observedTimes.has(time)) return false
+    }
+    return true
+  }
+
   const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
   const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
 
@@ -477,32 +490,20 @@ async function resolveTPSLWithKlines(
     const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
 
     // Aynı 15 dakikalık mumda TP ve SL birlikte görülürse muhafazakâr olarak SL say.
-    if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-    if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
-    if (slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+    if (tpHit || slHit) {
+      // Önceki mumlarda veri boşluğu varsa ilk TP/SL temasını kesin sonuç sayma.
+      if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAt: null }
+      if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+      if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
+      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+    }
   }
 
   if (Date.now() < endMs) return { result: null, closedAt: null }
 
   // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
-  const intervalMs = 15 * 60 * 1000
-  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
-  const expectedTimes: number[] = []
-  for (let time = firstExpected; time + intervalMs <= endMs; time += intervalMs) {
-    expectedTimes.push(time)
-  }
-  const observedTimes = new Set(unique
-    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
-    .map((candle) => candle.openTime))
-  let complete = expectedTimes.length > 0 && observedTimes.size === expectedTimes.length
-  if (complete) {
-    for (const time of expectedTimes) {
-      if (!observedTimes.has(time)) {
-        complete = false
-        break
-      }
-    }
-  }
+  const lastExpected = Math.floor((endMs - intervalMs) / intervalMs) * intervalMs
+  const complete = lastExpected >= firstExpected && hasCompleteCoverageThrough(lastExpected)
 
   return complete
     ? { result: 'suresi_doldu', closedAt: new Date(endMs).toISOString() }
