@@ -6,13 +6,15 @@
 -- taşındığı için işi yeni adrese yeniden zamanlıyoruz. Cadence aynı: 5 dakika.
 --
 -- GÜVENLİK:
---   * Publishable (anon) key herkese açıktır, header'a doğrudan yazılabilir.
+--   * Proje URL'si ve publishable key Vault'tan okunur; migration içinde sabitlenmez.
 --   * CRON_SECRET gizlidir; bu dosyaya DÜZ METİN yazılmaz. Çalışma anında
 --     Supabase Vault'tan okunur. Bu migration'ı çalıştırmadan ÖNCE Vault'a
 --     'cron_secret' adında bir secret ekleyin (değeri, edge function'ın
 --     CRON_SECRET ortam değişkeniyle AYNI olmalı):
 --
---       select vault.create_secret('BURAYA-UZUN-RASTGELE-DEGER', 'cron_secret');
+--       select vault.create_secret('CRON_SECRET_DEGERI', 'cron_secret');
+select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'supabase_url');
+select vault.create_secret('sb_publishable_<PROJECT_KEY>', 'supabase_publishable_key');
 --
 --   Aynı değeri Supabase Dashboard → Edge Functions → Secrets içine de
 --   CRON_SECRET olarak girin. İkisi eşleşmezse edge function 401 döner.
@@ -36,11 +38,11 @@ select cron.schedule(
   '*/5 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://gmwlkkebwpenocatlmty.supabase.co/functions/v1/kpk-signals-cron',
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'supabase_url') || '/functions/v1/kpk-signals-cron',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'apikey', 'sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1',
-      'Authorization', 'Bearer sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1',
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'supabase_publishable_key'),
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'supabase_publishable_key'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
     body := '{}'::jsonb,
