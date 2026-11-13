@@ -507,7 +507,7 @@ function Performance() {
             <div className="stat-card">
               <div className="stat-val" style={{ color: rateColor(rate) }}>{closed.length > 0 ? `${rate}%` : "—"}</div>
               <div className="stat-label">{t("accuracyRate")}</div>
-              <div className="stat-sub">{closed.length} {t("noData")}</div>
+              <div className="stat-sub">{closed.length} {t("completed")}</div>
             </div>
             <div className="stat-card">
               <div className="stat-val" style={{ color: "#e8eef7" }}>{signals.length}</div>
