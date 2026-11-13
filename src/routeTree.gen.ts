@@ -17,14 +17,14 @@ import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as WhaleRouteImport } from './routes/whale'
 
-const BrandingRoute = BrandingRouteImport.update({
-  id: '/branding',
-  path: '/branding',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandingRoute = BrandingRouteImport.update({
+  id: '/branding',
+  path: '/branding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExchangeRoute = ExchangeRouteImport.update({
@@ -84,9 +84,22 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/branding' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
+    | '/'
+    | '/branding'
+    | '/exchange'
+    | '/login'
+    | '/performance'
+    | '/signals'
+    | '/whale'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/branding' | '/exchange' | '/login' | '/performance' | '/signals' | '/whale'
+  to:
+    | '/'
+    | '/branding'
+    | '/exchange'
+    | '/login'
+    | '/performance'
+    | '/signals'
+    | '/whale'
   id:
     | '__root__'
     | '/'
