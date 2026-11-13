@@ -1,17 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
-
-const supabase = createClient(
-  "https://gmwlkkebwpenocatlmty.supabase.co",
-  "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1"
-);
 
 export const Route = createFileRoute("/signals")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Sinyal Terminali" },
+      { title: "Signal Terminal" },
       {
         name: "description",
         content:
@@ -53,7 +49,7 @@ interface Signal {
   score: number;
   quality: string;
   price: number;
-  result: "tuttu" | "tutmadi" | "bekliyor";
+  result: "tuttu" | "tutmadi" | "bekliyor" | "suresi_doldu";
   created_at: string;
 }
 
@@ -191,6 +187,7 @@ function targetStop(signal: "BUY" | "SELL", entry: number) {
 function resultLabel(r: Signal["result"]) {
   if (r === "tuttu") return { text: "✓ Tuttu", cls: "res-win" };
   if (r === "tutmadi") return { text: "✗ Tutmadı", cls: "res-loss" };
+  if (r === "suresi_doldu") return { text: "⌛ Süresi doldu", cls: "res-wait" };
   return { text: "⏳ Bekliyor", cls: "res-wait" };
 }
 
@@ -284,6 +281,7 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
 }
 
 function SignalTerminal() {
+  const brand = useBranding();
   const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
@@ -388,9 +386,9 @@ function SignalTerminal() {
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
       --kt-panel-strong: rgba(11, 14, 22, 0.96);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -820,7 +818,7 @@ function SignalTerminal() {
         .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip, .term.light-mode .chart-panel { background: rgba(255,255,255,0.06); }
       `}</style>
       <nav className="term-nav">
-        <span className="term-brand">⚡ KELTOŞ SİNYAL TERMİNALİ</span>
+        <span className="term-brand">{brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 30, maxWidth: 140, objectFit: "contain", verticalAlign: "middle" }} /> : <span>{brand.brand_name || "Market Analysis Terminal"}{brand.tagline && <small style={{ display: "block", fontSize: 10, letterSpacing: "0.02em", opacity: 0.7, marginTop: 2 }}>{brand.tagline}</small>}</span>}</span>
         <div className="term-links">
           <a href="/">{t("home")}</a>
           <a href="/signals" className="active">{t("signalTerminal")}</a>
@@ -1015,7 +1013,7 @@ function SignalTerminal() {
           )}
 
           <div className="disc">{t("panelDisclaimer")}</div>
-          <div className="sig-foot">A BAMIR ONLINE STORE'S PRODUCTION</div>
+          <div className="sig-foot">{brand.footer_text || brand.brand_name || ""}</div>
         </div>
       )}
     </div>

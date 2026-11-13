@@ -1,4 +1,4 @@
-project_id = "gmwlkkebwpenocatlmty"
+project_id = "keltos"
 
 # Edge Functions
 # kpk-signals-cron: pg_cron tarafından çağrılır; kendi x-cron-secret kontrolü

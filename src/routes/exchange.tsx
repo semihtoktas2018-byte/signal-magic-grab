@@ -1,19 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/exchange")({
   head: () => ({
     meta: [
-      { title: "Borsa Karşılaştırma — KELTOŞ" },
+      { title: "Exchange Comparison" },
       { name: "description", content: "Bybit ve OKX arasındaki anlık fiyat farkını canlı takip et." },
     ],
   }),
   component: ExchangeCompare,
 });
-
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 interface ExchangePrice {
   coin: string;
@@ -25,12 +24,12 @@ interface ExchangePrice {
 
 async function fetchExchangePrices(): Promise<ExchangePrice[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/exchange_prices?select=*&order=coin.asc`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as ExchangePrice[];
+    const { data, error } = await supabase
+      .from("exchange_prices")
+      .select("*")
+      .order("coin", { ascending: true });
+    if (error) return [];
+    return (data ?? []) as ExchangePrice[];
   } catch {
     return [];
   }
@@ -52,6 +51,7 @@ function timeAgo(iso: string): string {
 }
 
 function ExchangeCompare() {
+  const brand = useBranding();
   const [prices, setPrices] = useState<ExchangePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -90,9 +90,9 @@ function ExchangeCompare() {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -136,7 +136,7 @@ function ExchangeCompare() {
     .kt-page-shell .promo-title { font-weight:800; font-size:0.96rem; margin-bottom:2px; }
     .kt-page-shell .promo-sub { color: var(--kt-muted); font-size:0.78rem; line-height:1.5; }
     .kt-page-shell .promo-btn { background: linear-gradient(135deg, #7dd3fc, #4ade80); color: #04121f; text-decoration:none; font-weight:900; border-radius:12px; padding:0.85rem 1.1rem; white-space:nowrap; }
-    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:#7dd3fc; }
+    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:var(--brand-accent, #7dd3fc); }
     @media (max-width:620px) {
       .kt-page-shell { padding:16px; }
       .kt-page-shell .promo { flex-direction:column; align-items:flex-start; }
@@ -216,16 +216,7 @@ function ExchangeCompare() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
-          </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
-        </div>
-
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || ""}</div>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@
 // ve Telegram bildirimleri.
 //
 // Gizli anahtarlar YALNIZCA ortam değişkeninden okunur (Supabase Secrets):
-//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_BOT_TOKEN, CRON_SECRET
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CRON_SECRET
 // Hiçbir gizli anahtar bu dosyada gömülü değildir.
 //
 // Güvenlik: pg_cron çağrısı x-cron-secret header'ında CRON_SECRET göndermelidir;
@@ -214,8 +214,6 @@ const COINS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGE
 const RECORD_THRESHOLD = 75
 const MAX_SIGNALS_PER_RUN = 2
 
-// TELEGRAM_CHAT_ID kanal kimliğidir (gizli anahtar değil) — kod içinde kalır.
-const TELEGRAM_CHAT_ID = '-1003733127546'
 
 // ---------- indicator helpers ----------
 function ema(values: number[], period: number): number[] {
@@ -279,28 +277,43 @@ interface WhaleActivity {
   sellUsd: number
   biggestUsd: number
   biggestSide: 'BUY' | 'SELL' | null
+  biggestTradeId: string | null
+  biggestTradeAt: string | null
+  biggestTradePrice: number | null
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
   const r = await fetch(url)
-  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
   const j = await r.json() as any
-  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null }
+  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
   let biggestSide: 'BUY' | 'SELL' | null = null
+  let biggestTradeId: string | null = null
+  let biggestTradeAt: string | null = null
+  let biggestTradePrice: number | null = null
   for (const t of trades) {
     const price = parseFloat(t.price)
     const qty = parseFloat(t.size)
     const usd = price * qty
     const isBuy = t.side === 'Buy'
     if (usd >= WHALE_THRESHOLD_USD) {
-      if (usd > biggestUsd) { biggestUsd = usd; biggestSide = isBuy ? 'BUY' : 'SELL' }
+      if (usd > biggestUsd) {
+        biggestUsd = usd
+        biggestSide = isBuy ? 'BUY' : 'SELL'
+        biggestTradeId = String(t.execId ?? '')
+        biggestTradePrice = price
+        const tradeTime = Number(t.time)
+        biggestTradeAt = Number.isFinite(tradeTime) && tradeTime > 0
+          ? new Date(tradeTime).toISOString()
+          : null
+      }
       if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
-  return { buyUsd, sellUsd, biggestUsd, biggestSide }
+  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt, biggestTradePrice }
 }
 
 // ---------- Exchange comparison (Bybit vs OKX) ----------
@@ -416,7 +429,7 @@ async function fetchResolveKlines(symbol: string, startMs: number, endMs: number
 
 // ---------- TP/SL resolution using historical klines ----------
 interface TPSLResolution {
-  result: 'tuttu' | 'tutmadi' | null
+  result: 'tuttu' | 'tutmadi' | 'suresi_doldu' | null
   closedAt: string | null
   error?: string
 }
@@ -435,38 +448,64 @@ async function resolveTPSLWithKlines(
   const batch = await fetchResolveKlines(symbol, createdAtMs, endMs)
   const parsed: Array<{ openTime: number; high: number; low: number }> = []
   for (const k of batch) {
-    parsed.push({ openTime: parseInt(k[0], 10), high: parseFloat(k[2]), low: parseFloat(k[3]) })
+    const openTime = Number(k[0])
+    const high = Number(k[2])
+    const low = Number(k[3])
+    if (Number.isFinite(openTime) && Number.isFinite(high) && Number.isFinite(low) && high > 0 && low > 0) {
+      parsed.push({ openTime, high, low })
+    }
   }
 
-  if (parsed.length === 0) {
-    return { result: null, closedAt: null }
-  }
+  if (parsed.length === 0) return { result: null, closedAt: null }
 
   parsed.sort((a, b) => a.openTime - b.openTime)
+  const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime)
+
+  const intervalMs = 15 * 60 * 1000
+  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
+  const observedTimes = new Set(unique
+    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
+    .map((candle) => candle.openTime))
+  const hasCompleteCoverageThrough = (lastOpenTime: number): boolean => {
+    if (lastOpenTime < firstExpected) return false
+    for (let time = firstExpected; time <= lastOpenTime; time += intervalMs) {
+      if (time + intervalMs > endMs || !observedTimes.has(time)) return false
+    }
+    return true
+  }
 
   const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
   const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
 
-  let prevOpen = -1
-  for (const candle of parsed) {
-    if (candle.openTime === prevOpen) continue
-    prevOpen = candle.openTime
+  for (const candle of unique) {
+    // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
     if (candle.openTime < createdAtMs) continue
-    if (candle.openTime >= endMs) break
+    // 48 saatlik pencerenin dışına taşan mumları sonuç hesabına katma.
+    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > endMs) break
+    if (candle.openTime + 15 * 60 * 1000 > Date.now()) break
 
     const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
     const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
 
-    if (tpHit && slHit) {
-      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-    } else if (tpHit) {
-      return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
-    } else if (slHit) {
+    // Aynı 15 dakikalık mumda TP ve SL birlikte görülürse muhafazakâr olarak SL say.
+    if (tpHit || slHit) {
+      // Önceki mumlarda veri boşluğu varsa ilk TP/SL temasını kesin sonuç sayma.
+      if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAt: null }
+      if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+      if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
       return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
     }
   }
 
-  return { result: null, closedAt: null }
+  if (Date.now() < endMs) return { result: null, closedAt: null }
+
+  // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
+  const lastExpected = Math.floor((endMs - intervalMs) / intervalMs) * intervalMs
+  const complete = lastExpected >= firstExpected && hasCompleteCoverageThrough(lastExpected)
+
+  return complete
+    ? { result: 'suresi_doldu', closedAt: new Date(endMs).toISOString() }
+    : { result: null, closedAt: null }
 }
 
 // ---------- Bybit fetchers ----------
@@ -477,7 +516,14 @@ async function fetchKlines(symbol: string) {
   const j = await r.json() as any
   if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
   const list = (j.result?.list ?? []) as string[][]
-  return list.slice().reverse()
+  const now = Date.now()
+  const closedCandles = list
+    .filter((k) => Number(k[0]) + 15 * 60 * 1000 <= now)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+  if (closedCandles.length < 50) {
+    throw new Error(`klines ${symbol}: insufficient closed candles (${closedCandles.length})`)
+  }
+  return closedCandles
 }
 
 async function analyzeCoin(symbol: string, klines: any[][]) {
@@ -568,9 +614,10 @@ function fmtUsd(n: number): string {
   return `$${(n / 1000).toFixed(0)}K`
 }
 
-async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number, whale: WhaleActivity) {
+async function sendTelegram(coin: string, signal: string, quality: string, score: number, price: number, whale: WhaleActivity, brandName: string, chatId: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN not configured')
+  if (!chatId) throw new Error('TELEGRAM_CHAT_ID not configured')
   const symbol = coin.replace(/USDT$/, '')
   const isBuy = signal === 'BUY'
   const emoji = isBuy ? '🟢' : '🔴'
@@ -581,7 +628,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
     ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
     : ''
   const text =
-`${emoji} KELTOŞ SİNYAL · ${signal}
+`${emoji} ${brandName} · ${signal}
 ━━━━━━━━━━━━━━
 💰 Coin: ${symbol}/USDT
 ⭐ Kalite: ${quality} · Skor: ${score}/100${whaleLine}
@@ -595,7 +642,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
   if (!r.ok) {
     const body = await r.text()
@@ -604,9 +651,9 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
 }
 
 // Faz 1: sinyal kapanınca anlık sonuç bildirimi (tuttu/tutmadı)
-async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string) {
+async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutmadi', createdAt: string, brandName: string, chatId: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN')
-  if (!token) return
+  if (!token || !chatId) return
   const symbol = coin.replace(/USDT$/, '')
   const win = result === 'tuttu'
   const emoji = win ? '✅' : '❌'
@@ -615,7 +662,7 @@ async function sendResult(coin: string, signal: string, result: 'tuttu' | 'tutma
   const dur = mins >= 60 ? `${Math.floor(mins / 60)}s ${mins % 60}dk` : `${mins}dk`
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
   const text =
-`${emoji} SONUÇ · ${win ? 'TUTTU' : 'TUTMADI'}
+`${emoji} ${brandName} · SONUÇ · ${win ? 'TUTTU' : 'TUTMADI'}
 ━━━━━━━━━━━━━━
 💰 ${symbol}/USDT · ${signal}
 ${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
@@ -643,6 +690,16 @@ async function runCron() {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     { auth: { persistSession: false, autoRefreshToken: false } }
   )
+
+  const { data: branding } = await supabase
+    .from('app_branding')
+    .select('brand_name')
+    .eq('singleton', true)
+    .maybeSingle()
+  const brandName = typeof branding?.brand_name === 'string' && branding.brand_name.trim()
+    ? branding.brand_name.trim()
+    : 'Market Analysis Terminal'
+  const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID') ?? ''
 
   const inserted: string[] = []
   const closed: string[] = []
@@ -687,11 +744,13 @@ async function runCron() {
         errors.push(`${coin} okx: ${ee.message}`)
       }
 
-      if (a.whale.biggestUsd > 0 && a.whale.biggestSide) {
-        const { error: whaleErr } = await supabase.from('whale_events').insert({
+      if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt && a.whale.biggestTradePrice !== null) {
+        const { error: whaleErr } = await supabase.from('whale_events').upsert({
+          source_trade_id: a.whale.biggestTradeId,
           coin, side: a.whale.biggestSide,
-          amount_usd: a.whale.biggestUsd, price: a.price,
-        })
+          amount_usd: a.whale.biggestUsd, price: a.whale.biggestTradePrice,
+          created_at: a.whale.biggestTradeAt,
+        }, { onConflict: 'source_trade_id', ignoreDuplicates: true })
         if (whaleErr) errors.push(`${coin} whale insert: ${whaleErr.message}`)
         else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
       }
@@ -725,12 +784,14 @@ async function runCron() {
         .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
         .limit(1)
       if (dup && dup.length > 0) continue
-      const entrySnap = await fetchTicker(c.coin)
+      const tickerPrice = await fetchTicker(c.coin)
+      const entryPrice = tickerPrice ?? c.price
+      const entrySnapshotAt = new Date().toISOString()
       const { error } = await supabase.from('kpk_signals').insert({
         coin: c.coin, signal: c.signal, score: c.score,
-        quality: c.quality, price: c.price,
-        entry_snapshot: entrySnap,
-        entry_snapshot_at: new Date().toISOString(),
+        quality: c.quality, price: entryPrice,
+        entry_snapshot: entryPrice,
+        entry_snapshot_at: entrySnapshotAt,
         components: c.components,
         score_band: c.scoreBand,
       })
@@ -740,7 +801,7 @@ async function runCron() {
       }
       inserted.push(`${c.coin} ${c.signal} ${c.score}`)
       try {
-        await sendTelegram(c.coin, c.signal, c.quality, c.score, c.price, c.whale)
+        await sendTelegram(c.coin, c.signal, c.quality, c.score, entryPrice, c.whale, brandName, telegramChatId)
       } catch (te: any) {
         errors.push(`${c.coin} telegram: ${te.message}`)
       }
@@ -777,10 +838,12 @@ async function runCron() {
         if (error) errors.push(`update ${row.id}: ${error.message}`)
         else {
           closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
-          try {
-            await sendResult(row.coin, row.signal, resolution.result, createdAt)
-          } catch (te: any) {
-            errors.push(`${row.coin} sonuç telegram: ${te.message}`)
+          if (resolution.result !== 'suresi_doldu') {
+            try {
+              await sendResult(row.coin, row.signal, resolution.result, createdAt, brandName, telegramChatId)
+            } catch (te: any) {
+              errors.push(`${row.coin} sonuç telegram: ${te.message}`)
+            }
           }
         }
       }

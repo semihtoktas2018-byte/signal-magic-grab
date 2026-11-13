@@ -1,4 +1,4 @@
-# KELTOŞ Panel — Kurulum Rehberi
+# White-Label Market Analysis Terminal — Kurulum Rehberi
 
 Bu panel, kripto sinyalleri üreten bir Supabase Edge Function (cron) + TanStack
 Start tabanlı bir frontend'den oluşur. Aşağıdaki adımlar, paneli **kendi Supabase
@@ -47,6 +47,7 @@ Bu değerler **repoya girilmez**, yalnızca Supabase Secrets'a elle eklenir:
 | `SUPABASE_URL` | Project Settings → API | Fonksiyonların DB'ye bağlanması |
 | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API (service_role) | Cron'un tablolara yazması |
 | `TELEGRAM_BOT_TOKEN` | Telegram @BotFather | Sinyal/sonuç bildirimi |
+| `TELEGRAM_CHAT_ID` | Hedef Telegram kanal/grup kimliği | Bildirimlerin gönderileceği hedef |
 | `CRON_SECRET` | Kendiniz üretin (uzun rastgele değer) | pg_cron → fonksiyon doğrulaması |
 
 > `SUPABASE_URL` ve `SUPABASE_SERVICE_ROLE_KEY` çoğu Supabase projesinde edge
@@ -54,9 +55,7 @@ Bu değerler **repoya girilmez**, yalnızca Supabase Secrets'a elle eklenir:
 >
 > `CRON_SECRET` üretmek için örn: `openssl rand -hex 32`
 
-Telegram kanal kimliği (`TELEGRAM_CHAT_ID`) kodda sabittir
-(`supabase/functions/kpk-signals-cron/index.ts`). Kendi kanalınızı kullanmak
-için oradaki değeri değiştirin.
+Her alıcı kendi Telegram bot token'ını ve hedef kanal/grup kimliğini (`TELEGRAM_CHAT_ID`) Supabase Edge Function Secrets bölümüne eklemelidir. Kanal/grupta botun mesaj gönderme yetkisi bulunmalıdır. Bildirim başlığı, `app_branding` tablosundaki marka adını kullanır; marka kaydı yoksa genel ürün adı gösterilir.
 
 ---
 
@@ -75,8 +74,7 @@ için oradaki değeri değiştirin.
      supabase functions deploy kpk-signals-cron
      supabase functions deploy fear-greed
      ```
-3. **`config.toml`**: `project_id` sizin ref'iniz olmalı. Bu repoda
-   `gmwlkkebwpenocatlmty` olarak ayarlıdır; kendi ref'inizle değiştirin.
+3. **`config.toml`**: `project_id` sizin ref'iniz olmalı. Bu repoda örnek proje kimliği kullanılır; gerçek Supabase bağlantısı `.env` ve Vault secret'larından gelir.
 4. **Edge Function Secrets**'i girin (bkz. 1b).
 
 > `config.toml` içinde her iki fonksiyon için `verify_jwt = false` ayarlıdır:
@@ -90,21 +88,30 @@ için oradaki değeri değiştirin.
 Migration'lar (`supabase/migrations/`) tabloları, RLS'i ve `pg_cron` işini kurar.
 `supabase db push` (veya GitHub entegrasyonu) bunları uygular.
 
+**Whale Radar veri tablosu:** `20261110090000_create_whale_events.sql`,
+Bybit spot işlemlerinden eşik üstü tekil işlemleri saklayan `whale_events`
+tablosunu oluşturur. Kaynak işlem kimliği benzersizdir; aynı işlem sonraki
+cron taramalarında tekrar yazılmaz. Bu tabloya herkese açık SELECT, yalnızca
+`service_role` için INSERT izni verilir. Bu migration uygulanmadan Whale Radar
+ekranında olay listesi veri alamaz.
+
 **Önemli — cron migration'ından ÖNCE Vault secret'i ekleyin.**
 `pg_cron` işi, `x-cron-secret` değerini çalışma anında Supabase Vault'tan okur
 (düz metin saklanmaz). SQL Editor'de:
 
 ```sql
-select vault.create_secret('EDGE-FUNCTION-CRON_SECRET-ILE-AYNI-DEGER', 'cron_secret');
+select vault.create_secret('CRON_SECRET_DEGERI', 'cron_secret');
+select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'supabase_url');
+select vault.create_secret('sb_publishable_<PROJECT_KEY>', 'supabase_publishable_key');
 ```
 
 Bu değer, edge function'ın `CRON_SECRET` secret'iyle **birebir aynı** olmalıdır.
 Eşleşmezse fonksiyon 401 döner ve sinyal üretilmez.
 
-`20260926120000_reschedule_cron_to_edge_function.sql` migration'ı, cron işini
-5 dakikada bir şu adrese POST atacak şekilde kurar:
-`https://<PROJECT_REF>.supabase.co/functions/v1/kpk-signals-cron`
-(URL'yi kendi ref'inizle güncelleyin.)
+`20260926120000_reschedule_cron_to_edge_function.sql` migration'ı URL'yi,
+publishable key'i ve CRON_SECRET değerini Vault'tan okur. Bu nedenle üç Vault
+secret'ı migration çalıştırılmadan önce oluşturulmalıdır; SQL dosyasını alıcıya
+özel URL veya anahtarla elle düzenlemek gerekmez.
 
 Cron'un çalıştığını kontrol:
 ```sql
@@ -112,13 +119,9 @@ select * from cron.job;                          -- iş kayıtlı mı
 select * from cron.job_run_details order by start_time desc limit 10;  -- son koşular
 ```
 
-> **Sıfırdan kurulum notu:** Daha eski bir migration
-> (`20260905191345_...sql`) `select cron.unschedule(1)` satırı içerir. Bu satır,
-> henüz hiç cron işi olmayan **bomboş** bir projede "job 1 not found" hatası
-> verebilir ve `db push`'u durdurabilir. Karşılaşırsanız güvenle atlayabilir
-> (o satırı geçici olarak yorum satırı yapıp devam edebilir) ya da önce boş bir
-> job kaydı oluşturabilirsiniz; nihai zamanlamayı zaten bu dosyadaki yeni
-> migration (`20260926120000_...`) doğru adrese kurar.
+> **Cron migration notu:** İlk migration yalnızca eski isimli işi temizler; eski
+> Lovable endpoint'ine istek göndermez. Sonraki migration, alıcıya ait Vault
+> secret'ları kullanarak `kpk-signals-cron` işini oluşturur.
 
 ---
 
@@ -139,17 +142,23 @@ unutmayın.
 ## 5. Doğrulama Kontrol Listesi
 
 - [ ] `.env` dolduruldu, `VITE_SUPABASE_URL` doğru.
-- [ ] Edge Function Secrets girildi (`SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET`).
+- [ ] Edge Function Secrets girildi (`SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `CRON_SECRET`).
 - [ ] Vault'ta `cron_secret` var ve `CRON_SECRET` ile aynı.
-- [ ] `config.toml` ve cron migration'ındaki proje ref'i sizinki.
+- [ ] `config.toml` yerel proje adı geneldir; Vault'taki `supabase_url` ve `supabase_publishable_key` sizin projenize aittir.
 - [ ] `supabase functions deploy` iki fonksiyonu da deploy etti.
 - [ ] `cron.job_run_details` başarılı koşu gösteriyor.
 - [ ] Panelde sinyaller, fiyatlar ve Fear & Greed görünüyor.
+- [ ] Whale Radar migration uygulanmış ve olay kayıtları doğrulanmış.
+- [ ] 48 saatlik sinyal resolver davranışı, tam mum kapsamı ve eksik veri senaryolarıyla test edilmiş.
+- [ ] `suresi_doldu` kayıtlarının isabet oranı ve EV hesaplarına girmediği doğrulanmış.
+- [ ] Alıcıya ait Telegram botu ve hedef kanalına test bildirimi ulaştığı doğrulanmış.
+- [ ] Alıcıya ait Supabase projesinde RLS, cron, Edge Function logları ve API rate-limit davranışı doğrulanmış.
+- [ ] Mobil ve masaüstü ekranları gerçek veriyle kontrol edilmiş.
 
 ---
 
-## Marka Notu
+## Satış Öncesi Teslimat Sınırı
 
-Footer imzası **"A BAMIR ONLINE STORE'S PRODUCTION"** korunur. "KELTOŞ" markası,
-Shopier ödeme linkleri, WhatsApp numarası ve Telegram kanalı kod içinde
-tanımlıdır; kendi markanıza uyarlamak için ilgili dosyalarda güncelleyin.
+Bu rehber, alıcının kendi altyapısına kurulum içindir. Kaynak kodun derlenmesi canlı servislerin çalıştığını kanıtlamaz. Her alıcı ayrı Supabase projesi, domain/hosting ve Telegram botu kullanmalıdır. Marka adı, logo, slogan, ana renk, vurgu rengi ve alt bilgi `/branding` yönetim ekranından yapılandırılır. Marka ayarları yalnızca ilgili kurulumun `app_metadata.role = "admin"` yetkisine sahip yöneticisi tarafından değiştirilebilir.
+
+Her satışta alıcıya özel deployment ve ayrı veri altyapısı kullanılmalıdır; bu paket ortak çok kiracılı (multi-tenant) hizmet olarak tasarlanmamıştır. Canlıya geçişten önce yukarıdaki kontrol listesi tamamlanmalıdır.

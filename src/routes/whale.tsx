@@ -1,19 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/whale")({
   head: () => ({
     meta: [
-      { title: "Whale Radar — KELTOŞ" },
-      { name: "description", content: "Kripto piyasasında büyük cüzdan hareketlerini canlı takip et." },
+      { title: "Whale Radar" },
+      { name: "description", content: "Bybit spot piyasasında izlenen coinlerin son 1000 işlemi içinde 250.000 USD ve üzerindeki tekil işlemleri listeler; cüzdan hareketlerini izlemez." },
     ],
   }),
   component: WhaleRadar,
 });
-
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 interface WhaleEvent {
   id: string;
@@ -26,12 +25,13 @@ interface WhaleEvent {
 
 async function fetchWhaleEvents(): Promise<WhaleEvent[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/whale_events?select=*&order=created_at.desc&limit=100`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as WhaleEvent[];
+    const { data, error } = await supabase
+      .from("whale_events")
+      .select("id,coin,side,amount_usd,price,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) return [];
+    return (data ?? []) as WhaleEvent[];
   } catch {
     return [];
   }
@@ -59,6 +59,7 @@ function timeAgo(iso: string): string {
 }
 
 function WhaleRadar() {
+  const brand = useBranding();
   const [events, setEvents] = useState<WhaleEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -96,9 +97,9 @@ function WhaleRadar() {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -373,16 +374,7 @@ function WhaleRadar() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
-          </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
-        </div>
-
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || "Whale Radar"}</div>
       </div>
     </div>
   );

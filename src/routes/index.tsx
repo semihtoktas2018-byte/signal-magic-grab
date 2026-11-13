@@ -4,17 +4,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Bell, Menu, X } from "lucide-react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 const AISignalIntelligence = lazy(() => import("@/components/AISignalIntelligence"));
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ PARAYA KOŞ — Profesyonel Kripto Sinyal Paneli" },
-      { name: "description", content: "Kripto piyasasını senin yerine analiz eden profesyonel sinyal paneli. Canlı sinyaller, smart money, paper trade ve daha fazlası." },
-      { property: "og:title", content: "KELTOŞ PARAYA KOŞ" },
-      { property: "og:description", content: "Kripto piyasasını senin yerine analiz eden profesyonel sinyal paneli." },
-      { property: "og:image", content: "/keltos-hero.png" },
+      { title: "Market Analysis Terminal" },
+      { name: "description", content: "Teknik göstergeler, kripto sinyalleri, piyasa karşılaştırması ve geçmiş sinyal sonuçlarını izleme paneli." },
+      { property: "og:title", content: "Market Analysis Terminal" },
+      { property: "og:description", content: "Teknik göstergeler ve sinyal geçmişini izlemek için kripto analiz paneli." },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
     ],
   }),
@@ -22,9 +23,6 @@ export const Route = createFileRoute("/")({
 });
 
 const WHATSAPP = "https://wa.me/905446452430";
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
-
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -48,14 +46,6 @@ function useReveal() {
   return ref;
 }
 
-function dayKey(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return "";
-  }
-}
-
 interface MergedSignal {
   coin: string;
   signal: string;
@@ -63,52 +53,27 @@ interface MergedSignal {
   date: string;
   result: string;
   score?: number | null;
-  src: "local" | "remote";
 }
 
 async function fetchMergedSignals(): Promise<MergedSignal[]> {
-  let local: MergedSignal[] = [];
   try {
-    const raw = JSON.parse(localStorage.getItem("kpk_wins") || "[]");
-    if (Array.isArray(raw)) {
-      local = raw.map((w: any) => ({ ...w, src: "local" as const }));
-    }
+    const { data, error } = await supabase
+      .from("kpk_signals")
+      .select("coin,signal,price,created_at,result,score")
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) return [];
+    return (data ?? []).map((row) => ({
+      coin: row.coin,
+      signal: row.signal,
+      price: String(row.price),
+      date: row.created_at,
+      result: row.result || "bekliyor",
+      score: row.score,
+    }));
   } catch {
-    local = [];
+    return [];
   }
-
-  let remote: MergedSignal[] = [];
-  try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/kpk_signals?select=*&order=created_at.asc&limit=500`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (res.ok) {
-      const rows = await res.json();
-      remote = (rows || []).map((row: any) => ({
-        coin: row.coin,
-        signal: row.signal,
-        price: String(row.price),
-        date: row.created_at,
-        result: row.result || "bekliyor",
-        score: row.score,
-        src: "remote" as const,
-      }));
-    }
-  } catch {
-    remote = [];
-  }
-
-  const seen = new Set(local.map((w) => `${w.coin}_${w.signal}_${dayKey(w.date)}`));
-  const remoteFiltered = remote.filter((r) => !seen.has(`${r.coin}_${r.signal}_${dayKey(r.date)}`));
-  return [...remoteFiltered, ...local].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-}
-
-function computeHitRate(signals: MergedSignal[]): string {
-  const done = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
-  if (done.length === 0) return "--";
-  const wins = done.filter((s) => s.result === "tuttu").length;
-  return String(Math.round((wins / done.length) * 100));
 }
 
 const TP_PCT = 0.025;
@@ -160,7 +125,7 @@ function computeLive(sig: MergedSignal, curPrice: number) {
 }
 
 function AnimatedBrand() {
-  const texts = ["KELTOŞ", "PARAYA KOŞ", "SİNYALE KOŞ"];
+  const texts = ["MARKET ANALYSIS", "SIGNAL TERMINAL"];
   const [index, setIndex] = useState(0);
   useEffect(() => {
     const id = setInterval(() => { if (document.visibilityState === "visible") setIndex((i) => (i + 1) % texts.length); }, 5000);
@@ -178,8 +143,8 @@ function AnimatedBrand() {
 }
 
 function Landing() {
+  const brand = useBranding();
   const ref = useReveal();
-  const [stats, setStats] = useState<{ hit: string; coins: number }>({ hit: "--", coins: 9 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifSignals, setNotifSignals] = useState<MergedSignal[]>([]);
@@ -187,7 +152,21 @@ function Landing() {
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const bellRef = useRef<HTMLDivElement>(null);
   const [lang, setLang] = useState<LangCode>(getLang());
+  const [isAdmin, setIsAdmin] = useState(false);
   const t = (key: string) => translations[key]?.[lang] || key;
+
+  useEffect(() => {
+    let active = true;
+    const syncAdmin = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (active) setIsAdmin(data.user?.app_metadata?.role === "admin");
+    };
+    void syncAdmin();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setIsAdmin(session?.user?.app_metadata?.role === "admin");
+    });
+    return () => { active = false; listener.subscription.unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -201,15 +180,6 @@ function Landing() {
       const merged = await fetchMergedSignals();
       if (cancelled) return;
 
-      const hit = computeHitRate(merged);
-      let coins = 9;
-      try {
-        const coinsRaw = JSON.parse(localStorage.getItem("kpk_coins") || "null");
-        if (Array.isArray(coinsRaw) && coinsRaw.length) coins = coinsRaw.length;
-      } catch {
-        coins = 9;
-      }
-      setStats({ hit, coins });
       setNotifSignals(merged.slice(-3).reverse());
       const open = merged
         .filter((s) => (s.result || "bekliyor") === "bekliyor")
@@ -248,11 +218,13 @@ function Landing() {
   const badgeColor = (result?: string) => {
     if (result === "tuttu") return "#22c55e";
     if (result === "tutmadi") return "#ef4444";
-    return "#f5b629";
+    if (result === "suresi_doldu") return "#94a3b8";
+    return "var(--brand-accent, #f5b629)";
   };
   const badgeText = (result?: string) => {
     if (result === "tuttu") return "Tuttu";
     if (result === "tutmadi") return "Tutmadı";
+    if (result === "suresi_doldu") return "Süresi doldu";
     return "Bekliyor";
   };
   const signalTypeColor = (type?: string) => {
@@ -263,23 +235,17 @@ function Landing() {
   };
 
   const features = [
-    { icon: "🧠", title: "Yapay Zeka Destekli Analiz", desc: "Piyasa verilerini saniyeler içinde analiz eder, en güçlü fırsatları senin için belirler." },
-    { icon: "🎯", title: "Canlı Sinyal Takibi", desc: "Anlık üretilen yüksek isabetli sinyallerle kazanç fırsatlarını kaçırma." },
-    { icon: "🛡️", title: "Risk Yönetimi", desc: "Otomatik stop-loss ve take-profit seviyeleriyle sermayeni koru." },
-    { icon: "📈", title: "Kazanca Odaklı Strateji", desc: "Trendleri yakala, doğru zamanda giriş yap, kazanca koş!" },
+    { icon: "📊", title: "Teknik Gösterge Analizi", desc: "EMA, RSI, MACD ve Bollinger göstergeleriyle piyasa koşullarını inceler." },
+    { icon: "🎯", title: "Sinyal Takibi", desc: "BUY ve SELL sinyallerini giriş fiyatı, hedef ve stop seviyeleriyle listeler." },
+    { icon: "🔎", title: "Piyasa Karşılaştırması", desc: "Kodda tanımlı Bybit ve OKX fiyat karşılaştırma akışını sunar; canlı erişim kurulumda doğrulanmalıdır." },
+    { icon: "📈", title: "Geçmiş Sonuçlar", desc: "Kaydedilen sinyallerin hedef/stop sonuçlarını ve teorik performans metriklerini görüntüler." },
   ];
 
   const steps = [
-    { n: "1️⃣", t: "Panele Gir" },
-    { n: "2️⃣", t: "Sinyali Gör" },
-    { n: "3️⃣", t: "Tutanlar'a Kaydet" },
-    { n: "4️⃣", t: "VIP ile Kazan" },
-  ];
-
-  const plans = [
-    { name: "Ücretsiz", price: "0₺", tag: "Başla", features: ["Panel erişimi", "Temel sinyaller", "Paper trade"], highlight: false },
-    { name: "VIP Günlük", price: "50₺", tag: "Popüler", features: ["Özel sinyaller", "Telegram kanalı", "Anlık uyarılar"], highlight: true },
-    { name: "VIP Aylık", price: "499₺", tag: "En Avantajlı", features: ["Tüm özellikler", "Öncelikli destek", "1 ay sınırsız"], highlight: false },
+    { n: "1", t: "Piyasa verisini incele" },
+    { n: "2", t: "Sinyal ve teknik detayları görüntüle" },
+    { n: "3", t: "Hedef ve stop seviyelerini takip et" },
+    { n: "4", t: "Geçmiş sonuçları performans ekranında değerlendir" },
   ];
 
   return (
@@ -288,7 +254,7 @@ function Landing() {
 
       <nav className="nav">
         <div className="brand-logo">
-          <span className="crown">♛</span> {t("keltosBrand")}
+          {brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 36, maxWidth: 160, objectFit: "contain" }} /> : <span className="brand-copy"><span>{brand.brand_name || "Market Analysis Terminal"}</span>{brand.tagline && <small className="brand-tagline">{brand.tagline}</small>}</span>}
         </div>
         <div className="nav-links">
           <a href="/" className="nav-active">{t("home")}</a>
@@ -296,6 +262,7 @@ function Landing() {
           <a href="/performance">{t("performance")}</a>
           <a href="/whale">{t("whaleRadar")}</a>
           <a href="/exchange">{t("exchangeCompare")}</a>
+          {isAdmin && <a href="/branding">Marka ayarları</a>}
           <a href="#pricing">{t("pricing")}</a>
         </div>
 
@@ -308,7 +275,7 @@ function Landing() {
               setLangStorage(next);
             }}
             aria-label="Language"
-            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 999, padding: "8px 10px", fontWeight: 700 }}
+            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "var(--brand-accent, #f5b629)", borderRadius: 999, padding: "8px 10px", fontWeight: 700 }}
           >
             <option value="tr">TR</option>
             <option value="en">EN</option>
@@ -316,7 +283,7 @@ function Landing() {
             <option value="fr">FR</option>
             <option value="ar">AR</option>
           </select>
-          <a href="/signals" className="nav-cta">{t("raceToMoney")} ⚡</a>
+          <a href="/signals" className="nav-cta">Sinyal terminali</a>
           <div className="bell-wrap" ref={bellRef}>
             <button className="bell-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Bildirimler">
               <Bell size={20} />
@@ -372,22 +339,22 @@ function Landing() {
           <div className="hero-text">
             <div className="hero-head-row">
               <div>
-                <span className="eyebrow">◆ {t("professionalCryptoSignal")}</span>
-                <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">{t("raceToMoney")}</span></h1>
+                <span className="eyebrow">◆ Kripto analiz ve sinyal paneli</span>
+                <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">Kripto Analiz Paneli</span></h1>
               </div>
             </div>
             <p className="hero-sub">
-              {t("heroWhaleText")} <b>{t("keltosBrand")}</b> {t("heroWhaleHighlight")} {t("heroMarketAnalysis")}
+              <b>{t("keltosBrand")}</b> teknik göstergeler, kayıtlı sinyaller ve piyasa verilerini tek panelde sunar.
             </p>
             <div className="hero-cta">
               <a href="/signals" className="btn btn-primary">{t("enterSignalTerminal")}</a>
               <a href="/performance" className="btn btn-ghost">📊 {t("performanceShort")}</a>
             </div>
             <div className="hero-stats">
-              <div><b>{stats.coins}</b><span>{t("coinTracking")}</span></div>
-              <div><b>%{stats.hit}</b><span>{t("hitRate")}</span></div>
-              <div><b>{t("liveLabel")}</b><span>{t("bybitData")}</span></div>
-              <div><b>{t("transparent")}</b><span>{t("openHistory")}</span></div>
+              <div><b>EMA · RSI</b><span>Teknik göstergeler</span></div>
+              <div><b>BUY / SELL</b><span>Sinyal yönü</span></div>
+              <div><b>TP / SL</b><span>Hedef ve stop seviyeleri</span></div>
+              <div><b>Geçmiş</b><span>Kaydedilmiş sinyal sonuçları</span></div>
             </div>
           </div>
         </div>
@@ -403,6 +370,7 @@ function Landing() {
           <h2 className="live-h2">Canlı Sinyal Takibi</h2>
           <span className="live-count">{openSignals.length} açık pozisyon · özet</span>
         </div>
+        <p className="live-source-note">Referans fiyatı Binance spot verisidir; sinyal giriş fiyatı Bybit kaynaklıdır. Farklı borsalar nedeniyle gösterilen yüzde yaklaşık karşılaştırmadır, gerçekleşmiş getiri değildir.</p>
         {openSignals.length === 0 ? (
           <div className="live-empty">{t("noOpenSignals")}</div>
         ) : (
@@ -455,7 +423,7 @@ function Landing() {
 
       <section id="features" className="section">
         <div className="sec-head" data-reveal>
-          <h2>KELTOŞ Nasıl Çalışır?</h2>
+          <h2>Nasıl Çalışır?</h2>
           <p>Tek bir panelde profesyonel kripto analiz cephaneliği.</p>
         </div>
         <div className="grid features">
@@ -473,24 +441,24 @@ function Landing() {
 
       <section id="how" className="section">
         <div className="sec-head" data-reveal>
-          <h2>Neden KELTOŞ?</h2>
+          <h2>Neden Bu Panel?</h2>
           <p>Süslü rakamlar yok. Sadece şeffaflık.</p>
         </div>
         <div className="grid trust">
           <div className="card trust-card" data-reveal>
             <div className="t-icon">🔒</div>
             <h3>Verilerin Güvende</h3>
-            <p>Sinyaller Supabase altyapısında saklanır, hesabın korunur.</p>
+            <p>Sinyal kayıtları mevcut Supabase projesinde tutulur. Erişim ve güvenlik ayarları alıcı kurulumunda ayrıca doğrulanmalıdır.</p>
           </div>
           <div className="card trust-card" data-reveal style={{ transitionDelay: "60ms" }}>
             <div className="t-icon">📊</div>
             <h3>Şeffaf Geçmiş</h3>
-            <p>Her sinyalin sonucu (tuttu/tutmadı) açıkça performans sayfasında.</p>
+            <p>Kaydedilen sinyallerin sonuç durumları performans sayfasında listelenir.</p>
           </div>
           <div className="card trust-card" data-reveal style={{ transitionDelay: "120ms" }}>
             <div className="t-icon">⚡</div>
             <h3>Gerçek Veri</h3>
-            <p>Fiyatlar Bybit'ten canlı çekilir. Uydurma sayı yok, spekülasyon yok.</p>
+            <p>Ana sayfadaki canlı fiyat bileşeni Binance piyasa verisini kullanır. Diğer veri akışları kurulumda ayrıca doğrulanmalıdır.</p>
           </div>
         </div>
         <div className="disclaimer-bar" data-reveal>
@@ -500,11 +468,11 @@ function Landing() {
 
       <section id="pricing" className="section">
         <div className="sec-head" data-reveal>
-          <h2>Üyelik Planları</h2>
-          <p>İhtiyacına göre seç, hemen başla. Kredi kartı gerekmez, istediğin zaman iptal et.</p>
+          <h2>Lisans ve Kurulum Bilgisi</h2>
+          <p>Kaynak kod, kurulum kapsamı ve alıcıya özel yapılandırma için iletişime geçin.</p>
         </div>
         <div className="grid pricing">
-          {plans.map((p, i) => (
+          {[{ name: "Analiz Paneli", price: "Lisans / devir", tag: "Ürün teslimi", features: ["Web paneli kaynak kodu", "Supabase ve Edge Function kurulum dokümanları", "Alıcıya özel yapılandırma kapsamı ayrıca belirlenir"], highlight: true }].map((p, i) => (
             <div key={i} className={`card plan ${p.highlight ? "plan-pop" : ""}`} data-reveal style={{ transitionDelay: `${i * 80}ms` }}>
               <div className="plan-tag">{p.tag}</div>
               <h3>{p.name}</h3>
@@ -513,13 +481,11 @@ function Landing() {
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
               <a href={
-                p.name === "VIP Aylık" ? "https://www.shopier.com/bamironlinestore/48297662"
-                : p.name === "VIP Günlük" ? "https://www.shopier.com/bamironlinestore/48843519"
-                : "/signals"
+                WHATSAPP
               }
-                target={p.name === "Ücretsiz" ? "_self" : "_blank"} rel="noreferrer" className="btn btn-primary plan-cta"
+                target={p.name === "Market Analysis Paneli" ? "_blank" : "_self"} rel="noreferrer" className="btn btn-primary plan-cta"
               >
-                {p.name === "Ücretsiz" ? "🚀 Ücretsiz Başla" : "💳 Hemen Satın Al"}
+                {p.name === "Market Analysis Paneli" ? "Lisans için iletişime geç" : "Panele gir"}
               </a>
             </div>
           ))}
@@ -527,26 +493,26 @@ function Landing() {
       </section>
 
       <section className="final-cta" data-reveal>
-        <h2>Bugün Kazanmaya Başla</h2>
-        <p>Balinaları önden gör, doğru zamanda giriş yap.</p>
-        <a href="/signals" className="btn btn-primary final-btn">⚡ HEMEN PANELE GİR</a>
+        <h2>{brand.brand_name || "Kripto Analiz Paneli"}</h2>
+        <p>Teknik analiz ve sinyal takibi için web tabanlı panel. Otomatik emir göndermez; yatırım tavsiyesi veya kârlılık garantisi sunmaz.</p>
+        <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-primary final-btn">Lisans ve kurulum için iletişim</a>
       </section>
 
       <footer className="footer">
-        <div className="shimmer">A BAMIR ONLINE STORE'S PRODUCTION</div>
-        <div className="copy">© {new Date().getFullYear()} KELTOŞ · Tüm hakları saklıdır</div>
+        <div className="shimmer">{brand.footer_text || brand.brand_name || ""}</div>
+        <div className="copy">© {new Date().getFullYear()} {brand.brand_name || "Market Analysis Terminal"}</div>
       </footer>
     </div>
   );
 }
 
 const css = `
-.landing{--bg:#05070c;--bg2:#0a0e16;--gold:#f5b629;--gold2:#ffd76a;--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:rgba(245,182,41,.18);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
+.landing{--bg:#05070c;--bg2:#0a0e16;--gold:var(--brand-accent,#f5b629);--gold2:color-mix(in srgb,var(--brand-accent,#f5b629) 65%,white);--gold3:#c8941a;--text:#f0f4fa;--muted:#8a93a3;--line:color-mix(in srgb,var(--brand-accent,#f5b629) 18%,transparent);--card:rgba(255,255,255,.03);background:var(--bg);color:var(--text)}
 .landing::before{content:"";position:fixed;inset:0;background:radial-gradient(70% 55% at 60% 0%,rgba(245,182,41,.10),transparent 60%),radial-gradient(50% 40% at 15% 90%,rgba(245,182,41,.06),transparent 60%);pointer-events:none}
 .landing>*{position:relative;z-index:1}
 *{box-sizing:border-box}
 .nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 32px;background:rgba(5,7,12,.82);backdrop-filter:blur(16px);border-bottom:1px solid rgba(245,182,41,.12)}
-.brand-logo{font-size:24px;font-weight:900;letter-spacing:.04em;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:center;gap:8px}
+.brand-copy{display:flex;flex-direction:column;line-height:1.15}.brand-tagline{font-size:10px;font-weight:600;letter-spacing:.02em;opacity:.72;margin-top:3px}.brand-logo{font-size:24px;font-weight:900;letter-spacing:.04em;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:center;gap:8px}
 .crown{color:var(--gold);font-size:18px;-webkit-text-fill-color:var(--gold)}
 .nav-links{display:flex;gap:22px;align-items:center}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;transition:color .2s;white-space:nowrap}
