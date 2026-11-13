@@ -142,7 +142,7 @@ function Performance() {
     let cancelled = false;
     const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
     load();
-    const id = setInterval(load, 60000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
@@ -216,7 +216,7 @@ function Performance() {
   }
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
@@ -239,7 +239,7 @@ function Performance() {
         radial-gradient(circle at 83% 74%, rgba(168, 113, 20, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .kt-page-shell .kt-grid {
       position: absolute;
@@ -258,7 +258,7 @@ function Performance() {
       width: 440px;
       height: 440px;
       border-radius: 50%;
-      filter: blur(110px);
+      filter:none;opacity:.45;
       pointer-events: none;
     }
     .kt-page-shell .kt-orb-one { top: -200px; left: -140px; background: rgba(245, 182, 41, 0.12); }
@@ -272,7 +272,7 @@ function Performance() {
       gap: 12px;
       padding: 14px 18px 16px;
       background: rgba(7, 12, 18, 0.78);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
       border-bottom: 1px solid var(--kt-line);
     }
     .kt-page-shell .perf-title {
@@ -313,7 +313,7 @@ function Performance() {
       background: rgba(15, 19, 28, 0.72);
       border: 1px solid rgba(245, 182, 41, 0.18);
       box-shadow: 0 16px 28px -24px rgba(0,0,0,0.9);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .stat-card,
     .kt-page-shell .ev-card,
@@ -339,7 +339,7 @@ function Performance() {
       background: rgba(255,255,255,0.02);
       color: var(--kt-muted);
       font-weight: 700;
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 0.6rem 0.9rem;
       cursor: pointer;
     }
@@ -417,7 +417,21 @@ function Performance() {
       .kt-page-shell .perf-nav { padding-inline: 14px; }
       .kt-page-shell .perf-title { font-size: 0.82rem; }
     }
-  `;
+  
+/* Unified KELTOS premium performance layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
+.kt-page-shell .perf-title{letter-spacing:.12em;font-size:15px}.kt-page-shell .perf-back{border-radius:10px;padding:8px 14px}
+.kt-page-shell .container{max-width:1160px;padding:28px 18px}
+.kt-page-shell .stat-card,.kt-page-shell .ev-card,.kt-page-shell .live-card,.kt-page-shell .coin-card,.kt-page-shell .signal-card,.kt-page-shell .type-card{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.kt-page-shell .stat-card{border-radius:16px;padding:20px 16px}.kt-page-shell .stat-val{font-size:clamp(25px,3vw,34px)}
+.kt-page-shell .stat-label,.kt-page-shell .ev-k{letter-spacing:.1em}.kt-page-shell .ev-card,.kt-page-shell .live-card{border-radius:16px;padding:18px}
+.kt-page-shell .section-title{color:#f0c568;letter-spacing:.06em}.kt-page-shell .signal-card{border-radius:14px}
+.kt-page-shell .signal-row{padding:16px 18px}.kt-page-shell .detail{background:rgba(0,0,0,.22)}
+.kt-page-shell .period-btn,.kt-page-shell .filter-btn{border-radius:10px;padding:8px 14px}
+.kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+@media(max-width:640px){.kt-page-shell .perf-nav{padding:13px 14px;gap:10px;flex-wrap:wrap}.kt-page-shell .perf-title{font-size:13px}.kt-page-shell .container{padding:18px 12px}.kt-page-shell .period-row{flex-wrap:wrap}.kt-page-shell .signal-row{padding:13px 12px}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
