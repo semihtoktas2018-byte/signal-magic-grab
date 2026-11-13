@@ -108,15 +108,25 @@ function computeLive(signal: Signal, curPrice: number) {
 }
 
 async function loadSignals(since: Date): Promise<Signal[]> {
-  const { data } = await supabase.from("kpk_signals").select("*")
-    .gte("created_at", since.toISOString()).order("created_at", { ascending: false });
-  return (data as Signal[]) || [];
+  // Page through results: the Data API caps each response at 1000 rows.
+  const PAGE = 1000;
+  const all: Signal[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase.from("kpk_signals").select("*")
+      .gte("created_at", since.toISOString()).order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all.push(...((data as Signal[]) || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return all;
 }
 
 function Performance() {
   const brand = useBranding();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [days, setDays] = useState<7 | 30>(30);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -134,7 +144,13 @@ function Performance() {
     let cancelled = false;
     setLoading(true);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    loadSignals(since).then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } });
+    setLoadError(null);
+    loadSignals(since)
+      .then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) { setSignals([]); setLoadError(err?.message || "Bilinmeyen hata"); setLoading(false); }
+      });
     return () => { cancelled = true; };
   }, [days]);
 
@@ -464,6 +480,8 @@ function Performance() {
 
       {loading ? (
         <div className="empty" style={{ maxWidth: 540, margin: "32px auto 0" }}>⏳ {t("loading")}...</div>
+      ) : loadError ? (
+        <div className="empty" style={{ maxWidth: 540, margin: "32px auto 0" }}>⚠️ Sinyal verisi yüklenemedi: {loadError}</div>
       ) : (
         <div className="container">
           <div className="period-row">
