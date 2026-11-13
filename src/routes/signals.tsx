@@ -1,17 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
-
-const supabase = createClient(
-  "https://gmwlkkebwpenocatlmty.supabase.co",
-  "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1"
-);
 
 export const Route = createFileRoute("/signals")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Sinyal Terminali" },
+      { title: "Signal Terminal" },
       {
         name: "description",
         content:
@@ -53,7 +49,7 @@ interface Signal {
   score: number;
   quality: string;
   price: number;
-  result: "tuttu" | "tutmadi" | "bekliyor";
+  result: "tuttu" | "tutmadi" | "bekliyor" | "suresi_doldu";
   created_at: string;
 }
 
@@ -191,6 +187,7 @@ function targetStop(signal: "BUY" | "SELL", entry: number) {
 function resultLabel(r: Signal["result"]) {
   if (r === "tuttu") return { text: "✓ Tuttu", cls: "res-win" };
   if (r === "tutmadi") return { text: "✗ Tutmadı", cls: "res-loss" };
+  if (r === "suresi_doldu") return { text: "⌛ Süresi doldu", cls: "res-wait" };
   return { text: "⏳ Bekliyor", cls: "res-wait" };
 }
 
@@ -227,41 +224,64 @@ async function loadPrices(): Promise<PriceRow[]> {
 }
 
 function TradingViewWidget({ symbol }: { symbol: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    script.onload = () => {
-      if (typeof (window as any).TradingView !== "undefined") {
-        new (window as any).TradingView.widget({
-          width: "100%",
-          height: 300,
-          symbol: `BYBIT:${symbol.replace("USDT", "")}USDT`,
-          interval: "15",
-          timezone: "Europe/Istanbul",
-          theme: "dark",
-          style: "1",
-          locale: "tr",
-          toolbar_bg: "#05070c",
-          enable_publishing: false,
-          hide_side_toolbar: false,
-          allow_symbol_change: false,
-          container_id: `tradingview_${symbol}`,
-        });
+    const host = hostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
       }
-    };
-    document.head.appendChild(script);
+    }, { rootMargin: "160px" });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
-    return () => {
-      const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
-      if (existingScript) existingScript.remove();
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    const renderWidget = () => {
+      if (cancelled || typeof (window as any).TradingView === "undefined") return;
+      const host = hostRef.current;
+      if (!host) return;
+      host.innerHTML = "";
+      new (window as any).TradingView.widget({
+        width: "100%",
+        height: 300,
+        symbol: `BYBIT:${symbol.replace("USDT", "")}USDT`,
+        interval: "15",
+        timezone: "Europe/Istanbul",
+        theme: "dark",
+        style: "1",
+        locale: "tr",
+        toolbar_bg: "#05070c",
+        enable_publishing: false,
+        hide_side_toolbar: false,
+        allow_symbol_change: false,
+        container_id: `tradingview_${symbol}`,
+      });
     };
-  }, [symbol]);
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://s3.tradingview.com/tv.js"]');
+    if ((window as any).TradingView) {
+      renderWidget();
+    } else {
+      const script = existing || document.createElement("script");
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.async = true;
+      script.addEventListener("load", renderWidget, { once: true });
+      if (!existing) document.head.appendChild(script);
+    }
+    return () => { cancelled = true; };
+  }, [symbol, visible]);
 
-  return <div id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
+  return <div ref={hostRef} id={`tradingview_${symbol}`} style={{ height: "300px", width: "100%" }} />;
 }
 
 function SignalTerminal() {
+  const brand = useBranding();
   const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
@@ -316,7 +336,7 @@ function SignalTerminal() {
     };
 
     void load();
-    const timer = setInterval(() => { void load(); }, 30000);
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30000);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -360,15 +380,15 @@ function SignalTerminal() {
   }
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
       --kt-panel-strong: rgba(11, 14, 22, 0.96);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -757,7 +777,35 @@ function SignalTerminal() {
       .kt-page-shell .term-nav { padding-inline: 14px; }
       .kt-page-shell .term-links { gap: 8px; }
     }
-  `;
+  
+/* Unified KELTOS premium terminal layer */
+.kt-page-shell.term{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .term-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
+.kt-page-shell .term-brand{letter-spacing:.11em;font-size:15px}
+.kt-page-shell .term-links{gap:clamp(8px,1.5vw,18px)}
+.kt-page-shell .term-links a{font-size:12px;transition:color .2s,border-color .2s}
+.kt-page-shell .wrap{max-width:1160px;padding:26px 18px 0}
+.kt-page-shell .card,.kt-page-shell .sig-card,.kt-page-shell .chart-panel{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);border-radius:16px;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.kt-page-shell .card{padding:20px}.kt-page-shell .card-h,.kt-page-shell .sec-t{color:#f0c568;letter-spacing:.1em}
+.kt-page-shell .pchip{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.09);border-radius:12px;padding:11px 12px}
+.kt-page-shell .pchip.active{border-color:rgba(245,182,41,.65);background:rgba(245,182,41,.1)}
+.kt-page-shell .sig-card{overflow:hidden}.kt-page-shell .sig-main{padding:16px 18px;gap:14px}
+.kt-page-shell .detail{background:rgba(0,0,0,.22);border-top-color:rgba(245,182,41,.16)}
+.kt-page-shell .detail-btn{background:rgba(245,182,41,.055);padding:11px}.kt-page-shell .chart-panel{padding:16px}
+.kt-page-shell .fbtn,.kt-page-shell .theme-btn,.kt-page-shell .lang-select,.kt-page-shell .logout-btn{border-radius:10px}
+.kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+@media(max-width:760px){.kt-page-shell .term-nav{align-items:flex-start;gap:10px;flex-wrap:wrap}.kt-page-shell .term-links{width:100%;overflow-x:auto;flex-wrap:nowrap;padding:4px 0}.kt-page-shell .term-links a{white-space:nowrap}.kt-page-shell .wrap{padding:18px 12px 0}}
+@media(max-width:640px){.kt-page-shell .sig-main{grid-template-columns:auto 1fr;gap:10px;padding:14px}.kt-page-shell .levels{grid-column:1/-1;justify-content:space-between}.kt-page-shell .score{justify-self:start}.kt-page-shell .term-brand{font-size:13px}.kt-page-shell .card{padding:16px}}
+/* Fix oversized remote coin marks in signal rows. */
+.kt-page-shell .coin-name{display:inline-flex;align-items:center;gap:9px;min-width:0;white-space:nowrap}
+.kt-page-shell .coin-logo{display:block;width:38px!important;height:38px!important;max-width:38px!important;max-height:38px!important;min-width:38px;object-fit:contain;flex:0 0 38px;border-radius:10px;background:rgba(255,255,255,.96);padding:3px}
+@media(max-width:640px){.kt-page-shell .coin-logo{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important;min-width:32px;flex-basis:32px}}
+
+
+/* Reduce expensive paint effects. */
+.kt-page-shell .kt-orb{filter:none;opacity:.45}
+.kt-page-shell .term-nav,.kt-page-shell .sig-card,.kt-page-shell .chart-panel{backdrop-filter:none}
+`;
 
   return (
     <div className={`kt-page-shell term ${theme === "light" ? "light-mode" : ""}`} dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -770,7 +818,7 @@ function SignalTerminal() {
         .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip, .term.light-mode .chart-panel { background: rgba(255,255,255,0.06); }
       `}</style>
       <nav className="term-nav">
-        <span className="term-brand">⚡ KELTOŞ SİNYAL TERMİNALİ</span>
+        <span className="term-brand">{brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 30, maxWidth: 140, objectFit: "contain", verticalAlign: "middle" }} /> : <span>{brand.brand_name || "Market Analysis Terminal"}{brand.tagline && <small style={{ display: "block", fontSize: 10, letterSpacing: "0.02em", opacity: 0.7, marginTop: 2 }}>{brand.tagline}</small>}</span>}</span>
         <div className="term-links">
           <a href="/">{t("home")}</a>
           <a href="/signals" className="active">{t("signalTerminal")}</a>
@@ -965,7 +1013,7 @@ function SignalTerminal() {
           )}
 
           <div className="disc">{t("panelDisclaimer")}</div>
-          <div className="sig-foot">A BAMIR ONLINE STORE'S PRODUCTION</div>
+          <div className="sig-foot">{brand.footer_text || brand.brand_name || ""}</div>
         </div>
       )}
     </div>

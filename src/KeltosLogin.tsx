@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import "../KeltosLogin.css";
+import { useBranding } from "./branding";
 
 type LoginValues = { email: string; password: string };
 type RegisterResult = { emailConfirmationRequired: boolean };
@@ -19,6 +20,7 @@ function messageOf(err: unknown, fallback: string) {
 }
 
 export default function KeltosLogin({ onLogin, onGoogleLogin, onForgotPassword, onRegister }: KeltosLoginProps) {
+  const brand = useBranding();
   const [mode, setMode] = useState<"login" | "forgot" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,20 +82,20 @@ export default function KeltosLogin({ onLogin, onGoogleLogin, onForgotPassword, 
         {Array.from({ length: 22 }, (_, index) => <i key={index} className={"kt-particle kt-particle-" + (index + 1)} />)}
       </div>
       <div className="kt-shell">
-        <section className="kt-brand" aria-label="KELTOŞ PARA'YA KOŞ">
+        <section className="kt-brand" aria-label={brand.brand_name || "Market Analysis Terminal"}>
           <div className="kt-brand-kicker"><span className="kt-brand-line" /><span>MARKET INTELLIGENCE</span><span className="kt-brand-line" /></div>
           <div className="kt-emblem" aria-hidden="true">
             <span className="kt-emblem-ring kt-emblem-ring-outer" /><span className="kt-emblem-ring kt-emblem-ring-inner" />
             <span className="kt-coin kt-coin-left">₿</span><span className="kt-coin kt-coin-right">Ξ</span><span className="kt-coin kt-coin-top">$</span>
             <div className="kt-emblem-center"><span className="kt-emblem-overline">DATA · SIGNAL · STRATEGY</span><div className="kt-emblem-bars"><i /><i /><i /><i /><i /><i /><i /></div><span className="kt-emblem-caption">READ THE MARKET</span></div>
           </div>
-          <h1 className="kt-slogan"><span>KELTOŞ</span><strong>PARA'YA KOŞ</strong></h1>
+          <h1 className="kt-slogan"><span>{brand.brand_name || "Market Analysis Terminal"}</span>{brand.tagline && <strong>{brand.tagline}</strong>}</h1>
           <p className="kt-brand-description">Piyasayı takip et. Veriyi oku. <b>Kararını bilinçli ver.</b></p>
           <div className="kt-brand-foot"><span className="kt-foot-dot" /><span>SMART MARKET TRACKING</span><span className="kt-foot-dot" /></div>
         </section>
         <section className="kt-card">
           <div className="kt-card-topline" />
-          <header className="kt-card-heading"><span className="kt-card-eyebrow">KELTOŞ TERMINAL</span><h2>{mode === "login" ? "Hesabına giriş yap" : mode === "forgot" ? "Şifreni sıfırla" : "Hesabını oluştur"}</h2><p>{mode === "login" ? "Piyasa ekranına kaldığın yerden devam et." : mode === "forgot" ? "E-posta adresine sıfırlama bağlantısı gönderelim." : "Yeni hesabını oluşturmak için bilgilerini gir."}</p></header>
+          <header className="kt-card-heading"><span className="kt-card-eyebrow">{brand.brand_name || "Market Analysis Terminal"}</span><h2>{mode === "login" ? "Hesabına giriş yap" : mode === "forgot" ? "Şifreni sıfırla" : "Hesabını oluştur"}</h2><p>{mode === "login" ? "Piyasa ekranına kaldığın yerden devam et." : mode === "forgot" ? "E-posta adresine sıfırlama bağlantısı gönderelim." : "Yeni hesabını oluşturmak için bilgilerini gir."}</p></header>
           {error && <div className="kt-feedback kt-feedback-error" role="alert">{error}</div>}
           {notice && <div className="kt-feedback kt-feedback-success" role="status">{notice}</div>}
           {mode === "login" && <form className="kt-form" onSubmit={submitLogin} noValidate>
@@ -119,7 +121,7 @@ export default function KeltosLogin({ onLogin, onGoogleLogin, onForgotPassword, 
           {mode === "login" && <div className="kt-card-security"><ShieldCheck aria-hidden="true" /><span>GÜVENLİ OTURUM · SUPABASE AUTH</span></div>}
         </section>
       </div>
-      <footer className="kt-footer"><span>KELTOŞ</span><span className="kt-footer-separator">◆</span><span>PARA'YA KOŞ</span><span className="kt-footer-note">Piyasa verileri yatırım tavsiyesi değildir.</span></footer>
+      <footer className="kt-footer"><span>{brand.footer_text || brand.brand_name || "Market Analysis Terminal"}</span><span className="kt-footer-note">Piyasa verileri yatırım tavsiyesi değildir.</span></footer>
     </main>
   );
 }

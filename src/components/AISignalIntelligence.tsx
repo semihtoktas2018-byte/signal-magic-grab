@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
 import {
   Activity,
   Brain,
@@ -20,12 +19,8 @@ import {
 } from "lucide-react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
-// KELTOŞ kendi Supabase projesi (keltos) — 'fear-greed' Edge Function burada çalışır
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const keltos = createClient(KPK_SB_URL, "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
-
 /* ============================================================
- * AI SIGNAL INTELLIGENCE CENTER
+ * MARKET DATA & SIGNAL OVERVIEW
  * Tüm veriler gerçek kaynaklardan gelir:
  *  - Binance ticker/24hr (canlı fiyat + 24s değişim, doğrudan API)
  *  - kpk_signals      (üretilmiş gerçek sinyaller + sonuçları)
@@ -239,7 +234,7 @@ function useFearGreed() {
     const load = async () => {
       try {
         // KELTOŞ kendi Supabase projesindeki (keltos) 'fear-greed' Edge Function
-        const { data: body, error } = await keltos.functions.invoke("fear-greed");
+        const { data: body, error } = await supabase.functions.invoke("fear-greed");
         if (cancelled) return;
         if (error || !body) throw new Error("fng_invoke_failed");
         const raw = (body as { data?: unknown }).data;
@@ -398,11 +393,12 @@ export default function AISignalIntelligence() {
   const statusText = (s: string) => {
     if (s === "tuttu") return t("targetReached");
     if (s === "tutmadi") return t("stopLoss");
+    if (s === "suresi_doldu") return ({ tr: "Süresi doldu", en: "Expired", de: "Abgelaufen", fr: "Expiré", ar: "انتهت المدة" } as Record<LangCode, string>)[lang];
     return t("waitingShort");
   };
 
   return (
-    <section className="aic" aria-label={t("aiSignalIntelligenceCenter")}>
+    <section className="aic" aria-label={t("aiSignalIntelligenceTitle")}>
       <style>{aicCss}</style>
       <div className="aic-bg" aria-hidden />
       <div className="aic-wrap">

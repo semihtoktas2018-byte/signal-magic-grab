@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
 
-const supabase = createClient("https://gmwlkkebwpenocatlmty.supabase.co","sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1");
 export const Route = createFileRoute("/performance")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Performans & İsabet Oranı" },
+      { title: "Performance & Signal History" },
       { name: "description", content: "Sinyal performansı, isabet oranı, beklenen getiri (EV) ve coin bazında başarı — her sinyalin tıklanabilir açıklamasıyla." },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],
@@ -34,7 +34,7 @@ interface Signal {
   score: number;
   quality: string;
   price: number;
-  result: "tuttu" | "tutmadi" | "bekliyor";
+  result: "tuttu" | "tutmadi" | "bekliyor" | "suresi_doldu";
   created_at: string;
   closed_at?: string | null;
   components?: SignalComponents | null;
@@ -42,7 +42,7 @@ interface Signal {
   score_band?: string | null;
 }
 interface CoinStat {
-  coin: string; total: number; tuttu: number; tutmadi: number; bekliyor: number; rate: number; closed: number;
+  coin: string; total: number; tuttu: number; tutmadi: number; bekliyor: number; expired: number; rate: number; closed: number;
 }
 
 const TP_PCT = 0.025;
@@ -108,14 +108,25 @@ function computeLive(signal: Signal, curPrice: number) {
 }
 
 async function loadSignals(since: Date): Promise<Signal[]> {
-  const { data } = await supabase.from("kpk_signals").select("*")
-    .gte("created_at", since.toISOString()).order("created_at", { ascending: false });
-  return (data as Signal[]) || [];
+  // Page through results: the Data API caps each response at 1000 rows.
+  const PAGE = 1000;
+  const all: Signal[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase.from("kpk_signals").select("*")
+      .gte("created_at", since.toISOString()).order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all.push(...((data as Signal[]) || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return all;
 }
 
 function Performance() {
+  const brand = useBranding();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [days, setDays] = useState<7 | 30>(30);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
@@ -133,7 +144,13 @@ function Performance() {
     let cancelled = false;
     setLoading(true);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    loadSignals(since).then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } });
+    setLoadError(null);
+    loadSignals(since)
+      .then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) { setSignals([]); setLoadError(err?.message || "Bilinmeyen hata"); setLoading(false); }
+      });
     return () => { cancelled = true; };
   }, [days]);
 
@@ -141,16 +158,19 @@ function Performance() {
     let cancelled = false;
     const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
     load();
-    const id = setInterval(load, 60000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const closed = signals.filter((s) => s.result !== "bekliyor");
+  const closed = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
   const tuttu = signals.filter((s) => s.result === "tuttu").length;
   const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
   const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
+  const expired = signals.filter((s) => s.result === "suresi_doldu").length;
   const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
-  const ev = closed.length > 0 ? (rate / 100) * TP_PCT * 100 - (1 - rate / 100) * SL_PCT * 100 : 0;
+  const ev = closed.length > 0
+    ? ((tuttu * TP_PCT - tutmadi * SL_PCT) / closed.length) * 100
+    : 0;
   const smallSample = closed.length < MIN_SAMPLE;
 
   const openSignals = signals.filter((s) => s.result === "bekliyor")
@@ -158,17 +178,18 @@ function Performance() {
 
   const buySignals = signals.filter((s) => s.signal === "BUY");
   const sellSignals = signals.filter((s) => s.signal === "SELL");
-  const buyClosed = buySignals.filter((s) => s.result !== "bekliyor");
-  const sellClosed = sellSignals.filter((s) => s.result !== "bekliyor");
+  const buyClosed = buySignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
+  const sellClosed = sellSignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
   const buyRate = buyClosed.length > 0 ? Math.round((buySignals.filter((s) => s.result === "tuttu").length / buyClosed.length) * 100) : 0;
   const sellRate = sellClosed.length > 0 ? Math.round((sellSignals.filter((s) => s.result === "tuttu").length / sellClosed.length) * 100) : 0;
 
   const coinMap = new Map<string, CoinStat>();
   signals.forEach((s) => {
-    const e = coinMap.get(s.coin) || { coin: s.coin, total: 0, tuttu: 0, tutmadi: 0, bekliyor: 0, rate: 0, closed: 0 };
+    const e = coinMap.get(s.coin) || { coin: s.coin, total: 0, tuttu: 0, tutmadi: 0, bekliyor: 0, expired: 0, rate: 0, closed: 0 };
     e.total++;
     if (s.result === "tuttu") e.tuttu++;
     else if (s.result === "tutmadi") e.tutmadi++;
+    else if (s.result === "suresi_doldu") e.expired++;
     else e.bekliyor++;
     e.closed = e.tuttu + e.tutmadi;
     e.rate = e.closed > 0 ? Math.round((e.tuttu / e.closed) * 100) : 0;
@@ -178,10 +199,10 @@ function Performance() {
 
   const filtered = filter === "hepsi" ? signals : signals.filter((s) => s.signal === filter);
 
-  const rateColor = (r: number) => r >= 70 ? "#22c55e" : r >= 45 ? "#f5b629" : "#ef4444";
-  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : "rgba(245,182,41,.1)";
-  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : "#f5b629";
-  const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : "⏳ Bekliyor";
+  const rateColor = (r: number) => r >= 70 ? "#22c55e" : r >= 45 ? "var(--brand-accent, #f5b629)" : "#ef4444";
+  const resultBg = (r: string) => r === "tuttu" ? "rgba(34,197,94,.15)" : r === "tutmadi" ? "rgba(239,68,68,.15)" : r === "suresi_doldu" ? "rgba(148,163,184,.15)" : "color-mix(in srgb, var(--brand-accent, #f5b629) 10%, transparent)";
+  const resultColor = (r: string) => r === "tuttu" ? "#22c55e" : r === "tutmadi" ? "#ef4444" : r === "suresi_doldu" ? "#94a3b8" : "var(--brand-accent, #f5b629)";
+  const resultText = (r: string) => r === "tuttu" ? "✅ Tuttu" : r === "tutmadi" ? "❌ Tutmadı" : r === "suresi_doldu" ? "⌛ Süresi doldu" : "⏳ Bekliyor";
 
   function explain(s: Signal): { what: string; why: string[] } {
     const entry = Number(s.price);
@@ -189,6 +210,7 @@ function Performance() {
     let what = "";
     if (s.result === "tuttu") what = `Fiyat hedefe (${fmtNum(target)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kazanç +%2.5.`;
     else if (s.result === "tutmadi") what = `Fiyat stop seviyesine (${fmtNum(stop)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kayıp -%2.`;
+    else if (s.result === "suresi_doldu") what = "48 saatlik izleme süresi tamamlandı; eksiksiz mum verisinde hedef veya stop görülmedi. İsabet oranı ve EV hesabına dahil edilmez.";
     else {
       const cur = livePrices[s.coin];
       const live = cur ? computeLive(s, cur) : null;
@@ -210,15 +232,15 @@ function Performance() {
   }
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
       --kt-panel-strong: rgba(11, 14, 22, 0.96);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -233,7 +255,7 @@ function Performance() {
         radial-gradient(circle at 83% 74%, rgba(168, 113, 20, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .kt-page-shell .kt-grid {
       position: absolute;
@@ -252,7 +274,7 @@ function Performance() {
       width: 440px;
       height: 440px;
       border-radius: 50%;
-      filter: blur(110px);
+      filter:none;opacity:.45;
       pointer-events: none;
     }
     .kt-page-shell .kt-orb-one { top: -200px; left: -140px; background: rgba(245, 182, 41, 0.12); }
@@ -266,7 +288,7 @@ function Performance() {
       gap: 12px;
       padding: 14px 18px 16px;
       background: rgba(7, 12, 18, 0.78);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
       border-bottom: 1px solid var(--kt-line);
     }
     .kt-page-shell .perf-title {
@@ -307,7 +329,7 @@ function Performance() {
       background: rgba(15, 19, 28, 0.72);
       border: 1px solid rgba(245, 182, 41, 0.18);
       box-shadow: 0 16px 28px -24px rgba(0,0,0,0.9);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .stat-card,
     .kt-page-shell .ev-card,
@@ -333,7 +355,7 @@ function Performance() {
       background: rgba(255,255,255,0.02);
       color: var(--kt-muted);
       font-weight: 700;
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 0.6rem 0.9rem;
       cursor: pointer;
     }
@@ -411,7 +433,21 @@ function Performance() {
       .kt-page-shell .perf-nav { padding-inline: 14px; }
       .kt-page-shell .perf-title { font-size: 0.82rem; }
     }
-  `;
+  
+/* Unified KELTOS premium performance layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
+.kt-page-shell .perf-title{letter-spacing:.12em;font-size:15px}.kt-page-shell .perf-back{border-radius:10px;padding:8px 14px}
+.kt-page-shell .container{max-width:1160px;padding:28px 18px}
+.kt-page-shell .stat-card,.kt-page-shell .ev-card,.kt-page-shell .live-card,.kt-page-shell .coin-card,.kt-page-shell .signal-card,.kt-page-shell .type-card{background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.016));border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.kt-page-shell .stat-card{border-radius:16px;padding:20px 16px}.kt-page-shell .stat-val{font-size:clamp(25px,3vw,34px)}
+.kt-page-shell .stat-label,.kt-page-shell .ev-k{letter-spacing:.1em}.kt-page-shell .ev-card,.kt-page-shell .live-card{border-radius:16px;padding:18px}
+.kt-page-shell .section-title{color:#f0c568;letter-spacing:.06em}.kt-page-shell .signal-card{border-radius:14px}
+.kt-page-shell .signal-row{padding:16px 18px}.kt-page-shell .detail{background:rgba(0,0,0,.22)}
+.kt-page-shell .period-btn,.kt-page-shell .filter-btn{border-radius:10px;padding:8px 14px}
+.kt-page-shell .empty{background:rgba(255,255,255,.025);border-color:rgba(245,182,41,.2);border-radius:14px}
+@media(max-width:640px){.kt-page-shell .perf-nav{padding:13px 14px;gap:10px;flex-wrap:wrap}.kt-page-shell .perf-title{font-size:13px}.kt-page-shell .container{padding:18px 12px}.kt-page-shell .period-row{flex-wrap:wrap}.kt-page-shell .signal-row{padding:13px 12px}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -431,7 +467,7 @@ function Performance() {
               setLangStorage(next);
             }}
             aria-label="Language"
-            style={{ background: "transparent", border: "1px solid rgba(245,182,41,.25)", color: "#f5b629", borderRadius: 999, padding: "6px 10px" }}
+            style={{ background: "transparent", border: "1px solid color-mix(in srgb, var(--brand-accent, #f5b629) 25%, transparent)", color: "var(--brand-accent, #f5b629)", borderRadius: 999, padding: "6px 10px" }}
           >
             <option value="tr">TR</option>
             <option value="en">EN</option>
@@ -444,6 +480,8 @@ function Performance() {
 
       {loading ? (
         <div className="empty" style={{ maxWidth: 540, margin: "32px auto 0" }}>⏳ {t("loading")}...</div>
+      ) : loadError ? (
+        <div className="empty" style={{ maxWidth: 540, margin: "32px auto 0" }}>⚠️ Sinyal verisi yüklenemedi: {loadError}</div>
       ) : (
         <div className="container">
           <div className="period-row">
@@ -484,16 +522,21 @@ function Performance() {
               <div className="stat-val" style={{ color: "#ef4444" }}>{tutmadi}</div>
               <div className="stat-label">{t("missedNo")}</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-val" style={{ color: "#94a3b8" }}>{expired}</div>
+              <div className="stat-label">Süresi doldu</div>
+              <div className="stat-sub">İsabet oranı ve EV dışında</div>
+            </div>
           </div>
 
           <div className="ev-row">
             <div className="ev-card">
-              <div className="ev-k">Sinyal başına beklenen getiri (EV)</div>
+              <div className="ev-k">Sinyal başına brüt teorik EV</div>
               <div className="ev-v" style={{ color: closed.length === 0 ? "#8a93a3" : ev >= 0 ? "#22c55e" : "#ef4444" }}>
                 {closed.length === 0 ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(2)}%`}
               </div>
               <div className="ev-note">
-                TP +%2.5 / SL −%2 ile hesaplanır. Kârlılık için isabet oranının <b>%44.4</b> üstünde olması gerekir (başabaş noktası).
+                Kapanan sinyallerin sabit TP +%2.5 / SL −%2 sonuçlarından hesaplanır. Brüt teorik değerdir; komisyon, spread, kayma ve gerçek emir gerçekleşmesini içermez. Başabaş isabet oranı yaklaşık <b>%44.4</b>.
                 {closed.length > 0 && ev < 0 && " Şu an başabaşın altında."}
               </div>
             </div>
@@ -502,7 +545,7 @@ function Performance() {
               <div className="ev-v" style={{ color: "#e8eef7" }}>
                 <span style={{ color: "#22c55e" }}>+2.5%</span> / <span style={{ color: "#ef4444" }}>−2%</span>
               </div>
-              <div className="ev-note">Hedef ve stop sabit olduğu için ortalama kazanç/kayıp bu değerlerde. Sistemin kârlılığı isabet oranına bağlı.</div>
+              <div className="ev-note">Varsayılan hedef/stop seviyeleri. Gerçekleşen net işlem getirisi değildir; işlem maliyetleri dahil değildir.</div>
             </div>
           </div>
 
@@ -568,7 +611,7 @@ function Performance() {
                   <div key={c.coin} className="coin-card">
                     <div>
                       <div className="coin-name">{coinShort(c.coin)}</div>
-                      <div className="coin-sub">{c.closed} kapalı · {c.tuttu}✅ {c.tutmadi}❌ · {c.bekliyor}⏳</div>
+                      <div className="coin-sub">{c.closed} kapalı · {c.tuttu}✅ {c.tutmadi}❌ · {c.bekliyor}⏳ · {c.expired} süre doldu</div>
                     </div>
                     <div className="rate-badge" style={{ color: c.closed > 0 ? rateColor(c.rate) : "#8a93a3" }}>{c.closed > 0 ? `${c.rate}%` : "—"}</div>
                   </div>
@@ -645,7 +688,7 @@ function Performance() {
             Bu panel yatırım tavsiyesi değildir; geçmiş performans gelecek getiriyi garanti etmez.
           </div>
           <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, letterSpacing: ".08em", color: "#0f7a4d", fontWeight: 600 }}>
-            A BAMIR ONLINE STORE'S PRODUCTION
+            {brand.footer_text || brand.brand_name || ""}
           </div>
         </div>
       )}

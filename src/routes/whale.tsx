@@ -1,19 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/whale")({
   head: () => ({
     meta: [
-      { title: "Whale Radar — KELTOŞ" },
-      { name: "description", content: "Kripto piyasasında büyük cüzdan hareketlerini canlı takip et." },
+      { title: "Whale Radar" },
+      { name: "description", content: "Bybit spot piyasasında izlenen coinlerin son 1000 işlemi içinde 250.000 USD ve üzerindeki tekil işlemleri listeler; cüzdan hareketlerini izlemez." },
     ],
   }),
   component: WhaleRadar,
 });
-
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 interface WhaleEvent {
   id: string;
@@ -26,12 +25,13 @@ interface WhaleEvent {
 
 async function fetchWhaleEvents(): Promise<WhaleEvent[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/whale_events?select=*&order=created_at.desc&limit=100`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as WhaleEvent[];
+    const { data, error } = await supabase
+      .from("whale_events")
+      .select("id,coin,side,amount_usd,price,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) return [];
+    return (data ?? []) as WhaleEvent[];
   } catch {
     return [];
   }
@@ -59,6 +59,7 @@ function timeAgo(iso: string): string {
 }
 
 function WhaleRadar() {
+  const brand = useBranding();
   const [events, setEvents] = useState<WhaleEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -80,7 +81,7 @@ function WhaleRadar() {
       }
     };
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -91,14 +92,14 @@ function WhaleRadar() {
   const sellCount = events.filter((e) => e.side === "SELL").length;
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -112,11 +113,11 @@ function WhaleRadar() {
         radial-gradient(circle at 82% 72%, rgba(185, 125, 25, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 24px;
     }
     .kt-page-shell .kt-grid { position:absolute; inset:0; opacity:.18; background-image:linear-gradient(rgba(245,182,41,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,182,41,.07) 1px, transparent 1px); background-size:64px 64px; mask-image:radial-gradient(ellipse at center, #000 0%, transparent 78%); }
-    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:blur(110px); pointer-events:none; }
+    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:none;opacity:.45; pointer-events:none; }
     .kt-page-shell .kt-orb-one { top:-180px; left:-120px; background:rgba(245,182,41,.12); }
     .kt-page-shell .kt-orb-two { right:-180px; bottom:-220px; background:rgba(170,118,25,.12); }
     .kt-page-shell .panel {
@@ -146,7 +147,7 @@ function WhaleRadar() {
       border-radius: 999px;
       padding: 0.6rem 0.9rem;
       font-weight: 700;
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .kt-page-shell .headline {
       display: flex;
@@ -182,7 +183,7 @@ function WhaleRadar() {
       border-radius: 16px;
       border: 1px solid var(--kt-line);
       background: rgba(15, 19, 28, 0.72);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .stat-label {
       color: var(--kt-muted);
@@ -210,7 +211,7 @@ function WhaleRadar() {
       border-radius: 14px;
       border: 1px solid var(--kt-line);
       background: rgba(15, 19, 28, 0.72);
-      backdrop-filter: blur(16px);
+      backdrop-filter: none;
     }
     .kt-page-shell .item-main { display:flex; align-items:center; gap:12px; }
     .kt-page-shell .side-badge {
@@ -292,7 +293,18 @@ function WhaleRadar() {
       .kt-page-shell .promo { flex-direction: column; align-items: flex-start; }
       .kt-page-shell .promo-btn { width: 100%; text-align: center; }
     }
-  `;
+  
+/* Unified KELTOS premium whale radar layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .panel{max-width:1000px;margin:34px auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(245,182,41,.16);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.kt-page-shell .topbar{padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.kt-page-shell .headline{gap:14px;margin:28px 0 8px}.kt-page-shell .headline h1{font-size:clamp(25px,4vw,36px);letter-spacing:-.035em}
+.kt-page-shell .stat-strip{gap:14px;margin:24px 0}.kt-page-shell .stat-box{border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.1);padding:18px}
+.kt-page-shell .item{border-radius:13px!important;background:rgba(255,255,255,.025);padding:16px 18px;margin-bottom:10px}
+.kt-page-shell .empty-state{border:1px dashed rgba(245,182,41,.24);border-radius:14px;background:rgba(255,255,255,.02);padding:28px}
+.kt-page-shell .promo{margin-top:28px;border:1px solid rgba(245,182,41,.18);border-radius:16px;background:rgba(245,182,41,.045);padding:18px}
+@media(max-width:600px){.kt-page-shell .panel{margin:10px;padding:16px;border-radius:16px}.kt-page-shell .headline{margin-top:20px}.kt-page-shell .item{padding:13px 12px}.kt-page-shell .promo{flex-direction:column;align-items:flex-start}.kt-page-shell .promo-btn{width:100%;text-align:center}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -362,16 +374,7 @@ function WhaleRadar() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
-          </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
-        </div>
-
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || "Whale Radar"}</div>
       </div>
     </div>
   );

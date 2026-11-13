@@ -1,19 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranding } from "../branding";
 
 export const Route = createFileRoute("/exchange")({
   head: () => ({
     meta: [
-      { title: "Borsa Karşılaştırma — KELTOŞ" },
+      { title: "Exchange Comparison" },
       { name: "description", content: "Bybit ve OKX arasındaki anlık fiyat farkını canlı takip et." },
     ],
   }),
   component: ExchangeCompare,
 });
-
-const KPK_SB_URL = "https://gmwlkkebwpenocatlmty.supabase.co";
-const KPK_SB_KEY = "sb_publishable_vxLxplUzQw9qNSaZjX4ucA_LZ1NW3a1";
 
 interface ExchangePrice {
   coin: string;
@@ -25,12 +24,12 @@ interface ExchangePrice {
 
 async function fetchExchangePrices(): Promise<ExchangePrice[]> {
   try {
-    const res = await fetch(
-      `${KPK_SB_URL}/rest/v1/exchange_prices?select=*&order=coin.asc`,
-      { headers: { apikey: KPK_SB_KEY, Authorization: `Bearer ${KPK_SB_KEY}` } }
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as ExchangePrice[];
+    const { data, error } = await supabase
+      .from("exchange_prices")
+      .select("*")
+      .order("coin", { ascending: true });
+    if (error) return [];
+    return (data ?? []) as ExchangePrice[];
   } catch {
     return [];
   }
@@ -52,6 +51,7 @@ function timeAgo(iso: string): string {
 }
 
 function ExchangeCompare() {
+  const brand = useBranding();
   const [prices, setPrices] = useState<ExchangePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<LangCode>(getLang());
@@ -73,7 +73,7 @@ function ExchangeCompare() {
       }
     };
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -85,14 +85,14 @@ function ExchangeCompare() {
     : null;
 
   const ktStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+    
     .kt-page-shell {
       --kt-bg: #05070b;
       --kt-bg-strong: #090d15;
       --kt-panel: rgba(15, 19, 28, 0.72);
-      --kt-gold: #f5b629;
+      --kt-gold: var(--brand-accent, #f5b629);
       --kt-gold-soft: #ffe39a;
-      --kt-line: rgba(245, 182, 41, 0.2);
+      --kt-line: color-mix(in srgb, var(--brand-accent, #f5b629) 20%, transparent);
       --kt-text: #f5f2eb;
       --kt-muted: #a2a9b5;
       --kt-success: #34d399;
@@ -106,11 +106,11 @@ function ExchangeCompare() {
         radial-gradient(circle at 82% 72%, rgba(185, 125, 25, 0.12), transparent 30%),
         linear-gradient(135deg, var(--kt-bg) 0%, var(--kt-bg-strong) 52%, #050609 100%);
       color: var(--kt-text);
-      font-family: 'DM Sans', sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       padding: 24px;
     }
     .kt-page-shell .kt-grid { position:absolute; inset:0; opacity:.18; background-image:linear-gradient(rgba(245,182,41,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,182,41,.07) 1px, transparent 1px); background-size:64px 64px; mask-image:radial-gradient(ellipse at center, #000 0%, transparent 78%); }
-    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:blur(110px); pointer-events:none; }
+    .kt-page-shell .kt-orb { position:absolute; width:440px; height:440px; border-radius:50%; filter:none;opacity:.45; pointer-events:none; }
     .kt-page-shell .kt-orb-one { top:-180px; left:-120px; background:rgba(245,182,41,.12); }
     .kt-page-shell .kt-orb-two { right:-180px; bottom:-220px; background:rgba(170,118,25,.12); }
     .kt-page-shell .panel { position:relative; z-index: 1; max-width:920px; margin:0 auto; }
@@ -125,7 +125,7 @@ function ExchangeCompare() {
     .kt-page-shell .gap-value { margin-top:8px; font-size:1.4rem; font-weight:900; color: var(--kt-gold); }
     .kt-page-shell .list { display:flex; flex-direction:column; gap:10px; }
     .kt-page-shell .item {
-      display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:14px; border:1px solid var(--kt-line); background: rgba(15, 19, 28, 0.72); backdrop-filter:blur(16px);
+      display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:14px; border:1px solid var(--kt-line); background: rgba(15, 19, 28, 0.72); backdrop-filter:none;
     }
     .kt-page-shell .pair { font-size:0.95rem; font-weight:800; }
     .kt-page-shell .meta { color:var(--kt-muted); font-size:0.7rem; margin-top:2px; }
@@ -136,13 +136,24 @@ function ExchangeCompare() {
     .kt-page-shell .promo-title { font-weight:800; font-size:0.96rem; margin-bottom:2px; }
     .kt-page-shell .promo-sub { color: var(--kt-muted); font-size:0.78rem; line-height:1.5; }
     .kt-page-shell .promo-btn { background: linear-gradient(135deg, #7dd3fc, #4ade80); color: #04121f; text-decoration:none; font-weight:900; border-radius:12px; padding:0.85rem 1.1rem; white-space:nowrap; }
-    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:#7dd3fc; }
+    .kt-page-shell .footer-mark { margin-top:24px; text-align:center; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; color:var(--brand-accent, #7dd3fc); }
     @media (max-width:620px) {
       .kt-page-shell { padding:16px; }
       .kt-page-shell .promo { flex-direction:column; align-items:flex-start; }
       .kt-page-shell .promo-btn { width:100%; text-align:center; }
     }
-  `;
+  
+/* Unified KELTOS premium exchange comparison layer */
+.kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
+.kt-page-shell .panel{max-width:1000px;margin:34px auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(245,182,41,.16);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.kt-page-shell .topbar{padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.kt-page-shell .headline{gap:14px;margin:28px 0 8px}.kt-page-shell .headline h1{font-size:clamp(25px,4vw,36px);letter-spacing:-.035em}
+.kt-page-shell .gap-card{margin:24px 0;padding:22px;border-radius:16px;border:1px solid rgba(245,182,41,.24);background:linear-gradient(145deg,rgba(245,182,41,.09),rgba(255,255,255,.02))}
+.kt-page-shell .item{border-radius:13px!important;background:rgba(255,255,255,.025);padding:16px 18px;margin-bottom:10px}
+.kt-page-shell .empty-state{border:1px dashed rgba(245,182,41,.24);border-radius:14px;background:rgba(255,255,255,.02);padding:28px}
+.kt-page-shell .promo{margin-top:28px;border:1px solid rgba(245,182,41,.18);border-radius:16px;background:rgba(245,182,41,.045);padding:18px}
+@media(max-width:600px){.kt-page-shell .panel{margin:10px;padding:16px;border-radius:16px}.kt-page-shell .headline{margin-top:20px}.kt-page-shell .item{padding:13px 12px}.kt-page-shell .promo{flex-direction:column;align-items:flex-start}.kt-page-shell .promo-btn{width:100%;text-align:center}}
+`;
 
   return (
     <div className="kt-page-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -205,16 +216,7 @@ function ExchangeCompare() {
           </div>
         )}
 
-        <div className="promo">
-          <div style={{ fontSize: 30 }}>🛍️</div>
-          <div className="promo-text">
-            <div className="promo-title">E-ticaret / Dropshipping mi yapıyorsun?</div>
-            <div className="promo-sub">KHELL AI ile ürün analizi, rakip mağaza takibi ve kâr hesabını tek panelde yap.</div>
-          </div>
-          <a href="https://khell-profit-wizard.lovable.app" target="_blank" rel="noreferrer" className="promo-btn">KHELL AI'ya Göz At →</a>
-        </div>
-
-        <div className="footer-mark">A BAMIR ONLINE STORE'S PRODUCTION</div>
+        <div className="footer-mark">{brand.footer_text || brand.brand_name || ""}</div>
       </div>
     </div>
   );
