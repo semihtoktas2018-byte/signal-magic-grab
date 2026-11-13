@@ -673,7 +673,7 @@ ${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
   if (!r.ok) {
     const body = await r.text()
