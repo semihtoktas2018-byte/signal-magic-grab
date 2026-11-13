@@ -17,6 +17,9 @@ dist-ssr
 *.local
 
 # Environment variables (GİZLİ - repoya girmemeli)
+.env
+.env.*
+!.env.example
 
 # Wrangler / Cloudflare
 .wrangler/
