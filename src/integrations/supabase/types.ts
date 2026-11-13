@@ -146,30 +146,24 @@ export type Database = {
           coin: string
           created_at: string
           id: string
-          inserted_at: string
           price: number
           side: string
-          source_trade_id: string
         }
         Insert: {
           amount_usd: number
           coin: string
-          created_at: string
+          created_at?: string
           id?: string
-          inserted_at?: string
           price: number
           side: string
-          source_trade_id: string
         }
         Update: {
           amount_usd?: number
           coin?: string
           created_at?: string
           id?: string
-          inserted_at?: string
           price?: number
           side?: string
-          source_trade_id?: string
         }
         Relationships: []
       }
