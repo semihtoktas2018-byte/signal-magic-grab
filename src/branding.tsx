@@ -8,6 +8,7 @@ export interface BrandSettings {
   primary_color: string;
   accent_color: string;
   footer_text: string;
+  contact_whatsapp: string;
 }
 
 const DEFAULT_BRANDING: BrandSettings = {
@@ -17,6 +18,7 @@ const DEFAULT_BRANDING: BrandSettings = {
   primary_color: "#172033",
   accent_color: "#64748b",
   footer_text: "",
+  contact_whatsapp: "",
 };
 
 const BrandingContext = createContext<BrandSettings>(DEFAULT_BRANDING);
@@ -34,7 +36,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await (supabase as any)
           .from("app_branding")
-          .select("brand_name,tagline,logo_url,primary_color,accent_color,footer_text")
+          .select("brand_name,tagline,logo_url,primary_color,accent_color,footer_text,contact_whatsapp")
           .eq("singleton", true)
           .maybeSingle();
         if (error || !data || !active) return;
@@ -45,6 +47,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
           primary_color: safeHex(data.primary_color, DEFAULT_BRANDING.primary_color),
           accent_color: safeHex(data.accent_color, DEFAULT_BRANDING.accent_color),
           footer_text: typeof data.footer_text === "string" ? data.footer_text : "",
+          contact_whatsapp: typeof data.contact_whatsapp === "string" ? data.contact_whatsapp : "",
         });
       } catch {
         // Keep the neutral defaults when branding storage is not configured.
