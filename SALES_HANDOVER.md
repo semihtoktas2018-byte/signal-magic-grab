@@ -68,14 +68,14 @@ Teslim tamamlandı olarak işaretlenmeden önce aşağıdakiler alıcı ortamın
 
 Build başarısı tek başına uçtan uca kabul testi değildir.
 
-## 6. Bilinen teknik sınırlamalar / açık işler
+## 6. Bilinen teknik sınırlamalar / açık işler\n\n**Mevcut satıcı ortamı için 2026-11-17 doğrulama notu:** GitHub `main` ile canlı Edge Function v12 kaynak dosyası birebir eşleşti. `kpk-signals-cron` cron görevi 5 dakikada bir aktif; incelenen son koşular başarılı. Fonksiyonun son incelenen yanıtı HTTP 200, `ok: true`, `errors: []` döndürdü. Telegram test mesajı ve gerçek LINK/USDT SELL sinyal bildirimi alıcı sohbetine ulaştı. Bu doğrulama yalnızca mevcut satıcı ortamını kapsar; alıcıya ait temiz kurulumun kabul testi yerine geçmez. `whale_events` tablosu kurulu ancak denetim anında 0 kayıt içeriyordu.
 
 - Depodaki CI üretim derlemesini kontrol eder; tüm depo ESLint kontrolü temiz değildir.
 - Otomatik test kapsamı sınırlıdır; kritik sinyal çözümleme senaryoları ayrıca test edilmelidir.
 - Bybit API rate-limit yanıtı gözlemlenmiştir; alıcı ortamında tekrar test edilmeli ve izlenmelidir.
-- Fear & Greed tablosu/akışı ve diğer dış servisler alıcı ortamında doğrulanmalıdır.
+- Canlı projede Fear & Greed tablosu kayıt içeriyor; son görülen kaynak tarihi 2026-11-16. Alıcı ortamında güncellik ve servis sürekliliği doğrulanmalıdır.
 - Whale Radar migration'ı uygulanmadan bu tabloya bağlı ekran olay verisi gösteremez.
-- Feature branch'teki yeni resolver ve Whale Radar düzeltmeleri canlı ortama deploy edilmiş değildir.
+- 2026-11-17 denetiminde canlı Edge Function v12 ile GitHub `main` kaynak dosyası birebir eşleşti. Resolver kodu canlı fonksiyonda mevcut; yine de temiz alıcı projesinde kabul testi yapılmalıdır.\n- Canlı `whale_events` tablosu mevcut ancak denetim anında 0 kayıt içeriyordu; olay akışının veri üretmesi ayrıca doğrulanmalıdır.\n- V1/V2 motorları arasında sinyal yönü/puanı ayrışabiliyor. Örnek canlı cron yanıtında LINKUSDT V1 SELL 78, V2 WAIT 28 ve V2 coverage 0.75 döndü. V2, mevcut uygulamada karşılaştırma amaçlıdır; performans garantisi olarak pazarlanmamalıdır.
 - Canlı cron/Edge Function ayarları, alıcı onayı ve erişimi olmadan değiştirilmez.
 
 ## 7. Sözleşmede açıkça kararlaştırılacak ticari maddeler
