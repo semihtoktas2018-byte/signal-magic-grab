@@ -159,6 +159,6 @@ unutmayın.
 
 ## Satış Öncesi Teslimat Sınırı
 
-Bu rehber, alıcının kendi altyapısına kurulum içindir. Kaynak kodun derlenmesi canlı servislerin çalıştığını kanıtlamaz. Her alıcı ayrı Supabase projesi, domain/hosting ve Telegram botu kullanmalıdır. Marka adı, logo, slogan, ana renk, vurgu rengi ve alt bilgi `/branding` yönetim ekranından yapılandırılır. Marka ayarları yalnızca ilgili kurulumun `app_metadata.role = "admin"` yetkisine sahip yöneticisi tarafından değiştirilebilir.
+Bu rehber, alıcının kendi altyapısına kurulum içindir. Kaynak kodun derlenmesi canlı servislerin çalıştığını kanıtlamaz. Her alıcı ayrı Supabase projesi, domain/hosting ve Telegram botu kullanmalıdır. Marka adı, logo, slogan, ana renk, vurgu rengi, alt bilgi ve WhatsApp iletişim numarası `/branding` yönetim ekranından yapılandırılır. WhatsApp numarası ülke koduyla, yalnızca rakam olarak girilir; boşsa iletişim CTA butonları gizlenir. Marka ayarları yalnızca ilgili kurulumun `app_metadata.role = "admin"` yetkisine sahip yöneticisi tarafından değiştirilebilir.
 
 Her satışta alıcıya özel deployment ve ayrı veri altyapısı kullanılmalıdır; bu paket ortak çok kiracılı (multi-tenant) hizmet olarak tasarlanmamıştır. Canlıya geçişten önce yukarıdaki kontrol listesi tamamlanmalıdır.
