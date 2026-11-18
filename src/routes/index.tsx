@@ -22,7 +22,6 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const WHATSAPP = "https://wa.me/905446452430";
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -144,6 +143,7 @@ function AnimatedBrand() {
 
 function Landing() {
   const brand = useBranding();
+  const whatsappUrl = /^\d{8,15}$/.test(brand.contact_whatsapp) ? `https://wa.me/${brand.contact_whatsapp}` : null;
   const ref = useReveal();
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -480,13 +480,11 @@ function Landing() {
               <ul>
                 {p.features.map((x, k) => <li key={k}>✓ {x}</li>)}
               </ul>
-              <a href={
-                WHATSAPP
-              }
-                target={p.name === "Market Analysis Paneli" ? "_blank" : "_self"} rel="noreferrer" className="btn btn-primary plan-cta"
-              >
-                {p.name === "Market Analysis Paneli" ? "Lisans için iletişime geç" : "Panele gir"}
-              </a>
+              {whatsappUrl ? (
+                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn btn-primary plan-cta">Lisans için iletişime geç</a>
+              ) : (
+                <span className="btn btn-primary plan-cta" aria-disabled="true" title="Önce Marka Ayarları bölümünden WhatsApp numarası tanımlayın">İletişim bilgisi ayarlanmamış</span>
+              )}
             </div>
           ))}
         </div>
@@ -495,7 +493,7 @@ function Landing() {
       <section className="final-cta" data-reveal>
         <h2>{brand.brand_name || "Kripto Analiz Paneli"}</h2>
         <p>Teknik analiz ve sinyal takibi için web tabanlı panel. Otomatik emir göndermez; yatırım tavsiyesi veya kârlılık garantisi sunmaz.</p>
-        <a href={WHATSAPP} target="_blank" rel="noreferrer" className="btn btn-primary final-btn">Lisans ve kurulum için iletişim</a>
+        {whatsappUrl ? <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn btn-primary final-btn">Lisans ve kurulum için iletişim</a> : <p role="status">İletişim bilgisi henüz yapılandırılmadı.</p>}
       </section>
 
       <footer className="footer">
