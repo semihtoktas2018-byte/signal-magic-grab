@@ -12,6 +12,7 @@ const INITIAL = {
   primary_color: "#172033",
   accent_color: "#64748b",
   footer_text: "",
+  contact_whatsapp: "",
 };
 
 function BrandingSettingsPage() {
@@ -35,7 +36,7 @@ function BrandingSettingsPage() {
       if (!isAdmin) return;
       const { data: row, error: readError } = await (supabase as any)
         .from("app_branding")
-        .select("brand_name,tagline,logo_url,primary_color,accent_color,footer_text")
+        .select("brand_name,tagline,logo_url,primary_color,accent_color,footer_text,contact_whatsapp")
         .eq("singleton", true)
         .maybeSingle();
       if (!active) return;
@@ -50,6 +51,7 @@ function BrandingSettingsPage() {
         primary_color: /^#[0-9a-fA-F]{6}$/.test(row.primary_color || "") ? row.primary_color : INITIAL.primary_color,
         accent_color: /^#[0-9a-fA-F]{6}$/.test(row.accent_color || "") ? row.accent_color : INITIAL.accent_color,
         footer_text: row.footer_text || "",
+        contact_whatsapp: row.contact_whatsapp || "",
       });
     };
     void check();
@@ -63,6 +65,10 @@ function BrandingSettingsPage() {
     setSaving(true);
     setMessage("");
     try {
+      const whatsapp = form.contact_whatsapp.trim();
+      if (whatsapp && !/^\d{8,15}$/.test(whatsapp)) {
+        throw new Error("WhatsApp numarası ülke koduyla birlikte 8–15 rakam olmalı; +, boşluk ve tire kullanmayın.");
+      }
       let logoUrl = form.logo_url.trim();
       if (logo) {
         if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(logo.type) || logo.size > 2 * 1024 * 1024) {
@@ -83,6 +89,7 @@ function BrandingSettingsPage() {
         primary_color: form.primary_color,
         accent_color: form.accent_color,
         footer_text: form.footer_text.trim(),
+        contact_whatsapp: whatsapp,
         updated_at: new Date().toISOString(),
       };
       const { error } = await (supabase as any).from("app_branding").upsert(payload, { onConflict: "singleton" });
@@ -124,6 +131,7 @@ function BrandingSettingsPage() {
           <label className="block text-sm">Ana renk<input className="mt-2 h-11 w-full" type="color" value={form.primary_color} onChange={e => set("primary_color", e.target.value)} /></label>
           <label className="block text-sm">Vurgu rengi<input className="mt-2 h-11 w-full" type="color" value={form.accent_color} onChange={e => set("accent_color", e.target.value)} /></label>
         </div>
+        <label className="block text-sm">WhatsApp iletişim numarası<input className={fieldClass} type="tel" inputMode="numeric" maxLength={15} value={form.contact_whatsapp} onChange={e => set("contact_whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="Ülke koduyla, yalnızca rakam" /><span className="mt-1 block text-xs text-slate-500">Boş bırakılırsa lisans/iletişim butonları gösterilmez. Numara yalnızca bu kurulumda kullanılır.</span></label>
         <label className="block text-sm">Alt bilgi metni<input className={fieldClass} maxLength={160} value={form.footer_text} onChange={e => set("footer_text", e.target.value)} /></label>
         {message && <p role="status" className="rounded-lg border border-slate-700 p-3 text-sm text-slate-300">{message}</p>}
         <div className="flex flex-wrap gap-3">

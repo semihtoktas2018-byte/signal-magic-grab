@@ -35,7 +35,7 @@ Domain, hosting, Supabase, Telegram, borsa hesapları/API erişimi ve üçüncü
 
 ## 4. Alıcıya özel yapılandırma
 
-Her alıcı için bağımsız deployment ve ayrı Supabase projesi kurulur. Ortak çok kiracılı veri altyapısı bu teslim modelinin parçası değildir. Marka adı, logo, slogan, ana renk, vurgu rengi ve alt bilgi alıcı kurulumundaki `/branding` yönetim ekranından ayarlanır. Yönetim yetkisi `user_metadata` üzerinden değil, sunucu tarafından yönetilen `app_metadata.role = admin` claim'i üzerinden verilir.
+Her alıcı için bağımsız deployment ve ayrı Supabase projesi kurulur. Ortak çok kiracılı veri altyapısı bu teslim modelinin parçası değildir. Marka adı, logo, slogan, ana renk, vurgu rengi, alt bilgi ve WhatsApp iletişim numarası alıcı kurulumundaki `/branding` yönetim ekranından ayarlanır. İletişim numarası alıcı tarafından girilene kadar satış/iletişim CTA butonları gösterilmez. Yönetim yetkisi `user_metadata` üzerinden değil, sunucu tarafından yönetilen `app_metadata.role = admin` claim'i üzerinden verilir.
 
 
 Alıcı kendi değerlerini sağlamalıdır:
@@ -88,7 +88,7 @@ Taraflar yazılı olarak belirlemelidir:
 - Kurulum kapsamı, teslim tarihi ve kabul kriterleri
 - Hata düzeltme süresi ve destek kapsamı
 - Yeni özellik, bakım ve üçüncü taraf servis maliyetleri
-- Marka, domain, görsel ve içerik haklarının kapsamı
+- WhatsApp iletişim numarası ve destek kanalının kime ait olacağı\n- Marka, domain, görsel ve içerik haklarının kapsamı
 - Üçüncü taraf açık kaynak paket lisanslarına uyum
 
 Bu maddeler kararlaştırılmadan depoya varsayımsal bir açık kaynak veya ticari lisans dosyası eklenmemelidir.
