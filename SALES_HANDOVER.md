@@ -96,3 +96,21 @@ Bu maddeler kararlaştırılmadan depoya varsayımsal bir açık kaynak veya tic
 ## 8. Satış görüşmesinde kullanılabilecek doğru ifade
 
 “Bu yazılım, teknik gösterge tabanlı kripto sinyallerini ve piyasa izleme verilerini tek panelde sunan, kendi altyapınıza kurulabilen bir üründür. Kaynak kod ve kurulum dokümantasyonu teslim edilebilir. Canlı kullanım, alıcıya ait Supabase, Telegram ve veri kaynağı ayarlarıyla kurulum ve kabul testlerinden sonra doğrulanır. Yazılım kâr veya sinyal başarısı garantisi vermez.”
+
+
+## 9. Performans denetimi — 2026-11-19
+
+Canlı satıcı veritabanında son 30 gün için yapılan salt-okunur denetim:
+
+- Toplam 343 sinyal: 136 `tuttu`, 171 `tutmadi`, 36 `bekliyor`.
+- Kapanmış 307 sinyalde isabet oranı: %44,3.
+- Sabit TP +%2,5 / SL −%2 varsayımıyla brüt teorik EV: yaklaşık −%0,01 / kapanmış sinyal.
+- BUY: 98 kapanmış sinyal, 19 başarılı (%19,4).
+- SELL: 209 kapanmış sinyal, 117 başarılı (%56,0).
+- Son 7 günde 61 kapanmış sinyal: 29 başarılı, 32 başarısız; brüt teorik EV yaklaşık +%0,14 / sinyal.
+
+Bu değerler denetim anındaki satıcı veritabanı anlık görüntüsüdür; gelecekteki performans tahmini veya alıcı ortamı sonucu değildir. 7 günlük örneklem kısa dönemlidir. BUY ve SELL performansları belirgin biçimde farklı olduğundan tek bir genel isabet oranı motorun her iki yönde aynı kalitede çalıştığı anlamına gelmez.
+
+Performans ekranındaki EV hesabı, resolver'ın kullandığı sabit TP/SL yüzdeleriyle matematiksel olarak tutarlıdır. Aynı 15 dakikalık mumda TP ve SL birlikte görülürse resolver kaybı seçer; eksik mum kapsamı varsa sonucu kesinleştirmez. Ekran EV'yi brüt teorik olarak adlandırır ve komisyon, spread, kayma ve gerçek emir gerçekleşmesini hariç tuttuğunu belirtir.
+
+**Satış kısıtı:** Mevcut örneklem, kârlılık veya yatırım performansı iddiasını desteklemez. BUY/SELL motor eşikleri değiştirilmeden önce ayrı dönemlerde, maliyetler dahil ve ileriye dönük test yapılmalıdır. Bu test tamamlanana kadar ürün yalnızca veri izleme ve teorik sinyal takip yazılımı olarak tanıtılmalıdır.
