@@ -114,3 +114,25 @@ Bu değerler denetim anındaki satıcı veritabanı anlık görüntüsüdür; ge
 Performans ekranındaki EV hesabı, resolver'ın kullandığı sabit TP/SL yüzdeleriyle matematiksel olarak tutarlıdır. Aynı 15 dakikalık mumda TP ve SL birlikte görülürse resolver kaybı seçer; eksik mum kapsamı varsa sonucu kesinleştirmez. Ekran EV'yi brüt teorik olarak adlandırır ve komisyon, spread, kayma ve gerçek emir gerçekleşmesini hariç tuttuğunu belirtir.
 
 **Satış kısıtı:** Mevcut örneklem, kârlılık veya yatırım performansı iddiasını desteklemez. BUY/SELL motor eşikleri değiştirilmeden önce ayrı dönemlerde, maliyetler dahil ve ileriye dönük test yapılmalıdır. Bu test tamamlanana kadar ürün yalnızca veri izleme ve teorik sinyal takip yazılımı olarak tanıtılmalıdır.
+
+
+## 10. BUY / SELL motor review — 2026-11-19
+
+A read-only review compared the current V1 scoring implementation, the V2 diagnostic score, and live historical outcomes.
+
+### Verified implementation facts
+- V1 BUY and SELL use different component weights and entry conditions.
+- The current V1 BUY baseline can reach 67 points from: above EMA20 (+20), EMA20 >= EMA50 (+15), rising EMA20 (+12), positive MACD histogram (+14), and high volume (+6).
+- The current V1 SELL baseline can reach 78 points from: below EMA20 (+28), EMA20 < EMA50 (+18), falling EMA20 (+12), negative MACD histogram (+14), and high volume (+6).
+- Both directions are admitted at the same `RECORD_THRESHOLD = 75`; therefore SELL can pass on a baseline combination that cannot reach the threshold for BUY without additional conditions. This is a structural scoring asymmetry, not a proven causal explanation for outcomes.
+- V2 classifies scores below 45 as WAIT. Recent stored records show V2 scores in the 25–31 range while V1 still emitted BUY/SELL. V2 is diagnostic only in the current insert path; it is not a mandatory confirmation gate.
+- Current live function v12 and GitHub main both show `RECORD_THRESHOLD = 75`. Since 2026-11-18 14:00 UTC, the two inspected live records were SELL score 78; no sub-75 record was present in that interval. Older historical rows include scores below 75 and should not be used to infer the current threshold behavior.
+
+### Historical outcome observations
+- In the 30-day seller snapshot, BUY closed 19/98 (19.4%) and SELL closed 117/209 (56.0%).
+- All 98 closed BUY records had EMA trend up and positive MACD; all 209 closed SELL records had EMA trend down and negative MACD.
+- Mean stored V2 score was 27.42 for BUY wins and 25.14 for BUY losses; for SELL, 18.96 for wins and 24.11 for losses. These are descriptive associations only and do not establish predictive causality.
+- The V1 score bands do not explain the gap: BUY 65–74 had 16/82 wins and 75–81 had 3/16 wins; SELL 65–74 had 64/102 wins and 75–81 had 53/107 wins. Older rows below the current 75 threshold predate the current threshold behavior.
+
+### Decision
+Do not change live thresholds or enable V2 as a hard gate based on this sample. The next valid step is a reproducible historical replay using timestamp-aligned 15-minute candles and the exact signal-time inputs, followed by an out-of-sample period with trading costs. Until then, keep the engine unchanged and do not market its signals as profitable or independently validated.
