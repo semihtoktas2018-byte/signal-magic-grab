@@ -28,6 +28,9 @@ function BrandingSettingsPage() {
   useEffect(() => {
     let active = true;
     const check = async () => {
+      // Refresh first so a role granted after sign-in is present in the JWT used by RLS.
+      const { data: sess } = await supabase.auth.getSession();
+      if (sess.session) await supabase.auth.refreshSession();
       const { data, error } = await supabase.auth.getUser();
       if (!active) return;
       const isAdmin = !error && data.user?.app_metadata?.role === "admin";
