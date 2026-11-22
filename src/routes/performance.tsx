@@ -653,23 +653,38 @@ function Performance() {
           ) : stale.length === 0 ? (
             <div className="empty">48 saati aşan bekleyen kayıt yok.</div>
           ) : (
-            <div className="signal-list">
-              {stale.map((s) => (
-                <div key={s.id} className="signal-card">
-                  <div className="signal-row" style={{ cursor: "default" }}>
-                    <span className="sig-coin">{coinShort(s.coin)}</span>
-                    <span className="sig-type" style={{ background: s.signal === "BUY" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)", color: s.signal === "BUY" ? "#22c55e" : "#ef4444" }}>
-                      {s.signal === "BUY" ? "🟢 BUY" : "🔴 SELL"}
-                    </span>
-                    <span className="sig-mid">
-                      <span>{new Date(s.created_at).toLocaleString("tr-TR")}</span>
-                    </span>
-                    <span className="sig-result" style={{ background: resultBg(s.result), color: resultColor(s.result) }}>
-                      ⏳ {Math.floor((Date.now() - new Date(s.created_at).getTime()) / 3600000)} saattir bekliyor
-                    </span>
+            <div className="live-grid">
+              {stale.map((s) => {
+                const isBuy = s.signal === "BUY";
+                const hours = Math.floor(
+                  (Date.now() - new Date(s.created_at).getTime()) / 3600000,
+                );
+                return (
+                  <div key={s.id} className="live-card">
+                    <div className="live-top">
+                      <span className="live-coin">{coinShort(s.coin)}/USDT</span>
+                      <span
+                        className="live-side"
+                        style={{
+                          background: isBuy
+                            ? "rgba(34,197,94,.15)"
+                            : "rgba(239,68,68,.15)",
+                          color: isBuy ? "#22c55e" : "#ef4444",
+                        }}
+                      >
+                        {isBuy ? "🟢 BUY" : "🔴 SELL"}
+                      </span>
+                      <span className="live-pnl" style={{ color: "#f0c568", fontSize: 14 }}>
+                        ⏳ {hours} saat
+                      </span>
+                    </div>
+                    <div className="live-meta" style={{ marginTop: 8 }}>
+                      <span>Kayıt: {new Date(s.created_at).toLocaleString("tr-TR")}</span>
+                      <span>{hours} saattir bekliyor</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
