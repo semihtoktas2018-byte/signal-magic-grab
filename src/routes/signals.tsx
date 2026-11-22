@@ -291,6 +291,8 @@ function SignalTerminal() {
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lang, setLang] = useState<LangCode>(getLang());
 
   const t = (key: string) => translations[key]?.[lang] || key;
@@ -320,18 +322,20 @@ function SignalTerminal() {
     const load = async () => {
       if (running || cancelled) return;
       running = true;
+      setRefreshing(true);
       try {
-        const s = await loadSignals();
+        const [s, p] = await Promise.all([loadSignals(), loadPrices()]);
         if (cancelled) return;
         setSignals(s);
-        const p = await loadPrices();
-        if (cancelled) return;
         setPrices(p);
       } catch (error) {
         if (!cancelled) setPrices([]);
       } finally {
         running = false;
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
@@ -341,7 +345,7 @@ function SignalTerminal() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [refreshTrigger]);
 
   const priceMap: Record<string, number> = {};
   prices.forEach((p) => {
@@ -468,6 +472,7 @@ function SignalTerminal() {
       color: var(--kt-gold);
     }
     .kt-page-shell .theme-btn,
+    .kt-page-shell .refresh-btn,
     .kt-page-shell .logout-btn,
     .kt-page-shell .lang-select,
     .kt-page-shell .fbtn,
@@ -475,6 +480,7 @@ function SignalTerminal() {
       font-family: 'DM Sans', sans-serif;
     }
     .kt-page-shell .theme-btn,
+    .kt-page-shell .refresh-btn,
     .kt-page-shell .lang-select,
     .kt-page-shell .logout-btn {
       border-radius: 999px;
@@ -488,6 +494,7 @@ function SignalTerminal() {
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
     .kt-page-shell .theme-btn:hover,
+    .kt-page-shell .refresh-btn:hover:not(:disabled),
     .kt-page-shell .lang-select:hover,
     .kt-page-shell .logout-btn:hover {
       transform: translateY(-1px);
@@ -814,8 +821,56 @@ function SignalTerminal() {
       <div className="kt-orb kt-orb-two" />
       <style>{ktStyles}</style>
       <style>{`
-        .term.light-mode { background: rgba(255,255,255,0.04); }
-        .term.light-mode .card, .term.light-mode .sig-card, .term.light-mode .pchip, .term.light-mode .chart-panel { background: rgba(255,255,255,0.06); }
+        .term.light-mode {
+          --kt-bg: #f4f6fa;
+          --kt-bg-strong: #e9edf4;
+          --kt-panel: #ffffff;
+          --kt-panel-strong: #ffffff;
+          --kt-text: #172033;
+          --kt-muted: #5f6b7d;
+          --kt-gold: #946200;
+          --kt-gold-soft: #805600;
+          --kt-success: #047857;
+          --kt-danger: #dc2626;
+          --kt-warn: #a16207;
+          background: linear-gradient(135deg, #f8fafc 0%, #edf1f7 100%);
+          color: var(--kt-text);
+        }
+        .term.light-mode .term-nav {
+          background: rgba(255,255,255,.94);
+          border-bottom-color: rgba(148,98,0,.18);
+          box-shadow: 0 8px 24px rgba(15,23,42,.07);
+        }
+        .term.light-mode .card,
+        .term.light-mode .sig-card,
+        .term.light-mode .chart-panel,
+        .term.light-mode .pchip,
+        .term.light-mode .detail,
+        .term.light-mode .empty,
+        .term.light-mode .loading {
+          background: #ffffff;
+          border-color: #dce3ec;
+          box-shadow: 0 8px 22px rgba(15,23,42,.06);
+        }
+        .term.light-mode .pchip.active {
+          background: #fff8e8;
+          border-color: rgba(148,98,0,.48);
+        }
+        .term.light-mode .detail-btn,
+        .term.light-mode .ind {
+          background: #f5f7fa;
+          border-color: #e1e7ef;
+        }
+        .term.light-mode .reason {
+          color: #334155;
+          background: #fff8e8;
+        }
+        .term.light-mode .score {
+          color: #805600;
+          background: #fff1cc;
+        }
+        .term.light-mode .kt-grid { opacity: .06; }
+        .term.light-mode .kt-orb { opacity: .12; }
       `}</style>
       <nav className="term-nav">
         <span className="term-brand">{brand.logo_url ? <img src={brand.logo_url} alt={brand.brand_name || "Brand"} style={{ maxHeight: 30, maxWidth: 140, objectFit: "contain", verticalAlign: "middle" }} /> : <span>{brand.brand_name || "Market Analysis Terminal"}{brand.tagline && <small style={{ display: "block", fontSize: 10, letterSpacing: "0.02em", opacity: 0.7, marginTop: 2 }}>{brand.tagline}</small>}</span>}</span>
@@ -825,6 +880,16 @@ function SignalTerminal() {
           <a href="/performance">{t("performance")}</a>
           <a href="/whale">{t("whaleRadar")}</a>
           <a href="/exchange">{t("exchangeCompare")}</a>
+          <button
+            className="refresh-btn"
+            type="button"
+            title={refreshing ? "Veriler yenileniyor" : "Verileri yenile"}
+            aria-label="Verileri yenile"
+            disabled={refreshing}
+            onClick={() => setRefreshTrigger((value) => value + 1)}
+          >
+            {refreshing ? "…" : "↻"}
+          </button>
           <button className="theme-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
