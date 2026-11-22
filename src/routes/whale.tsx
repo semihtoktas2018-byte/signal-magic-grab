@@ -18,6 +18,7 @@ interface WhaleEvent {
   id: string;
   coin: string;
   side: "BUY" | "SELL";
+  category: "spot" | "linear";
   amount_usd: number;
   price: number;
   created_at: string;
@@ -27,7 +28,7 @@ async function fetchWhaleEvents(): Promise<WhaleEvent[]> {
   try {
     const { data, error } = await supabase
       .from("whale_events")
-      .select("id,coin,side,amount_usd,price,created_at")
+      .select("id,coin,side,category,amount_usd,price,created_at")
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) return [];
@@ -363,7 +364,7 @@ function WhaleRadar() {
                   <div className="item-main">
                     <span className="side-badge" style={{ background: `${color}22`, color }}>{isBuy ? "🟢" : "🔴"}</span>
                     <div>
-                      <div className="pair">{e.coin.replace(/USDT$/, "")} <span style={{ color, fontSize: 12 }}>{isBuy ? t("largeBuy").toUpperCase() : t("largeSell").toUpperCase()}</span></div>
+                      <div className="pair">{e.coin.replace(/USDT$/, "")} <span style={{ color, fontSize: 12 }}>{isBuy ? t("largeBuy").toUpperCase() : t("largeSell").toUpperCase()}</span> <span style={{ color: "#a2a9b5", fontSize: 10 }}>{e.category === "linear" ? "PERPETUAL" : "SPOT"}</span></div>
                       <div className="meta">Fiyat: {fmtPrice(e.price)} · {timeAgo(e.created_at)}</div>
                     </div>
                   </div>
