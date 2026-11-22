@@ -10,7 +10,7 @@ KELTOŞ, kripto varlıklar için teknik gösterge tabanlı BUY / SELL / WAIT sin
 - Sinyal kayıtları ve BUY / SELL / WAIT gösterimi.
 - Tanımlı TP/SL seviyelerine göre teorik sonuç çözümleme.
 - Performans ekranında kapanmış sinyaller üzerinden brüt teorik EV özeti.
-- Whale Radar: Bybit spot işlemler akışında tanımlı eşik üzerindeki tekil işlemleri izleme. Bu özellik cüzdan takibi veya tüm piyasa balina akışı değildir.
+- Whale Radar: Bybit Spot son 60 ve USDT perpetual (Linear) son 1.000 işlem içinde tanımlı eşik üzerindeki tekil işlemleri ayrı piyasa etiketiyle izleme. Bu özellik cüzdan takibi veya tüm piyasa balina akışı değildir.
 - Fear & Greed verisi için ayrı Supabase Edge Function.
 - Telegram bildirim entegrasyonu (kanal ve bot yapılandırması gerekir).
 
