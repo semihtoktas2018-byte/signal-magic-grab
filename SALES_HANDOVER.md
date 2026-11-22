@@ -4,7 +4,7 @@ Bu belge, alıcı görüşmesinde ürün kapsamını ve teslimat sınırlarını
 
 ## 1. Ürün tanımı
 
-Ürün; kripto spot piyasa verilerini, teknik gösterge tabanlı BUY / SELL / WAIT sinyallerini, sinyal geçmişini, tanımlı TP/SL seviyelerine göre teorik sonuç takibini, piyasa karşılaştırmasını ve Bybit spot işlemlerindeki eşik üstü tekil işlemleri görüntüleyen web panelidir.
+Ürün; kripto spot piyasa verilerini, teknik gösterge tabanlı BUY / SELL / WAIT sinyallerini, sinyal geçmişini, tanımlı TP/SL seviyelerine göre teorik sonuç takibini, Bybit/OKX fiyat karşılaştırmasını ve Bybit Spot ile USDT perpetual (Linear) işlemlerindeki eşik üstü tekil işlemleri ayrı kategorilerde görüntüleyen web panelidir.
 
 Otomatik emir göndermez. Yatırım danışmanlığı değildir. Kâr, doğruluk oranı veya belirli getiri taahhüt etmez.
 
@@ -13,7 +13,7 @@ Otomatik emir göndermez. Yatırım danışmanlığı değildir. Kâr, doğruluk
 - Ana sayfa ve piyasa özeti
 - Sinyal terminali
 - Performans ve geçmiş sonuçlar
-- Whale Radar (Bybit spot işlemlerinden eşik üstü tekil işlem kayıtları; cüzdan takibi değildir)
+- Whale Radar (Bybit Spot son 60 ve USDT perpetual Linear son 1.000 işlem içinden eşik üstü tekil işlemler; cüzdan takibi değildir)
 - Borsa fiyat karşılaştırma ekranı
 - Supabase Edge Functions: `kpk-signals-cron`, `fear-greed`
 - Supabase veritabanı migration'ları
@@ -167,3 +167,32 @@ This is a small, one-direction cohort during the observed market regime; it is n
 
 ### Decision
 Keep the live signal engine unchanged. Do not activate V2 as a hard gate or retune BUY/SELL thresholds from this limited cohort. Priorities for a future validation build are: (1) persist signal-time V1/V2 decisions and indicator inputs in a queryable comparison dataset, (2) address transient Bybit rate-limit handling with bounded backoff, and (3) run a timestamp-aligned historical replay and out-of-sample test with trading costs. These are future engineering tasks, not changes made by this audit.
+
+
+## 12. Live seller environment audit — 2026-11-22 07:45 UTC
+
+This is a read-only snapshot of the seller's existing Supabase project after the Spot/Linear release. It is not a buyer-environment acceptance test.
+
+### Deployment and data pipeline
+- GitHub PR #29 is merged to `main` as commit `71f55aeff1547dcd2659a1b5d21c4a1f398edda8`.
+- The live `kpk-signals-cron` Edge Function is ACTIVE at version 15. The `whale_events.category` migration is applied; existing events remain classified as `spot`.
+- The active `kpk-signals-cron` schedule is every five minutes.
+- The 2026-11-22 07:45:18 UTC version-15 execution returned HTTP 200 and `errors: []`. Its diagnostics reported successful Bybit responses for all 9 configured symbols: 60 Spot trades and 1,000 Linear trades per symbol. No trade at or above the USD 250,000 threshold was present in those sampled windows. This confirms API connectivity and scan sizes for that execution; it does not prove that no large trades occurred outside the sampled recent-trade windows.
+- The same execution refreshed all 9 Bybit/OKX comparison rows. It generated no new signals in that run.
+- Current table counts at audit time: 370 signal rows, 2 whale events (both historical Spot events; no Linear event yet), 9 exchange-price rows, 9 market-sentiment rows, and 1 branding row.
+
+### Current signal outcome snapshot
+A rolling 30-day database query at audit time returned 299 signals: 269 closed (120 wins, 149 losses) and 30 pending. Closed-signal hit rate was 44.61%. By direction: BUY 18/91 wins (19.78%); SELL 102/178 wins (57.30%). With the documented fixed +2.5% TP / -2.0% SL, the gross theoretical EV is approximately +0.007% per closed signal before fees, spread, slippage, funding, and actual execution. This is effectively flat at the displayed precision and is not evidence of a profitable strategy.
+
+The rolling 7-day slice contained 61 signals: 55 closed (30 wins, 25 losses) and 6 pending. Hit rate was 54.55%; the sample is short and directionally uneven (BUY 1/7, SELL 29/48). Do not use this short-window result as a sales performance claim.
+
+### Commercial readiness limits
+- Position the product as a market-monitoring and theoretical signal-history terminal, not a profitable trading system, automated execution product, or investment service.
+- The current live database is the seller's operating environment. It is not the buyer's isolated deployment. Each buyer still needs a separate Supabase project, environment variables, Edge Function secrets, cron/Vault setup, OAuth configuration, and acceptance testing.
+- The editor preview has a separate stale Lovable Cloud backend link to project ref `hnzjvcwbcfgfwpnfyhiz`; its DNS does not resolve. The published site uses `gmwlkkebwpenocatlmty` and is the working environment. Do not use the editor preview failure as proof that the published site is down; do not resume the stale backend or remove any database.
+- The editor-preview backend link cannot currently be repointed through the available project tools. Lovable support intervention may be required.
+- No current successful build workflow run was found for the PR merge commit in the queried GitHub workflow-run endpoint. Do not claim a fresh CI build passed solely from the merge state. A local/clean buyer build and buyer-environment acceptance tests remain required.
+- The repository contains no completed buyer-specific commercial license, signed rights transfer, price, warranty, or support agreement. These must be agreed in writing. Third-party software and service terms remain applicable.
+
+### Release decision
+The seller's published application and version-15 backend are operational in the observed snapshot. The source can be presented for a controlled buyer demonstration and technical due diligence. Do not describe the package as fully turnkey, independently validated for trading profitability, or ready for immediate buyer production use until a clean buyer deployment passes the acceptance checklist in section 5 and commercial terms are signed.
