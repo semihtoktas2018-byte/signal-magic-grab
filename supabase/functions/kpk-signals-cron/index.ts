@@ -286,8 +286,9 @@ interface WhaleActivity {
   apiError: string | null
 }
 
-async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
-  const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
+async function fetchWhaleActivity(symbol: string, category: 'spot' | 'linear' = 'spot'): Promise<WhaleActivity> {
+  const limit = category === 'spot' ? 60 : 1000
+  const url = `https://api.bybit.com/v5/market/recent-trade?category=${category}&symbol=${symbol}&limit=${limit}`
   let j: any
   try {
     j = await fetchBybitMarketJson(url, `whale ${symbol}`)
@@ -754,7 +755,22 @@ async function runCron() {
     try {
       const klines = await fetchKlines(coin)
       const a = await analyzeCoin(coin, klines)
-      whaleDiagnostics.push({ coin, status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
+      whaleDiagnostics.push({ coin, market: 'spot', status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
+
+      // Linear USDT perpetual trades are tracked separately; they do not affect Spot signal scoring.
+      const linearWhale = await fetchWhaleActivity(coin, 'linear')
+      whaleDiagnostics.push({ coin, market: 'linear', status: linearWhale.apiStatus, tradesScanned: linearWhale.tradesScanned, qualifyingTrades: linearWhale.qualifyingTrades, biggestUsd: linearWhale.biggestUsd, error: linearWhale.apiError })
+      if (linearWhale.biggestUsd > 0 && linearWhale.biggestSide && linearWhale.biggestTradeId && linearWhale.biggestTradeAt && linearWhale.biggestTradePrice !== null) {
+        const { error: linearWhaleErr } = await supabase.from('whale_events').upsert({
+          source_trade_id: `linear:${linearWhale.biggestTradeId}`,
+          category: 'linear',
+          coin, side: linearWhale.biggestSide,
+          amount_usd: linearWhale.biggestUsd, price: linearWhale.biggestTradePrice,
+          created_at: linearWhale.biggestTradeAt,
+        }, { onConflict: 'source_trade_id', ignoreDuplicates: true })
+        if (linearWhaleErr) errors.push(`${coin} linear whale insert: ${linearWhaleErr.message}`)
+        else whaleLogged.push(`${coin} LINEAR ${linearWhale.biggestSide} ${Math.round(linearWhale.biggestUsd)}`)
+      }
       v2Report.push({
         coin, v1: a.signal, v1Score: Math.round(a.score),
         v2: a.v2.direction, v2Score: a.v2.score, v2Bias: a.v2.bias,
@@ -779,6 +795,7 @@ async function runCron() {
       if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt && a.whale.biggestTradePrice !== null) {
         const { error: whaleErr } = await supabase.from('whale_events').upsert({
           source_trade_id: a.whale.biggestTradeId,
+          category: 'spot',
           coin, side: a.whale.biggestSide,
           amount_usd: a.whale.biggestUsd, price: a.whale.biggestTradePrice,
           created_at: a.whale.biggestTradeAt,
