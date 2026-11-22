@@ -856,6 +856,18 @@ function SignalTerminal() {
           background: #fff8e8;
           border-color: rgba(148,98,0,.48);
         }
+        .term.light-mode .card-h,
+        .term.light-mode .sec-t {
+          color: #805600;
+        }
+        .term.light-mode .sig-list {
+          background: transparent;
+          border-color: transparent;
+          box-shadow: none;
+        }
+        .term.light-mode .mood-bar {
+          background: #e2e8f0;
+        }
         .term.light-mode .detail-btn,
         .term.light-mode .ind {
           background: #f5f7fa;
