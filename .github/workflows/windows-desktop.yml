@@ -1,0 +1,47 @@
+name: Windows Desktop Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: "Müşteriye ait çalışan KELTOŞ HTTPS web adresi"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.3"
+
+      - name: Install desktop dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate and write web endpoint
+        env:
+          KELTOS_WEB_URL: ${{ inputs.web_url }}
+        run: |
+          node -e "const fs=require('node:fs'); const raw=(process.env.KELTOS_WEB_URL||'').trim(); if(!raw){fs.writeFileSync('app-config.json', JSON.stringify({webUrl:''}, null, 2)); process.exit(0);} const u=new URL(raw); if(u.protocol!=='https:' || u.username || u.password) throw new Error('A valid HTTPS URL without embedded credentials is required'); fs.writeFileSync('app-config.json', JSON.stringify({webUrl:u.toString()}, null, 2));"
+
+      - name: Build Windows x64 installer
+        run: npm run build:win
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: keltos-windows-installer
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
