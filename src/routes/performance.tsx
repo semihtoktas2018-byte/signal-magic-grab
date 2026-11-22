@@ -122,6 +122,22 @@ async function loadSignals(since: Date): Promise<Signal[]> {
   return all;
 }
 
+async function loadStalePending(): Promise<Signal[]> {
+  // Salt okuma: 48 saati aşmış ve hâlâ bekleyen kayıtlar (7/30 gün filtresinden bağımsız).
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const PAGE = 1000;
+  const all: Signal[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase.from("kpk_signals").select("*")
+      .eq("result", "bekliyor").lt("created_at", cutoff).order("created_at", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all.push(...((data as Signal[]) || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return all;
+}
+
 function Performance() {
   const brand = useBranding();
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -132,6 +148,16 @@ function Performance() {
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [lang, setLang] = useState<LangCode>(getLang());
+  const [stale, setStale] = useState<Signal[]>([]);
+  const [staleError, setStaleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadStalePending()
+      .then((rows) => { if (!cancelled) { setStale(rows); setStaleError(null); } })
+      .catch((err) => { if (!cancelled) setStaleError(err?.message || "Bilinmeyen hata"); });
+    return () => { cancelled = true; };
+  }, []);
 
   const t = (key: string) => translations[key]?.[lang] || key;
 
@@ -618,6 +644,33 @@ function Performance() {
                 ))}
               </div>
             </>
+          )}
+
+          <div className="section-title">48 Saati Aşan — Sonuçlandırılamayan Kayıtlar</div>
+          <div style={{ fontSize: 12, color: "#8a93a3", marginBottom: 8 }}>Bu kayıtlar performans metriklerine dahil değildir; sonuçları değiştirilmez.</div>
+          {staleError ? (
+            <div className="empty">⚠️ Kayıtlar yüklenemedi: {staleError}</div>
+          ) : stale.length === 0 ? (
+            <div className="empty">48 saati aşan bekleyen kayıt yok.</div>
+          ) : (
+            <div className="signal-list">
+              {stale.map((s) => (
+                <div key={s.id} className="signal-card">
+                  <div className="signal-row" style={{ cursor: "default" }}>
+                    <span className="sig-coin">{coinShort(s.coin)}</span>
+                    <span className="sig-type" style={{ background: s.signal === "BUY" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)", color: s.signal === "BUY" ? "#22c55e" : "#ef4444" }}>
+                      {s.signal === "BUY" ? "🟢 BUY" : "🔴 SELL"}
+                    </span>
+                    <span className="sig-mid">
+                      <span>{new Date(s.created_at).toLocaleString("tr-TR")}</span>
+                    </span>
+                    <span className="sig-result" style={{ background: resultBg(s.result), color: resultColor(s.result) }}>
+                      ⏳ {Math.floor((Date.now() - new Date(s.created_at).getTime()) / 3600000)} saattir bekliyor
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           <div className="section-title">Sinyaller ({days} gün) — tıkla, detayını gör</div>

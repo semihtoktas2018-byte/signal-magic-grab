@@ -202,7 +202,14 @@ async function loadSignals(): Promise<Signal[]> {
         latestByCoin[s.coin] = s;
       }
     });
-    return Object.values(latestByCoin);
+    const latest = Object.values(latestByCoin);
+    // Ayrıca tüm bekleyen (açık) kayıtlar — eski olsalar bile.
+    const { data: pendingData, error: pendingError } = await supabase
+      .from("kpk_signals").select("*").eq("result", "bekliyor").order("created_at", { ascending: false });
+    const pending = pendingError ? [] : ((pendingData as Signal[]) || []);
+    const byId = new Map<string, Signal>();
+    [...latest, ...pending].forEach((s) => { if (!byId.has(s.id)) byId.set(s.id, s); });
+    return [...byId.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   } catch (error) {
     return [];
   }
@@ -371,8 +378,6 @@ function SignalTerminal() {
   const sellN = latest.filter((s) => s.signal === "SELL").length;
   const decided = buyN + sellN;
   const bullPct = decided ? Math.round((buyN / decided) * 100) : 50;
-  const mood = bullPct >= 55 ? "YÜKSELİŞ" : bullPct <= 45 ? "DÜŞÜŞ" : "KARARSIZ";
-  const moodCls = bullPct >= 55 ? "mood-up" : bullPct <= 45 ? "mood-down" : "mood-flat";
   const openCount = signals.filter((s) => s.result === "bekliyor").length;
   const shown = filter === "hepsi" ? signals : signals.filter((s) => s.signal === filter);
 
@@ -954,9 +959,9 @@ function SignalTerminal() {
         <div className="wrap">
           <div className="top-grid">
             <div className="card">
-              <div className="card-h">{t("marketStatus")}</div>
-              <div className={`mood ${moodCls}`}>{mood}</div>
-              <div className="mood-sub">{t("signalDirection").replace("{value}", String(bullPct)).replace("{buy}", String(buyN)).replace("{sell}", String(sellN))}</div>
+              <div className="card-h">Son Kayıtlı Sinyal Dağılımı</div>
+              <div className="mood mood-flat">{decided ? `%${bullPct} BUY · %${100 - bullPct} SELL` : "Kayıt yok"}</div>
+              <div className="mood-sub">Coin başına son kaydedilen sinyallerin geçmiş dağılımı: {buyN} BUY · {sellN} SELL. Canlı piyasa yönü değildir.</div>
               <div className="mood-bar">
                 <div className="mood-fill" style={{ width: `${bullPct}%` }} />
               </div>
