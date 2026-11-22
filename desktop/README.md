@@ -16,11 +16,11 @@ npm install
 npm start
 ```
 
-İlk açılışta KELTOŞ web adresi istenir. Adres HTTPS olmalıdır.
+Paketlenmiş sürüm varsayılan olarak `app-config.json` içindeki KELTOŞ adresini açar. Kullanıcı ilk çalıştırmadan sonra menüdeki **KELTOŞ → Bağlantı ayarları** bölümünden HTTPS adresini değiştirebilir.
 
 ## Windows kurulum dosyası
 
-GitHub deposunda Actions → **Windows Desktop Installer** → Run workflow adımlarını izleyin. `web_url` alanına müşteriye ait çalışan HTTPS KELTOŞ adresini girin. İş tamamlandığında Actions artifact bölümünden `KELTOS-Setup-1.0.0-x64.exe` dosyasını alın.
+GitHub deposunda Actions → **Windows Desktop Installer** → Run workflow adımlarını izleyin. `web_url` alanı varsayılan olarak üretim adresini getirir. Paketleme başlamadan önce iş akışı adresin HTTPS olduğunu ve HTTP 200 ile HTML döndürdüğünü doğrular. Doğrulama başarısızsa kurulum dosyası üretilmez. İş tamamlandığında Actions artifact bölümünden `KELTOS-Setup-1.0.0-x64.exe` dosyasını alın.
 
 ## Çalışma sınırları
 
@@ -29,8 +29,8 @@ GitHub deposunda Actions → **Windows Desktop Installer** → Run workflow adı
 - Her müşteri için kendi web kurulumunun HTTPS adresiyle ayrı kurulum dosyası üretilebilir.
 - Web uygulaması kapalıysa masaüstü istemcisi de kullanılamaz.
 - Bu ilk sürüm otomatik güncelleme içermez.
-- Windows kod imzalama sertifikası yapılandırılmadığı için kurulum dosyası imzasızdır; Windows SmartScreen uyarısı görülebilir. Ticari dağıtım öncesinde kurumsal kod imzalama sertifikası edinilmesi önerilir.
+- Windows kod imzalama sertifikası yapılandırılmadığı için kurulum dosyası imzasızdır; Windows SmartScreen uyarısı görülebilir. İmzalama ve SmartScreen itibarı ayrı konulardır; imzalı yeni dosyalarda da ilk dağıtımlarda uyarı görülebilir.
 
 ## Güvenlik
 
-Electron penceresinde Node entegrasyonu kapalı, context isolation ve sandbox açıktır. Masaüstü uygulamasının yerel köprüsü yalnızca web adresini okumak/kaydetmek için sınırlıdır. Service-role anahtarı, Telegram token'ı veya başka sunucu sırrı bu pakete eklenmez.
+Electron penceresinde Node entegrasyonu kapalı, context isolation ve sandbox açıktır. Yerel köprü yalnızca web adresini okumak/kaydetmek için sınırlıdır. Service-role anahtarı, Telegram token'ı veya başka sunucu sırrı bu pakete eklenmez. Bu istemci, web uygulamasının ve sunucu tarafı kimlik doğrulamasının güvenli yapılandırıldığını varsayar.
