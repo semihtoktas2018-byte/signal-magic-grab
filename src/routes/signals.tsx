@@ -293,6 +293,8 @@ function SignalTerminal() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshError, setRefreshError] = useState(false);
   const [lang, setLang] = useState<LangCode>(getLang());
 
   const t = (key: string) => translations[key]?.[lang] || key;
@@ -323,13 +325,18 @@ function SignalTerminal() {
       if (running || cancelled) return;
       running = true;
       setRefreshing(true);
+      setRefreshError(false);
       try {
         const [s, p] = await Promise.all([loadSignals(), loadPrices()]);
         if (cancelled) return;
         setSignals(s);
         setPrices(p);
+        setLastUpdated(new Date());
       } catch (error) {
-        if (!cancelled) setPrices([]);
+        if (!cancelled) {
+          setPrices([]);
+          setRefreshError(true);
+        }
       } finally {
         running = false;
         if (!cancelled) {
@@ -479,6 +486,14 @@ function SignalTerminal() {
     .kt-page-shell .detail-btn {
       font-family: 'DM Sans', sans-serif;
     }
+    .kt-page-shell .refresh-status {
+      color: var(--kt-muted);
+      font-size: 0.66rem;
+      font-weight: 600;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .kt-page-shell .refresh-status.error { color: var(--kt-danger); }
     .kt-page-shell .theme-btn,
     .kt-page-shell .refresh-btn,
     .kt-page-shell .lang-select,
@@ -892,6 +907,15 @@ function SignalTerminal() {
           <a href="/performance">{t("performance")}</a>
           <a href="/whale">{t("whaleRadar")}</a>
           <a href="/exchange">{t("exchangeCompare")}</a>
+          <span className={`refresh-status${refreshError ? " error" : ""}`} aria-live="polite">
+            {refreshing
+              ? "Veriler yenileniyor…"
+              : refreshError
+                ? "Güncelleme başarısız"
+                : lastUpdated
+                  ? `Son güncelleme: ${lastUpdated.toLocaleTimeString("tr-TR")}`
+                  : "Veri bekleniyor"}
+          </span>
           <button
             className="refresh-btn"
             type="button"
