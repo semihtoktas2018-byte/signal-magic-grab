@@ -68,14 +68,18 @@ Teslim tamamlandı olarak işaretlenmeden önce aşağıdakiler alıcı ortamın
 
 Build başarısı tek başına uçtan uca kabul testi değildir.
 
-## 6. Bilinen teknik sınırlamalar / açık işler\n\n**Mevcut satıcı ortamı için 2026-11-17 doğrulama notu:** GitHub `main` ile canlı Edge Function v12 kaynak dosyası birebir eşleşti. `kpk-signals-cron` cron görevi 5 dakikada bir aktif; incelenen son koşular başarılı. Fonksiyonun son incelenen yanıtı HTTP 200, `ok: true`, `errors: []` döndürdü. Telegram test mesajı ve gerçek LINK/USDT SELL sinyal bildirimi alıcı sohbetine ulaştı. Bu doğrulama yalnızca mevcut satıcı ortamını kapsar; alıcıya ait temiz kurulumun kabul testi yerine geçmez. `whale_events` tablosu kurulu ancak denetim anında 0 kayıt içeriyordu.
+## 6. Bilinen teknik sınırlamalar / açık işler
+
+**Mevcut satıcı ortamı için 2026-11-17 doğrulama notu:** GitHub `main` ile canlı Edge Function v12 kaynak dosyası birebir eşleşti. `kpk-signals-cron` cron görevi 5 dakikada bir aktif; incelenen son koşular başarılı. Fonksiyonun son incelenen yanıtı HTTP 200, `ok: true`, `errors: []` döndürdü. Telegram test mesajı ve gerçek LINK/USDT SELL sinyal bildirimi alıcı sohbetine ulaştı. Bu doğrulama yalnızca mevcut satıcı ortamını kapsar; alıcıya ait temiz kurulumun kabul testi yerine geçmez. `whale_events` tablosu kurulu ancak denetim anında 0 kayıt içeriyordu.
 
 - Depodaki CI üretim derlemesini kontrol eder; tüm depo ESLint kontrolü temiz değildir.
 - Otomatik test kapsamı sınırlıdır; kritik sinyal çözümleme senaryoları ayrıca test edilmelidir.
 - Bybit API rate-limit yanıtı gözlemlenmiştir; alıcı ortamında tekrar test edilmeli ve izlenmelidir.
 - Canlı projede Fear & Greed tablosu kayıt içeriyor; son görülen kaynak tarihi 2026-11-16. Alıcı ortamında güncellik ve servis sürekliliği doğrulanmalıdır.
 - Whale Radar migration'ı uygulanmadan bu tabloya bağlı ekran olay verisi gösteremez.
-- 2026-11-17 denetiminde canlı Edge Function v12 ile GitHub `main` kaynak dosyası birebir eşleşti. Resolver kodu canlı fonksiyonda mevcut; yine de temiz alıcı projesinde kabul testi yapılmalıdır.\n- Canlı `whale_events` tablosu mevcut ancak denetim anında 0 kayıt içeriyordu; olay akışının veri üretmesi ayrıca doğrulanmalıdır.\n- V1/V2 motorları arasında sinyal yönü/puanı ayrışabiliyor. Örnek canlı cron yanıtında LINKUSDT V1 SELL 78, V2 WAIT 28 ve V2 coverage 0.75 döndü. V2, mevcut uygulamada karşılaştırma amaçlıdır; performans garantisi olarak pazarlanmamalıdır.
+- 2026-11-17 denetiminde canlı Edge Function v12 ile GitHub `main` kaynak dosyası birebir eşleşti. Resolver kodu canlı fonksiyonda mevcut; yine de temiz alıcı projesinde kabul testi yapılmalıdır.
+- Canlı `whale_events` tablosu mevcut ancak denetim anında 0 kayıt içeriyordu; olay akışının veri üretmesi ayrıca doğrulanmalıdır.
+- V1/V2 motorları arasında sinyal yönü/puanı ayrışabiliyor. Örnek canlı cron yanıtında LINKUSDT V1 SELL 78, V2 WAIT 28 ve V2 coverage 0.75 döndü. V2, mevcut uygulamada karşılaştırma amaçlıdır; performans garantisi olarak pazarlanmamalıdır.
 - Canlı cron/Edge Function ayarları, alıcı onayı ve erişimi olmadan değiştirilmez.
 
 ## 7. Sözleşmede açıkça kararlaştırılacak ticari maddeler
@@ -88,7 +92,8 @@ Taraflar yazılı olarak belirlemelidir:
 - Kurulum kapsamı, teslim tarihi ve kabul kriterleri
 - Hata düzeltme süresi ve destek kapsamı
 - Yeni özellik, bakım ve üçüncü taraf servis maliyetleri
-- WhatsApp iletişim numarası ve destek kanalının kime ait olacağı\n- Marka, domain, görsel ve içerik haklarının kapsamı
+- WhatsApp iletişim numarası ve destek kanalının kime ait olacağı
+- Marka, domain, görsel ve içerik haklarının kapsamı
 - Üçüncü taraf açık kaynak paket lisanslarına uyum
 
 Bu maddeler kararlaştırılmadan depoya varsayımsal bir açık kaynak veya ticari lisans dosyası eklenmemelidir.
@@ -196,3 +201,36 @@ The rolling 7-day slice contained 61 signals: 55 closed (30 wins, 25 losses) and
 
 ### Release decision
 The seller's published application and version-15 backend are operational in the observed snapshot. The source can be presented for a controlled buyer demonstration and technical due diligence. Do not describe the package as fully turnkey, independently validated for trading profitability, or ready for immediate buyer production use until a clean buyer deployment passes the acceptance checklist in section 5 and commercial terms are signed.
+
+
+## 13. Live seller environment audit — 2026-11-22 13:25 UTC
+
+This is a newer read-only snapshot of the seller environment. It supersedes the point-in-time operational counts and rolling outcome figures in section 12; earlier sections remain historical audit records. It is not a buyer-environment acceptance test.
+
+### Deployment and live data
+- Lovable project status: published; project agent status: ready. Its latest project commit is `455674b807e556b3ee8d29035f4e433fb59a7e17`, matching GitHub `main` at the time of inspection.
+- Live Supabase Edge Function `kpk-signals-cron`: ACTIVE, version 15, `verify_jwt=false`. The function itself checks the `x-cron-secret` header against `CRON_SECRET`.
+- Latest database snapshot: 370 total signal rows; 6 signal rows created in the preceding 24 hours; newest signal timestamp `2026-11-22 06:15:11.783294 UTC`.
+- `whale_events`: 20 rows total — 2 Spot and 18 Linear. Latest inserted event: `2026-11-22 13:20:04 UTC`. This confirms Linear events are now being stored; it does not imply comprehensive coverage of every market trade.
+- `exchange_prices`: 9 rows; latest update `2026-11-22 13:25:17 UTC`.
+- `market_sentiment`: 9 rows; latest source timestamp `2026-11-22 00:00:00 UTC`, latest database update `2026-11-22 06:07:23 UTC`. Source data timestamp and database refresh time are different measures.
+
+### Rolling signal outcome snapshot
+A read-only query at this audit returned:
+- Last 30 days: 358 signals; 328 closed (149 wins, 179 losses); 30 pending.
+- Closed-signal hit rate: 45.43%.
+- BUY: 19 wins from 97 closed (19.59%).
+- SELL: 130 wins from 231 closed (56.28%).
+- Gross theoretical EV using fixed +2.5% TP / -2.0% SL: approximately +0.044% per closed signal, before fees, spread, slippage, funding and execution effects. This is marginal and is not evidence of a profitable strategy.
+- Last 7 days: 59 signals, all 59 closed (30 wins, 29 losses); hit rate 50.85%; BUY 1/7 and SELL 29/52. Gross theoretical EV under the same fixed TP/SL assumption is approximately +0.288% per closed signal. This short window is not a sales performance claim.
+
+These are rolling database snapshots, not independently audited trading returns. Theoretical TP/SL outcomes are not executed P&L. Do not market them as profitability, investment performance, or a guaranteed hit rate.
+
+### Current release position
+The seller's published application and version-15 backend show live data activity, including Linear Whale Radar records. The source is suitable for a controlled demonstration and technical due diligence. A buyer-ready production handover is still incomplete until a separate buyer Supabase project is provisioned, secrets/OAuth/cron are configured, a clean build is verified, and all acceptance tests in section 5 pass. Commercial license, rights transfer, price, warranty and support terms must also be agreed in writing.
+
+### Known caveats carried forward
+- No successful fresh CI build run has been verified for the current release commit; do not claim CI passed.
+- Repository-wide ESLint is not clean; do not claim lint passed.
+- The Lovable editor preview retains a stale backend reference described in section 12. The published site and its live Supabase project are separate and must not be conflated.
+- The current performance snapshot is effectively near-flat on the fixed theoretical TP/SL model before trading costs. Keep the engine unchanged; do not enable V2 as a hard gate or retune thresholds from these samples.
