@@ -693,7 +693,7 @@ function Performance() {
                         ⏳ {hours} saat
                       </span>
                     </div>
-                    <div className="live-meta" style={{ marginTop: 8 }}>
+                    <div className="live-meta" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <span>Kayıt: {new Date(s.created_at).toLocaleString("tr-TR")}</span>
                       <span>{hours} saattir bekliyor</span>
                     </div>
