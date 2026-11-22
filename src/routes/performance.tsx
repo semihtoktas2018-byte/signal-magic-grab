@@ -128,8 +128,12 @@ async function loadStalePending(): Promise<Signal[]> {
   const PAGE = 1000;
   const all: Signal[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase.from("kpk_signals").select("*")
-      .eq("result", "bekliyor").lt("created_at", cutoff).order("created_at", { ascending: true })
+    const { data, error } = await supabase
+      .from("kpk_signals")
+      .select("*")
+      .eq("result", "bekliyor")
+      .lt("created_at", cutoff)
+      .order("created_at", { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw error;
     all.push(...((data as Signal[]) || []));
@@ -154,9 +158,20 @@ function Performance() {
   useEffect(() => {
     let cancelled = false;
     loadStalePending()
-      .then((rows) => { if (!cancelled) { setStale(rows); setStaleError(null); } })
-      .catch((err) => { if (!cancelled) setStaleError(err?.message || "Bilinmeyen hata"); });
-    return () => { cancelled = true; };
+      .then((rows) => {
+        if (!cancelled) {
+          setStale(rows);
+          setStaleError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setStaleError(err?.message || "Bilinmeyen hata");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const t = (key: string) => translations[key]?.[lang] || key;
