@@ -1,6 +1,11 @@
 name: Windows Desktop Installer
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/windows-desktop.yml"
   workflow_dispatch:
     inputs:
       web_url:
@@ -32,14 +37,14 @@ jobs:
 
       - name: Validate and write web endpoint
         env:
-          KELTOS_WEB_URL: ${{ inputs.web_url }}
+          KELTOS_WEB_URL: ${{ inputs.web_url || 'https://signal-magic-grab.lovable.app/' }}
         run: |
           node -e "const fs=require('node:fs'); const raw=(process.env.KELTOS_WEB_URL||'').trim(); if(!raw) throw new Error('KELTOŞ web adresi zorunludur'); const u=new URL(raw); if(u.protocol!=='https:' || u.username || u.password) throw new Error('A valid HTTPS URL without embedded credentials is required'); fs.writeFileSync('app-config.json', JSON.stringify({webUrl:u.toString()}, null, 2));"
 
       - name: Verify published KELTOŞ web app
         shell: pwsh
         env:
-          KELTOS_WEB_URL: ${{ inputs.web_url }}
+          KELTOS_WEB_URL: ${{ inputs.web_url || 'https://signal-magic-grab.lovable.app/' }}
         run: |
           $response = Invoke-WebRequest -Uri $env:KELTOS_WEB_URL -Method Get -TimeoutSec 30 -MaximumRedirection 5
           if ($response.StatusCode -ne 200) {
