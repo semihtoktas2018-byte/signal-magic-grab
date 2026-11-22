@@ -284,10 +284,13 @@ interface WhaleActivity {
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   const url = `https://api.bybit.com/v5/market/recent-trade?category=spot&symbol=${symbol}&limit=1000`
-  const r = await fetch(url)
-  if (!r.ok) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
-  const j = await r.json() as any
-  if (j.retCode !== 0) return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
+  let j: any
+  try {
+    j = await fetchBybitMarketJson(url, `whale ${symbol}`)
+  } catch {
+    // Preserve the existing fallback: unavailable whale data contributes zero flow.
+    return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
+  }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
   let biggestSide: 'BUY' | 'SELL' | null = null
@@ -614,10 +617,8 @@ function scoreBand(score: number): string {
 
 async function fetchTicker(symbol: string): Promise<number | null> {
   try {
-    const r = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
-    if (!r.ok) return null
-    const j = await r.json() as any
-    if (j.retCode !== 0) return null
+    const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`
+    const j = await fetchBybitMarketJson(url, `ticker ${symbol}`)
     const p = j.result?.list?.[0]?.lastPrice
     return p ? parseFloat(p) : null
   } catch {
