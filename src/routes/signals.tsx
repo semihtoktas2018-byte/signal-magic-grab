@@ -205,11 +205,19 @@ async function loadSignals(): Promise<Signal[]> {
     const latest = Object.values(latestByCoin);
     // Ayrıca tüm bekleyen (açık) kayıtlar — eski olsalar bile.
     const { data: pendingData, error: pendingError } = await supabase
-      .from("kpk_signals").select("*").eq("result", "bekliyor").order("created_at", { ascending: false });
+      .from("kpk_signals")
+      .select("*")
+      .eq("result", "bekliyor")
+      .order("created_at", { ascending: false });
     const pending = pendingError ? [] : ((pendingData as Signal[]) || []);
     const byId = new Map<string, Signal>();
-    [...latest, ...pending].forEach((s) => { if (!byId.has(s.id)) byId.set(s.id, s); });
-    return [...byId.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    [...latest, ...pending].forEach((s) => {
+      if (!byId.has(s.id)) byId.set(s.id, s);
+    });
+    return [...byId.values()].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
   } catch (error) {
     return [];
   }
