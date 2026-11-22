@@ -143,6 +143,7 @@ export type Database = {
       whale_events: {
         Row: {
           amount_usd: number
+          category: string
           coin: string
           created_at: string
           id: string
@@ -151,6 +152,7 @@ export type Database = {
         }
         Insert: {
           amount_usd: number
+          category?: string
           coin: string
           created_at?: string
           id?: string
@@ -159,6 +161,7 @@ export type Database = {
         }
         Update: {
           amount_usd?: number
+          category?: string
           coin?: string
           created_at?: string
           id?: string
