@@ -5,7 +5,7 @@ on:
     inputs:
       web_url:
         description: "Müşteriye ait çalışan KELTOŞ HTTPS web adresi"
-        required: true
+        required: false
         type: string
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
         env:
           KELTOS_WEB_URL: ${{ inputs.web_url }}
         run: |
-          node -e "const fs=require('node:fs'); const raw=process.env.KELTOS_WEB_URL; const u=new URL(raw); if(u.protocol!=='https:' || u.username || u.password) throw new Error('A valid HTTPS URL without embedded credentials is required'); fs.writeFileSync('app-config.json', JSON.stringify({webUrl:u.toString()}, null, 2));"
+          node -e "const fs=require('node:fs'); const raw=(process.env.KELTOS_WEB_URL||'').trim(); if(!raw){fs.writeFileSync('app-config.json', JSON.stringify({webUrl:''}, null, 2)); process.exit(0);} const u=new URL(raw); if(u.protocol!=='https:' || u.username || u.password) throw new Error('A valid HTTPS URL without embedded credentials is required'); fs.writeFileSync('app-config.json', JSON.stringify({webUrl:u.toString()}, null, 2));"
 
       - name: Build Windows x64 installer
         run: npm run build:win
