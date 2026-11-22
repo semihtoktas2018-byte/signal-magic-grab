@@ -129,7 +129,24 @@ app.whenReady().then(() => {
       submenu: [
         { label: "Bağlantı ayarları", click: createSetupWindow },
         { type: "separator" },
-        { role: "reload", label: "Yenile" },
+        {
+          label: "Yenile",
+          accelerator: "F5",
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.reloadIgnoringCache();
+            }
+          }
+        },
+        {
+          label: "Yenile (Ctrl+R)",
+          accelerator: "CmdOrCtrl+R",
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.reloadIgnoringCache();
+            }
+          }
+        },
         { role: "quit", label: "Çıkış" }
       ]
     }
