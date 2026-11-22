@@ -291,9 +291,10 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   let j: any
   try {
     j = await fetchBybitMarketJson(url, `whale ${symbol}`)
-  } catch {
+  } catch (error) {
     // Preserve zero-flow fallback, but expose the failure for operational diagnostics.
-    return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null, apiStatus: 'error', tradesScanned: 0, qualifyingTrades: 0, apiError: 'Bybit recent-trade request failed' }
+    const apiError = error instanceof Error ? error.message : String(error)
+    return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null, apiStatus: 'error', tradesScanned: 0, qualifyingTrades: 0, apiError }
   }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
