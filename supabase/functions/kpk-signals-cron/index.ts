@@ -280,6 +280,10 @@ interface WhaleActivity {
   biggestTradeId: string | null
   biggestTradeAt: string | null
   biggestTradePrice: number | null
+  apiStatus: 'ok' | 'error'
+  tradesScanned: number
+  qualifyingTrades: number
+  apiError: string | null
 }
 
 async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
@@ -287,9 +291,10 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   let j: any
   try {
     j = await fetchBybitMarketJson(url, `whale ${symbol}`)
-  } catch {
-    // Preserve the existing fallback: unavailable whale data contributes zero flow.
-    return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null }
+  } catch (error) {
+    // Preserve zero-flow fallback, but expose the failure for operational diagnostics.
+    const apiError = error instanceof Error ? error.message : String(error)
+    return { buyUsd: 0, sellUsd: 0, biggestUsd: 0, biggestSide: null, biggestTradeId: null, biggestTradeAt: null, biggestTradePrice: null, apiStatus: 'error', tradesScanned: 0, qualifyingTrades: 0, apiError }
   }
   const trades = (j.result?.list ?? []) as any[]
   let buyUsd = 0, sellUsd = 0, biggestUsd = 0
@@ -297,12 +302,14 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
   let biggestTradeId: string | null = null
   let biggestTradeAt: string | null = null
   let biggestTradePrice: number | null = null
+  let qualifyingTrades = 0
   for (const t of trades) {
     const price = parseFloat(t.price)
     const qty = parseFloat(t.size)
     const usd = price * qty
     const isBuy = t.side === 'Buy'
     if (usd >= WHALE_THRESHOLD_USD) {
+      qualifyingTrades++
       if (usd > biggestUsd) {
         biggestUsd = usd
         biggestSide = isBuy ? 'BUY' : 'SELL'
@@ -316,7 +323,7 @@ async function fetchWhaleActivity(symbol: string): Promise<WhaleActivity> {
       if (isBuy) buyUsd += usd; else sellUsd += usd
     }
   }
-  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt, biggestTradePrice }
+  return { buyUsd, sellUsd, biggestUsd, biggestSide, biggestTradeId, biggestTradeAt, biggestTradePrice, apiStatus: 'ok', tradesScanned: trades.length, qualifyingTrades, apiError: null }
 }
 
 // ---------- Exchange comparison (Bybit vs OKX) ----------
@@ -728,6 +735,7 @@ async function runCron() {
   const closed: string[] = []
   const errors: string[] = []
   const whaleLogged: string[] = []
+  const whaleDiagnostics: Array<Record<string, unknown>> = []
   const exchangeCompared: string[] = []
   const v2Report: Array<Record<string, unknown>> = []
   const candidates: Array<{
@@ -746,6 +754,7 @@ async function runCron() {
     try {
       const klines = await fetchKlines(coin)
       const a = await analyzeCoin(coin, klines)
+      whaleDiagnostics.push({ coin, status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
       v2Report.push({
         coin, v1: a.signal, v1Score: Math.round(a.score),
         v2: a.v2.direction, v2Score: a.v2.score, v2Bias: a.v2.bias,
@@ -875,8 +884,8 @@ async function runCron() {
     }
   }
 
-  console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged, exchangeCompared, v2Report }))
-  return { ok: true, inserted, closed, errors, whaleLogged, exchangeCompared, engineV2: v2Report }
+  console.log('kpk-signals-cron result', JSON.stringify({ inserted, closed, errors, whaleLogged, whaleDiagnostics, exchangeCompared, v2Report }))
+  return { ok: true, inserted, closed, errors, whaleLogged, whaleDiagnostics, exchangeCompared, engineV2: v2Report }
 }
 
 // ============================================================
