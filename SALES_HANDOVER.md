@@ -136,3 +136,34 @@ A read-only review compared the current V1 scoring implementation, the V2 diagno
 
 ### Decision
 Do not change live thresholds or enable V2 as a hard gate based on this sample. The next valid step is a reproducible historical replay using timestamp-aligned 15-minute candles and the exact signal-time inputs, followed by an out-of-sample period with trading costs. Until then, keep the engine unchanged and do not market its signals as profitable or independently validated.
+
+
+## 11. Live engine follow-up audit — 2026-11-22 06:11 UTC
+
+Read-only snapshot from the seller Supabase project and version 12 Edge Function logs.
+
+### Rolling 30-day outcomes
+- 324 closed signals: 150 `tuttu`, 174 `tutmadi`; hit rate 46.30%.
+- Gross theoretical EV using the documented +2.5% TP / -2.0% SL: +0.083% per closed signal, before fees, spread, slippage, and execution effects.
+- BUY: 19/98 wins (19.39%).
+- SELL: 131/226 wins (57.96%).
+- 35 signals remained pending at the audit time; no expired signals were present in this 30-day slice.
+- Rolling-window results differ from the 2026-11-19 snapshot because the window and database records have advanced. Use the timestamped snapshot, not the old figure, when describing current status.
+
+### Post-v12 cohort
+For signals created since 2026-11-18 14:00 UTC:
+- 28 signals recorded, all SELL at score 78.
+- 23 closed: 18 wins and 5 losses; 5 remained pending.
+- All 28 stored V2 decisions were WAIT, with V2 scores in the 7–37 range. V1 therefore continued recording SELL while V2 did not confirm those signals.
+- Latest BUY in the table was created 2026-11-18 08:00 UTC; there have been no later BUY records in this cohort.
+
+This is a small, one-direction cohort during the observed market regime; it is not evidence of a stable 78.3% win rate and cannot validate BUY performance.
+
+### Data and operational observations
+- All 324 closed signal snapshots had zero stored `whaleBuyUsd` and `whaleSellUsd`. This means the stored signal cohort contains no qualifying whale-flow amounts; it does not establish that the Bybit trade endpoint is broken.
+- `whale_events` contained 2 events, newest 2026-11-20 08:20 UTC; none in the preceding 24 hours.
+- The cron Edge Function was active at version 12. In the preceding 24 hours, 287 result logs were observed; 285 had empty error arrays. Two runs reported Bybit retCode 10006 rate-limit errors, one for DOGEUSDT (2026-11-21 11:00 UTC) and one for BNBUSDT (2026-11-22 04:00 UTC). Other coin processing and exchange-price writes continued in those runs. The latest observed run at 06:10 UTC had an empty error array.
+- All 9 exchange-price rows were refreshed at approximately 06:10 UTC. The Bybit/OKX differences in that snapshot ranged from approximately 0.169% to 0.453%.
+
+### Decision
+Keep the live signal engine unchanged. Do not activate V2 as a hard gate or retune BUY/SELL thresholds from this limited cohort. Priorities for a future validation build are: (1) persist signal-time V1/V2 decisions and indicator inputs in a queryable comparison dataset, (2) address transient Bybit rate-limit handling with bounded backoff, and (3) run a timestamp-aligned historical replay and out-of-sample test with trading costs. These are future engineering tasks, not changes made by this audit.
