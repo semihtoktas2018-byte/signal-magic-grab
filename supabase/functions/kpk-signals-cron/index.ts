@@ -416,13 +416,38 @@ function signalLogic(
   return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
 }
 
+// Bybit market endpoints can return HTTP 429 or retCode 10006 during bursts.
+// Retry only transient rate-limit/server/network failures; keep attempts bounded.
+async function fetchBybitMarketJson(url: string, label: string): Promise<any> {
+  const maxAttempts = 3
+  let lastError = ''
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(url)
+      if (!response.ok) {
+        lastError = `${label} HTTP ${response.status}`
+        const retryable = response.status === 429 || response.status >= 500
+        if (!retryable || attempt === maxAttempts) throw new Error(lastError)
+      } else {
+        const body = await response.json() as any
+        if (body.retCode === 0) return body
+        lastError = `${label} retCode ${body.retCode} ${body.retMsg ?? ''}`.trim()
+        if (body.retCode !== 10006 || attempt === maxAttempts) throw new Error(lastError)
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+      const retryable = /HTTP 429|HTTP 5\d\d|retCode 10006|fetch failed|network/i.test(lastError)
+      if (!retryable || attempt === maxAttempts) throw new Error(lastError)
+    }
+    await sleep(500 * attempt)
+  }
+  throw new Error(lastError || `${label} failed after retries`)
+}
+
 // ---------- Resolve kline fetcher (15dk) ----------
 async function fetchResolveKlines(symbol: string, startMs: number, endMs: number): Promise<Array<[string, string, string, string, string, string]>> {
   const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&start=${startMs}&end=${endMs}&limit=1000`
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`resolve klines ${symbol} ${r.status}`)
-  const j = await r.json() as any
-  if (j.retCode !== 0) throw new Error(`resolve klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
+  const j = await fetchBybitMarketJson(url, `resolve klines ${symbol}`)
   const list = (j.result?.list ?? []) as Array<[string, string, string, string, string, string]>
   return list
 }
@@ -511,10 +536,7 @@ async function resolveTPSLWithKlines(
 // ---------- Bybit fetchers ----------
 async function fetchKlines(symbol: string) {
   const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=15&limit=100`
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`klines ${symbol} ${r.status}`)
-  const j = await r.json() as any
-  if (j.retCode !== 0) throw new Error(`klines ${symbol} retCode ${j.retCode} ${j.retMsg}`)
+  const j = await fetchBybitMarketJson(url, `klines ${symbol}`)
   const list = (j.result?.list ?? []) as string[][]
   const now = Date.now()
   const closedCandles = list
