@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KELTOŞ bağlantı ayarları</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px; color: #eef3ff; background: #080d18; }
+    main { width: 100%; max-width: 440px; }
+    .mark { color: #48a7ff; font-size: 13px; font-weight: 700; letter-spacing: .2em; }
+    h1 { margin: 14px 0 8px; font-size: 30px; }
+    p { color: #9baac2; line-height: 1.6; font-size: 14px; }
+    label { display: block; margin: 26px 0 8px; font-size: 13px; font-weight: 600; }
+    input { width: 100%; padding: 14px; border: 1px solid #263650; border-radius: 9px; outline: none; background: #101a2b; color: #fff; font-size: 14px; }
+    input:focus { border-color: #318fe8; }
+    button { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 9px; background: #1675d1; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #message { min-height: 22px; margin-top: 12px; color: #ffb7b7; font-size: 13px; }
+    .note { margin-top: 24px; padding-top: 16px; border-top: 1px solid #1c2a40; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">KELTOŞ</div>
+    <h1>Web paneline bağlan</h1>
+    <p>Bu masaüstü uygulaması KELTOŞ web paneline bağlanır. Kurumunuza veya hesabınıza ait güvenli HTTPS adresini girin.</p>
+    <form id="form">
+      <label for="webUrl">KELTOŞ web adresi</label>
+      <input id="webUrl" type="url" placeholder="https://..." autocomplete="url" required>
+      <button id="save" type="submit">Bağlan ve kaydet</button>
+      <div id="message" role="status" aria-live="polite"></div>
+    </form>
+    <p class="note">Bağlantı adresi bu bilgisayardaki kullanıcı profilinde saklanır. Uygulama kullanımı için internet bağlantısı gerekir.</p>
+  </main>
+  <script src="./setup.js"></script>
+</body>
+</html>
