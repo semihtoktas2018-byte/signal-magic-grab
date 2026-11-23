@@ -8,6 +8,13 @@ export const Route = createFileRoute("/performance")({
   head: () => ({
     meta: [
       { title: "Performance & Signal History" },
+      { property: "og:title", content: "Performance & Signal History" },
+      {
+        property: "og:description",
+        content: "Sinyal performansı ve geçmiş sonuçların coin bazında analizi.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Sinyal performansı, isabet oranı, beklenen getiri (EV) ve coin bazında başarı — her sinyalin tıklanabilir açıklamasıyla." },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],

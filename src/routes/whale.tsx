@@ -8,6 +8,13 @@ export const Route = createFileRoute("/whale")({
   head: () => ({
     meta: [
       { title: "Whale Radar" },
+      { property: "og:title", content: "Whale Radar" },
+      {
+        property: "og:description",
+        content: "Bybit piyasalarında yüksek tutarlı tekil işlemlerin takibi.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Bybit Spot son 60 ve USDT perpetual (Linear) son 1.000 işlem içinde 250.000 USD ve üzerindeki tekil işlemleri ayrı piyasa etiketiyle listeler; cüzdan hareketlerini izlemez." },
     ],
   }),

@@ -1,5 +1,8 @@
 # KELTOŞ — Roadmap
 
+- [x] Resolve admin build type mismatch without changing authorization; automatic build OK; no test script or test suites present.
+- [ ] Untrack .env — blocked by platform Git protection requiring .env in published builds; existing .gitignore already protects it. Local values unchanged, no publishing.
+
 - [x] Fix failed build (typecheck errors in AISignalIntelligence mid-edit) — latest build OK
 - [x] Canlı Fiyat / Fark: fetch live prices + 24h change from Binance API instead of the missing `exchange_prices` table (homepage AI center, /signals, /performance, homepage live PnL)
 - [x] /login route: created the missing `src/KeltosLogin.tsx` component so the route tree regenerates with `/login` (typecheck clean, build OK)

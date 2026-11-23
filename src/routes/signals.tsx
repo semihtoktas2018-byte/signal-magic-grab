@@ -8,6 +8,13 @@ export const Route = createFileRoute("/signals")({
   head: () => ({
     meta: [
       { title: "Signal Terminal" },
+      { property: "og:title", content: "Signal Terminal" },
+      {
+        property: "og:description",
+        content: "Canlı kripto sinyal terminali ve coin bazında teknik analiz.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

@@ -8,6 +8,13 @@ export const Route = createFileRoute("/exchange")({
   head: () => ({
     meta: [
       { title: "Exchange Comparison" },
+      { property: "og:title", content: "Exchange Comparison" },
+      {
+        property: "og:description",
+        content: "Bybit ve OKX arasındaki anlık fiyat farkını canlı takip et.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Bybit ve OKX arasındaki anlık fiyat farkını canlı takip et." },
     ],
   }),

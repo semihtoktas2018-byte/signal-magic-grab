@@ -7,7 +7,19 @@ import {
   setDeploymentUserAccess,
 } from "@/lib/api/admin-users.functions";
 
-export const Route = createFileRoute("/admin/users")({ component: DeploymentUsersPage });
+export const Route = createFileRoute("/admin/users")({
+  head: () => ({
+    meta: [
+      { title: "KELTOŞ — Kullanıcı Yönetimi" },
+      { name: "description", content: "KELTOŞ kurulumunun kullanıcı ve erişim yönetimi." },
+      { property: "og:title", content: "KELTOŞ — Kullanıcı Yönetimi" },
+      { property: "og:description", content: "KELTOŞ kurulumunun kullanıcı ve erişim yönetimi." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: DeploymentUsersPage,
+});
 
 type DeploymentUser = {
   id: string;

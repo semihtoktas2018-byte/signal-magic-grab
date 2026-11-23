@@ -3,7 +3,19 @@ import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "../branding";
 
-export const Route = createFileRoute("/branding")({ component: BrandingSettingsPage });
+export const Route = createFileRoute("/branding")({
+  head: () => ({
+    meta: [
+      { title: "KELTOŞ — Marka Ayarları" },
+      { name: "description", content: "KELTOŞ kurulumunun marka ayarları." },
+      { property: "og:title", content: "KELTOŞ — Marka Ayarları" },
+      { property: "og:description", content: "KELTOŞ kurulumunun marka ayarları." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: BrandingSettingsPage,
+});
 
 const INITIAL = {
   brand_name: "",

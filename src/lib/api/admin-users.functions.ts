@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { UserAppMetadata } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type AdminContext = {
   claims?: {
     sub?: string;
-    app_metadata?: { role?: string };
+    app_metadata?: UserAppMetadata;
   };
 };
 
@@ -62,10 +63,15 @@ export const setDeploymentUserAccess = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let target: Awaited<ReturnType<typeof supabaseAdmin.auth.admin.getUserById>>["data"]["user"] | null = null;
+    let target:
+      | Awaited<ReturnType<typeof supabaseAdmin.auth.admin.getUserById>>["data"]["user"]
+      | null = null;
     let activeAdmins = 0;
     for (let page = 1; ; page += 1) {
-      const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 100 });
+      const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 100,
+      });
       if (listError) throw new Error("Kullanıcı doğrulaması yapılamadı: " + listError.message);
       for (const user of listed.users) {
         if (user.id === data.userId) target = user;
