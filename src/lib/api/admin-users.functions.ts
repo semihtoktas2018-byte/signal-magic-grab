@@ -20,10 +20,15 @@ export const listDeploymentUsers = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     assertDeploymentAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 });
-    if (error) throw new Error("Kullanıcı listesi alınamadı: " + error.message);
+    const users = [];
+    for (let page = 1; ; page += 1) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 100 });
+      if (error) throw new Error("Kullanıcı listesi alınamadı: " + error.message);
+      users.push(...data.users);
+      if (data.users.length < 100) break;
+    }
     return {
-      users: data.users.map((user) => ({
+      users: users.map((user) => ({
         id: user.id,
         email: user.email ?? "",
         role: user.app_metadata?.role === "admin" ? "admin" : "user",
@@ -32,8 +37,7 @@ export const listDeploymentUsers = createServerFn({ method: "GET" })
         lastSignInAt: user.last_sign_in_at ?? null,
         createdAt: user.created_at,
       })),
-      limit: 100,
-      total: data.users.length,
+      total: users.length,
     };
   });
 
@@ -58,16 +62,25 @@ export const setDeploymentUserAccess = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 });
-    if (listError) throw new Error("Kullanıcı doğrulaması yapılamadı: " + listError.message);
-    const target = listed.users.find((user) => user.id === data.userId);
-    if (!target) throw new Error("Kullanıcı bulunamadı. İlk 100 kullanıcı dışında olabilir.");
-    if (!data.enabled && target.app_metadata?.role === "admin") {
-      const activeAdmins = listed.users.filter((user) =>
-        user.app_metadata?.role === "admin" &&
-        (!user.banned_until || new Date(user.banned_until).getTime() <= Date.now())
-      );
-      if (activeAdmins.length <= 1) throw new Error("Son aktif yöneticinin erişimi kapatılamaz.");
+    let target: Awaited<ReturnType<typeof supabaseAdmin.auth.admin.getUserById>>["data"]["user"] | null = null;
+    let activeAdmins = 0;
+    for (let page = 1; ; page += 1) {
+      const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 100 });
+      if (listError) throw new Error("Kullanıcı doğrulaması yapılamadı: " + listError.message);
+      for (const user of listed.users) {
+        if (user.id === data.userId) target = user;
+        if (
+          user.app_metadata?.role === "admin" &&
+          (!user.banned_until || new Date(user.banned_until).getTime() <= Date.now())
+        ) {
+          activeAdmins += 1;
+        }
+      }
+      if (listed.users.length < 100) break;
+    }
+    if (!target) throw new Error("Kullanıcı bulunamadı.");
+    if (!data.enabled && target.app_metadata?.role === "admin" && activeAdmins <= 1) {
+      throw new Error("Son aktif yöneticinin erişimi kapatılamaz.");
     }
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
