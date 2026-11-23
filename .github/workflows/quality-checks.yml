@@ -3,7 +3,10 @@ name: Build Check
 on:
   push:
     branches:
+      - main
       - "fix/**"
+      - "feat/**"
+      - "ci/**"
   pull_request:
     branches:
       - main
