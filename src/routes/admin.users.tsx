@@ -89,7 +89,7 @@ function DeploymentUsersPage() {
         <header>
           <p className="text-xs uppercase tracking-widest text-slate-500">Deployment owner</p>
           <h1 className="mt-1 text-2xl font-bold">Kullanıcı ve erişim yönetimi</h1>
-          <p className="mt-2 text-sm text-slate-400">Bu liste yalnızca bu kuruluma aittir. En fazla ilk 100 Auth kullanıcısı gösterilir. Yönetici rolleri Supabase sunucu tarafındaki app_metadata üzerinden yönetilir.</p>
+          <p className="mt-2 text-sm text-slate-400">Bu liste yalnızca bu kuruluma ait tüm Auth kullanıcılarını gösterir. Yönetici rolleri Supabase sunucu tarafındaki app_metadata üzerinden yönetilir.</p>
         </header>
 
         <form onSubmit={invite} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:flex-row">
