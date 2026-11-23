@@ -263,6 +263,7 @@ function Landing() {
           <a href="/whale">{t("whaleRadar")}</a>
           <a href="/exchange">{t("exchangeCompare")}</a>
           {isAdmin && <a href="/branding">Marka ayarları</a>}
+          {isAdmin && <a href="/admin/users">Kullanıcı yönetimi</a>}
           <a href="#pricing">{t("pricing")}</a>
         </div>
 
@@ -328,6 +329,7 @@ function Landing() {
             <a href="/performance" onClick={() => setMenuOpen(false)}>{t("performance")}</a>
             <a href="/whale" onClick={() => setMenuOpen(false)}>{t("whaleRadar")}</a>
             <a href="/exchange" onClick={() => setMenuOpen(false)}>{t("exchangeCompare")}</a>
+            {isAdmin && <a href="/admin/users" onClick={() => setMenuOpen(false)}>Kullanıcı yönetimi</a>}
             <a href="#pricing" onClick={() => setMenuOpen(false)}>{t("pricing")}</a>
           </div>
         )}
