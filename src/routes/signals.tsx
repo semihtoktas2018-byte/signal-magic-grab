@@ -215,7 +215,8 @@ async function loadSignals(): Promise<Signal[]> {
       .select("*")
       .eq("result", "bekliyor")
       .order("created_at", { ascending: false });
-    const pending = pendingError ? [] : ((pendingData as Signal[]) || []);
+    if (pendingError) throw pendingError;
+    const pending = (pendingData as Signal[]) || [];
     const byId = new Map<string, Signal>();
     [...latest, ...pending].forEach((s) => {
       if (!byId.has(s.id)) byId.set(s.id, s);
@@ -235,9 +236,6 @@ async function loadPrices(): Promise<PriceRow[]> {
       bybit_price: Number(row.bybit_price),
       price24hPcnt: Number(row.diff_pct) || 0,
     }));
-  } catch (error) {
-    return [];
-  }
 }
 
 function TradingViewWidget({ symbol }: { symbol: string }) {
