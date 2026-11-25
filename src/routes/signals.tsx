@@ -318,6 +318,10 @@ function SignalTerminal() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshError, setRefreshError] = useState(false);
   const [lang, setLang] = useState<LangCode>(getLang());
+  const [liveBias, setLiveBias] = useState({ buy: 0, sell: 0, neutral: 0, total: 0 });
+  const [liveBiasUpdatedAt, setLiveBiasUpdatedAt] = useState<Date | null>(null);
+  const [liveBiasLoading, setLiveBiasLoading] = useState(false);
+  const [liveBiasError, setLiveBiasError] = useState(false);
 
   const t = (key: string) => translations[key]?.[lang] || key;
 
@@ -375,6 +379,59 @@ function SignalTerminal() {
       clearInterval(timer);
     };
   }, [refreshTrigger]);
+
+  const trackedSymbols = prices.map((p) => p.coin).filter(Boolean).sort().join(",");
+
+  useEffect(() => {
+    if (!trackedSymbols) return;
+    let cancelled = false;
+    let running = false;
+
+    const refreshLiveBias = async () => {
+      if (running || cancelled) return;
+      running = true;
+      setLiveBiasLoading(true);
+      try {
+        const symbols = trackedSymbols.split(",");
+        const results = await Promise.allSettled(
+          symbols.map(async (symbol) => {
+            const closes = await fetchCloses(symbol);
+            if (closes.length < 50) throw new Error("Yetersiz mum verisi");
+            return computeIndicators(closes);
+          }),
+        );
+        if (cancelled) return;
+
+        let buy = 0;
+        let sell = 0;
+        let neutral = 0;
+        let total = 0;
+        results.forEach((result) => {
+          if (result.status !== "fulfilled") return;
+          total += 1;
+          const indicators = result.value;
+          const currentRsi = indicators.rsi ?? 50;
+          if (indicators.emaTrend === "yukarı" && indicators.macd === "pozitif" && currentRsi >= 50) buy += 1;
+          else if (indicators.emaTrend === "aşağı" && indicators.macd === "negatif" && currentRsi <= 50) sell += 1;
+          else neutral += 1;
+        });
+        setLiveBias({ buy, sell, neutral, total });
+        setLiveBiasUpdatedAt(new Date());
+        setLiveBiasError(total === 0);
+      } catch (error) {
+        if (!cancelled) setLiveBiasError(true);
+      } finally {
+        running = false;
+        if (!cancelled) setLiveBiasLoading(false);
+      }
+    };
+
+    void refreshLiveBias();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refreshLiveBias();
+    }, 60000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [trackedSymbols]);
 
   const priceMap: Record<string, number> = {};
   prices.forEach((p) => {
@@ -974,11 +1031,23 @@ function SignalTerminal() {
         <div className="wrap">
           <div className="top-grid">
             <div className="card">
-              <div className="card-h">Son Kayıtlı Sinyal Dağılımı</div>
-              <div className="mood mood-flat">{decided ? `%${bullPct} BUY · %${100 - bullPct} SELL` : "Kayıt yok"}</div>
-              <div className="mood-sub">Coin başına son kaydedilen sinyallerin geçmiş dağılımı: {buyN} BUY · {sellN} SELL. Canlı piyasa yönü değildir.</div>
-              <div className="mood-bar">
-                <div className="mood-fill" style={{ width: `${bullPct}%` }} />
+              <div className="card-h">Canlı Teknik Görünüm · 15 dk</div>
+              {liveBias.total > 0 ? (
+                <>
+                  <div className="mood mood-flat">{liveBias.buy} BUY eğilim · {liveBias.sell} SELL eğilim · {liveBias.neutral} NÖTR</div>
+                  <div className="mood-sub">Bybit spot mumlarından EMA 20/50, MACD ve RSI (14) ile hesaplanır. {liveBias.total} / {prices.length} coin analiz edildi.</div>
+                  <div className="mood-bar" style={{ display: "flex", overflow: "hidden" }}>
+                    <div style={{ width: `${(liveBias.buy / liveBias.total) * 100}%`, background: "#34d399", transition: "width .35s ease" }} />
+                    <div style={{ width: `${(liveBias.neutral / liveBias.total) * 100}%`, background: "#94a3b8", transition: "width .35s ease" }} />
+                    <div style={{ width: `${(liveBias.sell / liveBias.total) * 100}%`, background: "#f87171", transition: "width .35s ease" }} />
+                  </div>
+                </>
+              ) : (
+                <div className="mood-sub">{liveBiasLoading ? "Canlı teknik veriler analiz ediliyor…" : liveBiasError ? "Canlı teknik veriler şu anda alınamıyor." : "Canlı veri bekleniyor."}</div>
+              )}
+              <div className="mood-sub" style={{ marginTop: 8 }}>
+                {liveBiasUpdatedAt ? `Son analiz: ${liveBiasUpdatedAt.toLocaleTimeString("tr-TR")}` : "Henüz analiz yapılmadı"}
+                {" · "}Geçmiş kayıtlar: {buyN} BUY / {sellN} SELL
               </div>
             </div>
 
