@@ -34,6 +34,7 @@ interface SignalComponents {
   whaleBuyUsd?: number | null;
   whaleSellUsd?: number | null;
   v2Score?: number | null;
+  fundingRate?: number | null;
 }
 interface Signal {
   id: string;
@@ -264,6 +265,7 @@ function Performance() {
       if (c.rsi != null) why.push(`RSI ${Math.round(c.rsi)}${c.rsi >= 70 ? " (aşırı alım)" : c.rsi <= 30 ? " (aşırı satım)" : ""}`);
       if (c.emaTrend) why.push(`trend ${c.emaTrend === "up" ? "yukarı" : "aşağı"}`);
       if (c.macdHist != null) why.push(`momentum ${c.macdHist >= 0 ? "pozitif" : "negatif"}`);
+      if (c.fundingRate != null) why.push(`funding ${(c.fundingRate * 100).toFixed(4)}%`);
       if (c.bbPct != null) why.push(`Bollinger %${Math.round(c.bbPct * 100)}`);
       if (c.whaleBuyUsd != null && c.whaleSellUsd != null && (c.whaleBuyUsd > 0 || c.whaleSellUsd > 0))
         why.push(`whale ${c.whaleBuyUsd >= c.whaleSellUsd ? "alım" : "satım"} baskılı`);
