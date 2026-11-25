@@ -84,6 +84,7 @@ async function fetchLivePrices(): Promise<Record<string, number>> {
       (rows || []).forEach((r) => {
         if (!r.symbol || r.lastPrice == null) return;
         const price = Number(r.lastPrice);
+        if (!Number.isFinite(price) || price <= 0) return;
         map[r.symbol] = price;
         map[r.symbol.replace("USDT", "")] = price;
       });
@@ -96,7 +97,7 @@ async function fetchLivePrices(): Promise<Record<string, number>> {
 
 function computeLive(signal: Signal, curPrice: number) {
   const entry = Number(signal.price);
-  if (!entry || !curPrice) return null;
+  if (!Number.isFinite(entry) || entry <= 0 || !Number.isFinite(curPrice) || curPrice <= 0) return null;
   const isBuy = signal.signal === "BUY";
   const pnlPct = isBuy ? ((curPrice - entry) / entry) * 100 : ((entry - curPrice) / entry) * 100;
   const { target, stop } = getTradeLevels(signal.signal, entry);
