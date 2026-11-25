@@ -861,22 +861,47 @@ async function runCron() {
 
   // 2) Açık sinyalleri geçmiş mumlarla kapat.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-  const resolveFloor = new Date(
-    Date.now() - (RESOLVE_WINDOW_HOURS + 6) * 60 * 60 * 1000
-  ).toISOString()
-  const { data: openSigs } = await supabase
+  const { data: openSigs, error: openSigsError } = await supabase
     .from('kpk_signals')
-    .select('id, coin, signal, price, created_at')
+    .select('id, coin, signal, price, created_at, resolve_attempted_at')
     .eq('result', 'bekliyor')
     .lt('created_at', oneHourAgo)
-    .gte('created_at', resolveFloor)
+    .order('resolve_attempted_at', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(1)
 
+  if (openSigsError) {
+    errors.push(`open signals query: ${openSigsError.message}`)
+  }
+
+  // Claim the oldest untried/least-recently-tried row before external market-data calls.
+  // The timestamp comparison prevents two overlapping cron runs from claiming the same row.
   for (const row of openSigs ?? []) {
     try {
+      const attemptedAt = new Date().toISOString()
+      let claimQuery = supabase
+        .from('kpk_signals')
+        .update({ resolve_attempted_at: attemptedAt })
+        .eq('id', row.id)
+        .eq('result', 'bekliyor')
+
+      claimQuery = row.resolve_attempted_at === null
+        ? claimQuery.is('resolve_attempted_at', null)
+        : claimQuery.eq('resolve_attempted_at', row.resolve_attempted_at)
+
+      const { data: claimed, error: claimError } = await claimQuery
+        .select('id')
+        .maybeSingle()
+
+      if (claimError) {
+        errors.push(`claim ${row.id}: ${claimError.message}`)
+        continue
+      }
+      if (!claimed) continue
+
       const entry = Number(row.price)
       const signal = row.signal as 'BUY' | 'SELL'
       const createdAt = row.created_at as string
-
       const resolution = await resolveTPSLWithKlines(row.coin, signal, entry, createdAt)
 
       if (resolution.result) {
@@ -884,6 +909,7 @@ async function runCron() {
           .from('kpk_signals')
           .update({ result: resolution.result, closed_at: resolution.closedAt })
           .eq('id', row.id)
+          .eq('result', 'bekliyor')
         if (error) errors.push(`update ${row.id}: ${error.message}`)
         else {
           closed.push(`${row.coin} ${row.signal} → ${resolution.result}`)
