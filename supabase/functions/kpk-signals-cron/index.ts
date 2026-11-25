@@ -13,7 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles, validateKlineSeries } from '../../../src/lib/signal-math.ts'
+import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles, validateKlineSeries } from '../_shared/signal-math.ts'
 
 // ============================================================
 // Konfigürasyon
