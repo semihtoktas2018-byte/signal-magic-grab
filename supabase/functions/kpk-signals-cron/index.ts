@@ -292,7 +292,9 @@ async function fetchOkxPrice(symbol: string): Promise<number> {
     if (r.ok) {
       const j = await r.json() as any
       if (j.code !== '0' || !j.data?.[0]) throw new Error(`okx ${symbol} bad response`)
-      return parseFloat(j.data[0].last)
+      const price = Number(j.data[0].last)
+      if (!Number.isFinite(price) || price <= 0) throw new Error(`okx ${symbol} invalid price`)
+      return price
     }
     lastErr = `okx ${symbol} ${r.status}`
     if (r.status === 429 || r.status >= 500) {
@@ -517,8 +519,8 @@ async function fetchTicker(symbol: string): Promise<number | null> {
   try {
     const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`
     const j = await fetchBybitMarketJson(url, `ticker ${symbol}`)
-    const p = j.result?.list?.[0]?.lastPrice
-    return p ? parseFloat(p) : null
+    const p = Number(j.result?.list?.[0]?.lastPrice)
+    return Number.isFinite(p) && p > 0 ? p : null
   } catch {
     return null
   }
@@ -723,7 +725,11 @@ async function runCron() {
         .limit(1)
       if (dup && dup.length > 0) continue
       const tickerPrice = await fetchTicker(c.coin)
-      const entryPrice = tickerPrice ?? c.price
+      if (tickerPrice === null || !Number.isFinite(tickerPrice) || tickerPrice <= 0) {
+        errors.push(`${c.coin} ticker unavailable or invalid; signal not recorded`)
+        continue
+      }
+      const entryPrice = tickerPrice
       const entrySnapshotAt = new Date().toISOString()
       const { error } = await supabase.from('kpk_signals').insert({
         coin: c.coin, signal: c.signal, score: c.score,
