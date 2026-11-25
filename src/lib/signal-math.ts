@@ -393,7 +393,7 @@ function momentumScore(input: V2SignalInputs): number | null {
 function volumeScore(input: V2SignalInputs, directionalBias: number): number | null {
   if (input.volRatio === null || input.volRatio === undefined) return null;
   const strength = clamp((input.volRatio - 1) / 0.6, 0, 1);
-  return clamp(strength * (directionalBias >= 0 ? 1 : -1));
+  return clamp(strength * Math.sign(directionalBias));
 }
 
 function whaleScore(input: V2SignalInputs): number | null {
@@ -417,7 +417,7 @@ function sentimentScore(input: V2SignalInputs): number | null {
 function volatilityScore(input: V2SignalInputs, directionalBias: number): number | null {
   if (input.volatilityPct === null || input.volatilityPct === undefined) return null;
   const penalty = clamp((input.volatilityPct - 1.5) / 3, 0, 1);
-  return clamp((1 - 2 * penalty) * (directionalBias >= 0 ? 1 : -1));
+  return clamp((1 - 2 * penalty) * Math.sign(directionalBias));
 }
 
 function qualityOf(score: number): V2Result["quality"] {
@@ -440,12 +440,14 @@ export function calculateV2Signal(input: V2SignalInputs): V2Result {
     [V2_WEIGHTS.sentiment, sentiment],
   ];
   const coreWeight = coreEntries.filter(([, value]) => value !== null).reduce((sum, [weight]) => sum + weight, 0);
-  const coreBias = coreWeight
+  const coreBias = coreWeight > 0
     ? coreEntries.filter(([, value]) => value !== null).reduce((sum, [weight, value]) => sum + weight * (value as number), 0) / coreWeight
-    : 1;
+    : null;
 
-  const volume = volumeScore(input, coreBias);
-  const volatility = volatilityScore(input, coreBias);
+  // Volume and volatility are confirmatory factors; without a directional core
+  // they must not manufacture a BUY/SELL bias from missing primary inputs.
+  const volume = coreBias === null ? null : volumeScore(input, coreBias);
+  const volatility = coreBias === null ? null : volatilityScore(input, coreBias);
   const raw: Array<{ key: string; label: string; weight: number; value: number | null }> = [
     { key: "trend", label: "Trend (EMA20/50)", weight: V2_WEIGHTS.trend, value: trend },
     { key: "momentum", label: "Momentum (RSI + MACD)", weight: V2_WEIGHTS.momentum, value: momentum },
