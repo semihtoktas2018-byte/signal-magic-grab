@@ -105,7 +105,7 @@ Deno.test("EMA follows the configured recursive smoothing", () => {
   const values = calculateEma([10, 11, 12], 2);
   near(values[0], 10, "EMA first value");
   near(values[1], 10 + 2 / 3, "EMA second value");
-  near(values[2], 10 + (2 / 3) + (2 / 3) * (1 / 3), "EMA third value");
+  near(values[2], 10 + 14 / 9, "EMA third value");
 });
 
 Deno.test("RSI distinguishes rising, falling and flat markets", () => {
