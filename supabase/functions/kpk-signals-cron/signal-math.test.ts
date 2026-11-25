@@ -271,3 +271,15 @@ Deno.test("V2 neutral core bias does not turn positive volume into a BUY signal"
   equal(result.factors.find((factor) => factor.key === "volume")?.value, 0, "neutral volume contribution");
   equal(result.factors.find((factor) => factor.key === "volatility")?.value, 0, "neutral volatility contribution");
 });
+
+Deno.test("V2 includes a valid funding rate in the sentiment factor", () => {
+  const result = calculateV2Signal({
+    price: 105, prevPrice: 104, rsi: 45, prevRsi: 44,
+    ema20: 103, ema20Prev: 102, ema50: 100,
+    macdHist: 0.2, bbPct: 0.6, volRatio: 1.2,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: null, funding: -0.0001, volatilityPct: 1.2,
+  });
+  equal(result.factors.find((factor) => factor.key === "sentiment")?.available, true, "funding makes sentiment available");
+  equal(result.coverage, 0.75, "trend, momentum, volume, sentiment and volatility coverage");
+});
