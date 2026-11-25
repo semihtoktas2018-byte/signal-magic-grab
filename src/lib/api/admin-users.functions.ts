@@ -1,25 +1,37 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { UserAppMetadata } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type AdminContext = {
   claims?: {
     sub?: string;
-    app_metadata?: UserAppMetadata;
   };
 };
 
-function assertDeploymentAdmin(context: AdminContext) {
-  if (context.claims?.app_metadata?.role !== "admin") {
-    throw new Error("Bu işlem için kurulum yöneticisi yetkisi gerekir.");
+async function assertDeploymentAdmin(context: AdminContext) {
+  const userId = context.claims?.sub;
+  if (!userId) {
+    throw new Error("Unauthorized: Kullanıcı kimliği doğrulanamadı.");
+  }
+
+  // JWT claims can remain valid after access is revoked. Always re-check the
+  // current role and ban status against Supabase Auth before admin operations.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const currentUser = data?.user;
+  const isBanned = Boolean(
+    currentUser?.banned_until && new Date(currentUser.banned_until).getTime() > Date.now(),
+  );
+
+  if (error || !currentUser || currentUser.app_metadata?.role !== "admin" || isBanned) {
+    throw new Error("Bu işlem için aktif kurulum yöneticisi yetkisi gerekir.");
   }
 }
 
 export const listDeploymentUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    assertDeploymentAdmin(context);
+    await assertDeploymentAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const users = [];
     for (let page = 1; ; page += 1) {
@@ -46,7 +58,7 @@ export const inviteDeploymentUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ email: z.string().trim().email().max(254) }))
   .handler(async ({ context, data }) => {
-    assertDeploymentAdmin(context);
+    await assertDeploymentAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     if (error) throw new Error("Davet gönderilemedi: " + error.message);
@@ -57,7 +69,7 @@ export const setDeploymentUserAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ userId: z.string().uuid(), enabled: z.boolean() }))
   .handler(async ({ context, data }) => {
-    assertDeploymentAdmin(context);
+    await assertDeploymentAdmin(context);
     if (context.claims?.sub === data.userId) {
       throw new Error("Kendi yönetici erişiminizi bu ekrandan kapatamazsınız.");
     }
