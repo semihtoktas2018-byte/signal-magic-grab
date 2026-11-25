@@ -13,6 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { calculateV1Signal, evaluateCandleOutcome, getTradeLevels } from '../../../src/lib/signal-math.ts'
 
 // ============================================================
 // Signal Engine V2 (Phase 1) — src/lib/signal-engine-v2.ts'ten taşındı
@@ -361,70 +362,14 @@ function signalLogic(
   volData: { ratio: number | null },
   whale: WhaleActivity
 ) {
-  if (!rsiVal || !e20 || !e50) return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
-  const rsiTurn = prevRsi !== null && prevRsi < 30 && rsiVal >= 30
-  const rsiOS = rsiVal < 30
-  const above20 = price > e20
-  const crossed20 = prevPrice < e20 && price >= e20
-  const below20 = price < e20
-  const trendOk = e20 >= e50
-  const slopeUp = e20Prev ? e20 > e20Prev : false
-  const overbought = rsiVal > 70
-  const macdBull = macdData.hist !== null && macdData.hist > 0
-  const macdBear = macdData.hist !== null && macdData.hist < 0
-  const bbOS = bbData.pct !== null && bbData.pct < 0.2
-  const bbOB = bbData.pct !== null && bbData.pct > 0.8
-  const highVol = volData.ratio !== null && volData.ratio > 1.3
-  const whaleBuy = whale.buyUsd > whale.sellUsd * 1.5 && whale.buyUsd > 0
-  const whaleSell = whale.sellUsd > whale.buyUsd * 1.5 && whale.sellUsd > 0
-
-  const trendDown = e20 < e50
-  const slopeDown = e20Prev ? e20 < e20Prev : false
-
-  // ============ BUY puanı ============
-  let buy = 0
-  if (rsiTurn) buy += 32; else if (rsiOS) buy += 20
-  if (above20) buy += 20
-  if (crossed20) buy += 10
-  if (trendOk) buy += 15
-  if (slopeUp) buy += 12
-  if (macdBull) buy += 14
-  if (bbOS) buy += 8
-  if (highVol) buy += 6
-  if (whaleBuy) buy += 14
-  if (!trendOk || !slopeUp) buy -= 30
-  if (whaleSell) buy -= 15
-
-  // ============ SELL puanı ============
-  let sell = 0
-  if (below20) sell += 28
-  if (overbought) sell += 24
-  if (trendDown) sell += 18
-  if (slopeDown) sell += 12
-  if (macdBear) sell += 14
-  if (bbOB) sell += 8
-  if (highVol) sell += 6
-  if (whaleSell) sell += 14
-  if (!trendDown || !slopeDown) sell -= 30
-  if (whaleBuy) sell -= 15
-
-  buy = Math.max(0, buy)
-  sell = Math.max(0, sell)
-
-  if (buy >= 50 && sell >= 50) {
-    return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
-  }
-
-  const ultraBuy = rsiTurn && above20 && trendOk && slopeUp && macdBull && whaleBuy && buy >= 88
-  const ultraSell = below20 && overbought && trendDown && slopeDown && macdBear && whaleSell && sell >= 88
-
-  if (ultraBuy) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy), whale }
-  if (ultraSell) return { signal: 'SELL', quality: 'ULTRA', score: Math.min(100, sell), whale }
-  if (buy >= 82) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy), whale }
-  if (sell >= 82) return { signal: 'SELL', quality: 'GÜÇLÜ', score: Math.min(100, sell), whale }
-  if (buy >= 65) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy), whale }
-  if (sell >= 65) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell), whale }
-  return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
+  const result = calculateV1Signal({
+    price, prevPrice, rsi: rsiVal, prevRsi,
+    ema20: e20, ema50: e50, ema20Prev: e20Prev,
+    macdHist: macdData.hist, bbPct: bbData.pct,
+    volumeRatio: volData.ratio,
+    whaleBuyUsd: whale.buyUsd, whaleSellUsd: whale.sellUsd,
+  })
+  return { ...result, whale }
 }
 
 // Bybit market endpoints can return HTTP 429 or retCode 10006 during bursts.
@@ -510,8 +455,7 @@ async function resolveTPSLWithKlines(
     return true
   }
 
-  const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
-  const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
+  const { target: tp, stop: sl } = getTradeLevels(signal, entryPrice)
 
   for (const candle of unique) {
     // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
@@ -520,16 +464,11 @@ async function resolveTPSLWithKlines(
     if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > endMs) break
     if (candle.openTime + 15 * 60 * 1000 > Date.now()) break
 
-    const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
-    const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
-
-    // Aynı 15 dakikalık mumda TP ve SL birlikte görülürse muhafazakâr olarak SL say.
-    if (tpHit || slHit) {
+    const candleOutcome = evaluateCandleOutcome(signal, entryPrice, candle.high, candle.low)
+    if (candleOutcome !== null) {
       // Önceki mumlarda veri boşluğu varsa ilk TP/SL temasını kesin sonuç sayma.
       if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAt: null }
-      if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-      if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
-      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
+      return { result: candleOutcome, closedAt: new Date(candle.openTime).toISOString() }
     }
   }
 
@@ -652,8 +591,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const symbol = coin.replace(/USDT$/, '')
   const isBuy = signal === 'BUY'
   const emoji = isBuy ? '🟢' : '🔴'
-  const stop = isBuy ? price * 0.98 : price * 1.02
-  const target = isBuy ? price * 1.025 : price * 0.975
+  const { stop, target } = getTradeLevels(signal as 'BUY' | 'SELL', price)
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
   const whaleLine = whale.biggestUsd > 0
     ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
