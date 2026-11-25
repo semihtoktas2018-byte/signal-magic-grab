@@ -207,7 +207,7 @@ Deno.test("historical resolver ignores candles before the signal and closes on f
     { openTime: 2 * FIFTEEN_MINUTES, high: 104, low: 99 },
   ]);
   equal(result.result, "tuttu", "first target hit");
-  equal(result.closedAtMs, FIFTEEN_MINUTES, "target candle timestamp");
+  equal(result.closedAtMs, 2 * FIFTEEN_MINUTES, "target candle close timestamp");
 });
 
 Deno.test("historical resolver refuses a hit when prior candle coverage has a gap", () => {
