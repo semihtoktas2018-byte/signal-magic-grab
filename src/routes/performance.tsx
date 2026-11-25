@@ -421,7 +421,7 @@ function Performance() {
       display: grid;
       gap: 12px;
     }
-    .kt-page-shell .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .kt-page-shell .stat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .kt-page-shell .ev-row { grid-template-columns: 1fr 1fr; }
     .kt-page-shell .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kt-page-shell .type-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -474,8 +474,32 @@ function Performance() {
     .kt-page-shell .d-lv-v { font-weight: 800; }
     .kt-page-shell .d-chip { display: inline-flex; align-items: center; border: 1px solid var(--kt-line); border-radius: 999px; padding: 0.35rem 0.65rem; font-size: 0.68rem; color: var(--kt-text); background: rgba(255,255,255,0.02); }
     .kt-page-shell .empty { padding: 28px 16px; }
+    .kt-page-shell .period-row,.kt-page-shell .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .kt-page-shell .period-label{color:var(--kt-muted);font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-right:4px}
+    .kt-page-shell .section-title{display:flex;align-items:center;gap:9px;margin:26px 0 12px;font-size:.9rem;font-weight:850}
+    .kt-page-shell .live-head{display:flex;align-items:center;gap:9px;margin:24px 0 12px}
+    .kt-page-shell .live-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 12px rgba(52,211,153,.65)}
+    .kt-page-shell .live-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+    .kt-page-shell .live-coin{font-weight:900;color:var(--kt-text)}
+    .kt-page-shell .live-side{border-radius:7px;padding:4px 8px;font-size:.68rem;font-weight:850}
+    .kt-page-shell .live-pnl{margin-left:auto;font-size:1rem;font-weight:900;font-variant-numeric:tabular-nums}
+    .kt-page-shell .live-bar-wrap{height:5px;margin:14px 0 8px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
+    .kt-page-shell .live-bar{height:100%;border-radius:99px;transition:width .25s ease}
+    .kt-page-shell .live-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.7rem}
+    .kt-page-shell .ev-v{font-size:clamp(25px,3vw,34px);margin:8px 0}
+    .kt-page-shell .ev-note{font-size:.74rem;line-height:1.65;color:var(--kt-muted)}
+    .kt-page-shell .coin-card{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .kt-page-shell .coin-sub{font-size:.68rem;line-height:1.5;margin-top:5px}
+    .kt-page-shell .rate-badge{font-size:1.25rem;font-variant-numeric:tabular-nums}
+    .kt-page-shell .signal-row{cursor:pointer}
+    .kt-page-shell .signal-row:focus-visible,.kt-page-shell button:focus-visible,.kt-page-shell a:focus-visible,.kt-page-shell select:focus-visible{outline:2px solid var(--kt-gold);outline-offset:3px}
+    .kt-page-shell .sig-caret{color:var(--kt-gold);font-size:.75rem}
+    .kt-page-shell .d-why{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+    .kt-page-shell .d-meta{font-size:.7rem;line-height:1.6}
+    .kt-page-shell .stat-sub{font-size:.68rem;margin-top:5px}
+    @media (max-width: 980px){.kt-page-shell .stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media (max-width: 760px) {
-      .kt-page-shell .stat-grid, .kt-page-shell .coin-grid, .kt-page-shell .live-grid, .kt-page-shell .ev-row, .kt-page-shell .type-row { grid-template-columns: 1fr; }
+      .kt-page-shell .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kt-page-shell .stat-card:last-child{grid-column:1/-1}.kt-page-shell .coin-grid,.kt-page-shell .live-grid,.kt-page-shell .ev-row,.kt-page-shell .type-row{grid-template-columns:1fr}
       .kt-page-shell .signal-row { grid-template-columns: auto 1fr auto; }
       .kt-page-shell .sig-mid { grid-column: 1 / -1; }
       .kt-page-shell .perf-nav { padding-inline: 14px; }
@@ -730,7 +754,7 @@ function Performance() {
                 const info = isOpen ? explain(s) : null;
                 return (
                   <div key={s.id} className="signal-card">
-                    <div className="signal-row" onClick={() => setOpenId(isOpen ? null : s.id)}>
+                    <div className="signal-row" role="button" tabIndex={0} aria-expanded={isOpen} aria-label={`${coinShort(s.coin)} ${s.signal} sinyal detayları`} onClick={() => setOpenId(isOpen ? null : s.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenId(isOpen ? null : s.id); } }}>
                       <span className="sig-coin">{coinShort(s.coin)}</span>
                       <span className="sig-type" style={{ background: s.signal === "BUY" ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)", color: s.signal === "BUY" ? "#22c55e" : "#ef4444" }}>
                         {s.signal === "BUY" ? "🟢 BUY" : "🔴 SELL"}
