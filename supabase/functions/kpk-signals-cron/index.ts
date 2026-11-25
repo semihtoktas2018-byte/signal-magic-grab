@@ -861,17 +861,30 @@ async function runCron() {
 
   // 2) Açık sinyalleri geçmiş mumlarla kapat.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-  const resolveFloor = new Date(
-    Date.now() - (RESOLVE_WINDOW_HOURS + 6) * 60 * 60 * 1000
-  ).toISOString()
-  const { data: openSigs } = await supabase
+  const resolveBatchSize = 10
+  const { data: allOpenSigs, error: openSigsError } = await supabase
     .from('kpk_signals')
     .select('id, coin, signal, price, created_at')
     .eq('result', 'bekliyor')
     .lt('created_at', oneHourAgo)
-    .gte('created_at', resolveFloor)
+    .order('created_at', { ascending: true })
+    .limit(1000)
 
-  for (const row of openSigs ?? []) {
+  if (openSigsError) {
+    errors.push(`open signals query: ${openSigsError.message}`)
+  }
+
+  // Rotate through bounded batches so older unresolved rows are retried without
+  // allowing a permanently incomplete candle history to block newer rows.
+  const pendingRows = allOpenSigs ?? []
+  const resolveBatchCount = Math.max(1, Math.ceil(pendingRows.length / resolveBatchSize))
+  const resolveBatchIndex = Math.floor(Date.now() / (5 * 60 * 1000)) % resolveBatchCount
+  const openSigs = pendingRows.slice(
+    resolveBatchIndex * resolveBatchSize,
+    (resolveBatchIndex + 1) * resolveBatchSize
+  )
+
+  for (const row of openSigs) {
     try {
       const entry = Number(row.price)
       const signal = row.signal as 'BUY' | 'SELL'
