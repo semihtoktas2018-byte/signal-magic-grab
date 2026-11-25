@@ -12,6 +12,7 @@ import {
   evaluateCandleOutcome,
   getTradeLevels,
   resolveSignalFromCandles,
+  validateKlineSeries,
 } from "../../../src/lib/signal-math.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -301,4 +302,30 @@ Deno.test("trade-level helper rejects unsupported runtime directions", () => {
   let threw = false;
   try { getTradeLevels("HOLD" as never, 100); } catch { threw = true; }
   assert(threw, "unsupported direction must throw");
+});
+
+Deno.test("15-minute OHLCV validator accepts complete, aligned candles", () => {
+  validateKlineSeries([
+    { openTime: 0, open: 100, high: 102, low: 99, close: 101, volume: 10 },
+    { openTime: FIFTEEN_MINUTES, open: 101, high: 103, low: 100, close: 102, volume: 12 },
+  ]);
+});
+
+Deno.test("15-minute OHLCV validator rejects missing intervals and invalid ranges", () => {
+  let gapThrew = false;
+  try {
+    validateKlineSeries([
+      { openTime: 0, open: 100, high: 102, low: 99, close: 101, volume: 10 },
+      { openTime: 2 * FIFTEEN_MINUTES, open: 101, high: 103, low: 100, close: 102, volume: 12 },
+    ]);
+  } catch { gapThrew = true; }
+  assert(gapThrew, "missing candle interval must throw");
+
+  let ohlcThrew = false;
+  try {
+    validateKlineSeries([
+      { openTime: 0, open: 100, high: 99, low: 98, close: 101, volume: 10 },
+    ]);
+  } catch { ohlcThrew = true; }
+  assert(ohlcThrew, "high below open/close must throw");
 });
