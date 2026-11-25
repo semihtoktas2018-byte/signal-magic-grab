@@ -6,6 +6,9 @@ import {
   calculateRelativeVolumeRatio,
   calculateRsi,
   calculateV1Signal,
+  calculateV2Signal,
+  compareSignalScores,
+  compareV1V2,
   evaluateCandleOutcome,
   getTradeLevels,
 } from "../../../src/lib/signal-math.ts";
@@ -137,4 +140,59 @@ Deno.test("relative volume compares the current bar to prior bars only", () => {
   equal(ratio, 3, "current volume divided by previous 20-bar average");
   equal(calculateRelativeVolumeRatio(new Array(20).fill(10), 20), null, "insufficient baseline");
   equal(calculateRelativeVolumeRatio([...new Array(20).fill(0), 10], 20), null, "zero baseline");
+});
+
+Deno.test("V2 reports actual factor coverage and normalizes only available weights", () => {
+  const result = calculateV2Signal({
+    price: 105, prevPrice: 104, rsi: 42, prevRsi: 39,
+    ema20: 103, ema20Prev: 102, ema50: 100,
+    macdHist: 0.5, bbPct: 0.7, volRatio: 1.6,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: null, funding: null, volatilityPct: 1.2,
+  });
+  equal(result.coverage, 0.75, "coverage without whale and sentiment");
+  equal(result.factors.find((factor) => factor.key === "sentiment")?.available, false, "sentiment unavailable flag");
+  const effectiveWeight = result.factors.reduce((sum, factor) => sum + factor.effectiveWeight, 0);
+  near(effectiveWeight, 1, "normalized available weights");
+});
+
+Deno.test("V2 uses Fear & Greed when it is actually supplied", () => {
+  const result = calculateV2Signal({
+    price: 105, prevPrice: 104, rsi: 42, prevRsi: 39,
+    ema20: 103, ema20Prev: 102, ema50: 100,
+    macdHist: 0.5, bbPct: 0.7, volRatio: 1.6,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: 20, funding: null, volatilityPct: 1.2,
+  });
+  equal(result.factors.find((factor) => factor.key === "sentiment")?.available, true, "sentiment availability");
+  equal(result.coverage, 0.85, "coverage with Fear & Greed");
+});
+
+Deno.test("V2 returns WAIT with zero coverage when all factors are unavailable", () => {
+  const result = calculateV2Signal({
+    price: 100, prevPrice: 100, rsi: null, prevRsi: null,
+    ema20: 0, ema20Prev: 0, ema50: 0,
+    macdHist: null, bbPct: null, volRatio: null,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: null, funding: null, volatilityPct: null,
+  });
+  equal(result.coverage, 0, "zero coverage");
+  equal(result.direction, "WAIT", "zero coverage direction");
+  equal(result.score, 0, "zero coverage score");
+});
+
+Deno.test("V1/V2 comparison and score tolerance are deterministic", () => {
+  const buy = calculateV2Signal({
+    price: 110, prevPrice: 109, rsi: 20, prevRsi: 25,
+    ema20: 108, ema20Prev: 107, ema50: 100,
+    macdHist: 1, bbPct: 0.1, volRatio: 2,
+    whaleBuyUsd: 500_000, whaleSellUsd: 10_000,
+    fearGreed: 15, funding: -0.0001, volatilityPct: 1,
+  });
+  equal(compareV1V2("BUY", buy), "confirm", "matching direction");
+  equal(compareV1V2("SELL", buy), "conflict", "opposite direction");
+  equal(compareV1V2("WAIT", buy), "neutral", "V1 WAIT direction");
+  equal(compareSignalScores(70, 72), "V2 Same", "within tolerance");
+  equal(compareSignalScores(70, 75), "V2 Better", "V2 higher");
+  equal(compareSignalScores(75, 70), "V2 Lower", "V2 lower");
 });
