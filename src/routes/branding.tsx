@@ -6,10 +6,10 @@ import { useBranding } from "../branding";
 export const Route = createFileRoute("/branding")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Marka Ayarları" },
-      { name: "description", content: "KELTOŞ kurulumunun marka ayarları." },
-      { property: "og:title", content: "KELTOŞ — Marka Ayarları" },
-      { property: "og:description", content: "KELTOŞ kurulumunun marka ayarları." },
+      { title: "Market Analysis Terminal — Marka Ayarları" },
+      { name: "description", content: "Market Analysis Terminal kurulumunun marka ayarları." },
+      { property: "og:title", content: "Market Analysis Terminal — Marka Ayarları" },
+      { property: "og:description", content: "Market Analysis Terminal kurulumunun marka ayarları." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

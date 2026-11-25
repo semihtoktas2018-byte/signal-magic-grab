@@ -12,10 +12,10 @@ interface LoginValues {
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Giriş" },
-      { name: "description", content: "KELTOŞ hesabınıza giriş yapın." },
-      { property: "og:title", content: "KELTOŞ — Giriş" },
-      { property: "og:description", content: "KELTOŞ hesabınıza giriş yapın." },
+      { title: "Market Analysis Terminal — Giriş" },
+      { name: "description", content: "Market Analysis Terminal hesabınıza giriş yapın." },
+      { property: "og:title", content: "Market Analysis Terminal — Giriş" },
+      { property: "og:description", content: "Market Analysis Terminal hesabınıza giriş yapın." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

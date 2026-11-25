@@ -233,7 +233,7 @@ function useFearGreed() {
     let cancelled = false;
     const load = async () => {
       try {
-        // KELTOŞ kendi Supabase projesindeki (keltos) 'fear-greed' Edge Function
+        // Uygulama kendi projesindeki 'fear-greed' Edge Function
         const { data: body, error } = await supabase.functions.invoke("fear-greed");
         if (cancelled) return;
         if (error || !body) throw new Error("fng_invoke_failed");

@@ -344,7 +344,7 @@ function Landing() {
             <div className="hero-head-row">
               <div>
                 <span className="eyebrow">◆ Kripto analiz ve sinyal paneli</span>
-                <h1 className="hero-title">{t("keltosBrand")} <span className="hero-title-gold">Kripto Analiz Paneli</span></h1>
+                <h1 className="hero-title">Kripto piyasasını <span className="hero-title-gold">tek terminalde analiz edin</span></h1>
               </div>
             </div>
             <p className="hero-sub">
@@ -620,7 +620,7 @@ const css = `
 .bell-type{font-size:10px;font-weight:800;letter-spacing:.08em;padding:3px 6px;border-radius:6px}
 .bell-badge{font-size:10px;font-weight:800;padding:4px 7px;border-radius:999px;white-space:nowrap}
 .bell-empty{color:var(--muted);padding:10px 8px;font-size:12px}
-/* KELTOS premium landing refresh — layout and styling only. */
+/* Premium landing refresh — layout and styling only. */
 .landing{background:#050608;color:#f4f1e9;font-family:Inter,system-ui,sans-serif;line-height:1.55;position:relative;overflow-x:hidden}
 .landing::before{background:radial-gradient(65% 48% at 50% -8%,rgba(245,182,41,.16),transparent 68%),radial-gradient(38% 38% at 100% 42%,rgba(245,182,41,.055),transparent 72%),linear-gradient(180deg,#07090d 0%,#050608 60%,#080a0e 100%)}
 .nav{padding:15px clamp(16px,4vw,56px);background:rgba(5,7,11,.9);border-bottom-color:rgba(245,182,41,.16);box-shadow:0 12px 38px rgba(0,0,0,.22)}

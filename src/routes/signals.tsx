@@ -820,7 +820,7 @@ function SignalTerminal() {
       .kt-page-shell .term-links { gap: 8px; }
     }
   
-/* Unified KELTOS premium terminal layer */
+/* Unified Premium terminal layer */
 .kt-page-shell.term{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
 .kt-page-shell .term-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
 .kt-page-shell .term-brand{letter-spacing:.11em;font-size:15px}

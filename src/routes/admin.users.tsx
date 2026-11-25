@@ -10,10 +10,10 @@ import {
 export const Route = createFileRoute("/admin/users")({
   head: () => ({
     meta: [
-      { title: "KELTOŞ — Kullanıcı Yönetimi" },
-      { name: "description", content: "KELTOŞ kurulumunun kullanıcı ve erişim yönetimi." },
-      { property: "og:title", content: "KELTOŞ — Kullanıcı Yönetimi" },
-      { property: "og:description", content: "KELTOŞ kurulumunun kullanıcı ve erişim yönetimi." },
+      { title: "Market Analysis Terminal — Kullanıcı Yönetimi" },
+      { name: "description", content: "Market Analysis Terminal kurulumunun kullanıcı ve erişim yönetimi." },
+      { property: "og:title", content: "Market Analysis Terminal — Kullanıcı Yönetimi" },
+      { property: "og:description", content: "Market Analysis Terminal kurulumunun kullanıcı ve erişim yönetimi." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

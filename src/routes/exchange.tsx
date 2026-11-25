@@ -150,7 +150,7 @@ function ExchangeCompare() {
       .kt-page-shell .promo-btn { width:100%; text-align:center; }
     }
   
-/* Unified KELTOS premium exchange comparison layer */
+/* Unified Premium exchange comparison layer */
 .kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
 .kt-page-shell .panel{max-width:1000px;margin:34px auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(245,182,41,.16);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:0 24px 80px rgba(0,0,0,.28)}
 .kt-page-shell .topbar{padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}

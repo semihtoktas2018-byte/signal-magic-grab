@@ -482,7 +482,7 @@ function Performance() {
       .kt-page-shell .perf-title { font-size: 0.82rem; }
     }
   
-/* Unified KELTOS premium performance layer */
+/* Unified Premium performance layer */
 .kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
 .kt-page-shell .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
 .kt-page-shell .perf-title{letter-spacing:.12em;font-size:15px}.kt-page-shell .perf-back{border-radius:10px;padding:8px 14px}

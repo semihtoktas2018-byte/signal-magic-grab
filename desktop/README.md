@@ -1,12 +1,12 @@
-# KELTOŞ Windows masaüstü istemcisi
+# Market Analysis Terminal Windows masaüstü istemcisi
 
-Bu paket, mevcut KELTOŞ web uygulamasını Windows masaüstü penceresinde açan bir Electron istemcisidir. Sinyal motorunu, Supabase veritabanını veya Edge Function'ları bilgisayara kopyalamaz; mevcut web hizmetini kullanır.
+Bu paket, mevcut Market Analysis Terminal web uygulamasını Windows masaüstü penceresinde açan bir Electron istemcisidir. Sinyal motorunu, Supabase veritabanını veya Edge Function'ları bilgisayara kopyalamaz; mevcut web hizmetini kullanır.
 
 ## Gereksinimler
 
 - Windows 10/11, 64-bit
 - İnternet bağlantısı
-- Çalışır durumda, HTTPS üzerinden erişilebilen bir KELTOŞ web kurulumu
+- Çalışır durumda, HTTPS üzerinden erişilebilen bir Market Analysis Terminal web kurulumu
 
 ## Geliştirici kurulumu
 
@@ -16,7 +16,7 @@ npm install
 npm start
 ```
 
-Paketlenmiş sürüm varsayılan olarak `app-config.json` içindeki KELTOŞ adresini açar. Kullanıcı ilk çalıştırmadan sonra menüdeki **KELTOŞ → Bağlantı ayarları** bölümünden HTTPS adresini değiştirebilir.
+Paketlenmiş sürüm varsayılan olarak `app-config.json` içindeki Market Analysis Terminal adresini açar. Kullanıcı ilk çalıştırmadan sonra menüdeki **Market Analysis Terminal → Bağlantı ayarları** bölümünden HTTPS adresini değiştirebilir.
 
 ## Windows kurulum dosyası
 
