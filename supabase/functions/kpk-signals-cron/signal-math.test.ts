@@ -1,5 +1,10 @@
 import {
+  calculateBollingerPct,
+  calculateEma,
+  calculateMacdHistogram,
   calculatePerformanceSummary,
+  calculateRelativeVolumeRatio,
+  calculateRsi,
   calculateV1Signal,
   evaluateCandleOutcome,
   getTradeLevels,
@@ -94,4 +99,42 @@ Deno.test("missing RSI remains WAIT", () => {
     bbPct: 0.1, volumeRatio: 1.5, whaleBuyUsd: 500_000, whaleSellUsd: 100_000,
   });
   equal(result.signal, "WAIT", "missing RSI");
+});
+
+Deno.test("EMA follows the configured recursive smoothing", () => {
+  const values = calculateEma([10, 11, 12], 2);
+  near(values[0], 10, "EMA first value");
+  near(values[1], 10 + 2 / 3, "EMA second value");
+  near(values[2], 10 + (2 / 3) + (2 / 3) * (1 / 3), "EMA third value");
+});
+
+Deno.test("RSI distinguishes rising, falling and flat markets", () => {
+  const rising = calculateRsi([1, 2, 3, 4, 5], 4);
+  const falling = calculateRsi([5, 4, 3, 2, 1], 4);
+  const flat = calculateRsi([5, 5, 5, 5, 5], 4);
+  equal(rising[4], 100, "all gains RSI");
+  equal(falling[4], 0, "all losses RSI");
+  equal(flat[4], 50, "flat market RSI");
+  equal(calculateRsi([1, 2, 3], 4).every((value) => value === null), true, "insufficient RSI history");
+});
+
+Deno.test("MACD histogram is neutral for a flat series and positive for a rising series", () => {
+  const flat = new Array(50).fill(100);
+  const rising = Array.from({ length: 50 }, (_, index) => 100 + index);
+  near(calculateMacdHistogram(flat), 0, "flat MACD");
+  assert(calculateMacdHistogram(rising) > 0, "rising series should have positive MACD histogram");
+});
+
+Deno.test("Bollinger position handles flat and insufficient data", () => {
+  equal(calculateBollingerPct(new Array(20).fill(100)), 0.5, "flat Bollinger position");
+  equal(calculateBollingerPct([100, 101], 20), null, "insufficient Bollinger history");
+  const pct = calculateBollingerPct(Array.from({ length: 20 }, (_, index) => 100 + index));
+  assert(pct !== null && pct > 0.5, "rising series should be above the Bollinger midline");
+});
+
+Deno.test("relative volume compares the current bar to prior bars only", () => {
+  const ratio = calculateRelativeVolumeRatio([...new Array(20).fill(10), 30], 20);
+  equal(ratio, 3, "current volume divided by previous 20-bar average");
+  equal(calculateRelativeVolumeRatio(new Array(20).fill(10), 20), null, "insufficient baseline");
+  equal(calculateRelativeVolumeRatio([...new Array(20).fill(0), 10], 20), null, "zero baseline");
 });
