@@ -159,20 +159,29 @@ function Performance() {
 
   useEffect(() => {
     let cancelled = false;
-    loadStalePending()
-      .then((rows) => {
+    let staleLoading = false;
+    const load = async () => {
+      if (staleLoading || cancelled) return;
+      staleLoading = true;
+      try {
+        const rows = await loadStalePending();
         if (!cancelled) {
           setStale(rows);
           setStaleError(null);
         }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setStaleError(err?.message || "Bilinmeyen hata");
-        }
-      });
+      } catch (err: any) {
+        if (!cancelled) setStaleError(err?.message || "Bilinmeyen hata");
+      } finally {
+        staleLoading = false;
+      }
+    };
+    void load();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 60000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, []);
 
@@ -185,16 +194,32 @@ function Performance() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    setLoadError(null);
-    loadSignals(since)
-      .then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } })
-      .catch((err) => {
+    let loadingSignals = false;
+    const load = async (initial = false) => {
+      if (loadingSignals || cancelled) return;
+      loadingSignals = true;
+      if (initial) setLoading(true);
+      setLoadError(null);
+      try {
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        const loaded = await loadSignals(since);
+        if (!cancelled) setSignals(loaded);
+      } catch (err: any) {
         console.error(err);
-        if (!cancelled) { setSignals([]); setLoadError(err?.message || "Bilinmeyen hata"); setLoading(false); }
-      });
-    return () => { cancelled = true; };
+        if (!cancelled) setLoadError(err?.message || "Bilinmeyen hata");
+      } finally {
+        loadingSignals = false;
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load(true);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [days]);
 
   useEffect(() => {

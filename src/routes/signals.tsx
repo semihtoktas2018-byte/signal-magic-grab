@@ -199,10 +199,9 @@ function resultLabel(r: Signal["result"]) {
 }
 
 async function loadSignals(): Promise<Signal[]> {
-  try {
-    const { data, error } = await supabase.from("kpk_signals").select("*").order("created_at", { ascending: false }).limit(60);
-    if (error) return [];
-    const allSignals = (data as Signal[]) || [];
+  const { data, error } = await supabase.from("kpk_signals").select("*").order("created_at", { ascending: false }).limit(60);
+  if (error) throw error;
+  const allSignals = (data as Signal[]) || [];
     const latestByCoin: Record<string, Signal> = {};
     allSignals.forEach((s) => {
       if (!latestByCoin[s.coin]) {
@@ -216,33 +215,27 @@ async function loadSignals(): Promise<Signal[]> {
       .select("*")
       .eq("result", "bekliyor")
       .order("created_at", { ascending: false });
-    const pending = pendingError ? [] : ((pendingData as Signal[]) || []);
+    if (pendingError) throw pendingError;
+    const pending = (pendingData as Signal[]) || [];
     const byId = new Map<string, Signal>();
     [...latest, ...pending].forEach((s) => {
       if (!byId.has(s.id)) byId.set(s.id, s);
     });
-    return [...byId.values()].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
-  } catch (error) {
-    return [];
-  }
+  return [...byId.values()].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 }
 
 async function loadPrices(): Promise<PriceRow[]> {
-  try {
-    const { data, error } = await supabase.from("exchange_prices").select("*");
-    if (error) return [];
-    if (!data) return [];
+  const { data, error } = await supabase.from("exchange_prices").select("*");
+  if (error) throw error;
+  if (!data) return [];
     return data.map((row: any) => ({
       coin: row.coin,
       bybit_price: Number(row.bybit_price),
       price24hPcnt: Number(row.diff_pct) || 0,
     }));
-  } catch (error) {
-    return [];
-  }
 }
 
 function TradingViewWidget({ symbol }: { symbol: string }) {
@@ -356,7 +349,6 @@ function SignalTerminal() {
         setLastUpdated(new Date());
       } catch (error) {
         if (!cancelled) {
-          setPrices([]);
           setRefreshError(true);
         }
       } finally {

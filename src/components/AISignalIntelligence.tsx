@@ -375,7 +375,7 @@ export default function AISignalIntelligence() {
   const series = useMemo(() => {
     let acc = 0;
     return [0, ...closedAsc.map((s) => (acc += s.result === "tuttu" ? 1 : -1))];
-  }, [closedAsc.length]);
+  }, [closedAsc]);
 
   const whaleRows = whales ?? [];
 
