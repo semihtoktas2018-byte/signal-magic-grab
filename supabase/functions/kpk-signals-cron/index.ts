@@ -861,7 +861,7 @@ async function runCron() {
 
   // 2) Açık sinyalleri geçmiş mumlarla kapat.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-  const resolveBatchSize = 10
+  const resolveBatchSize = 1
   const { data: allOpenSigs, error: openSigsError } = await supabase
     .from('kpk_signals')
     .select('id, coin, signal, price, created_at')
