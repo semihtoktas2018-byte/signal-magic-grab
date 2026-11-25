@@ -581,3 +581,44 @@ export function resolveSignalFromCandles(
     ? { result: "suresi_doldu", closedAtMs: endMs }
     : { result: null, closedAtMs: null };
 }
+
+
+export interface MarketKline {
+  openTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export function validateKlineSeries(candles: MarketKline[], intervalMinutes = 15): void {
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes <= 0) {
+    throw new RangeError("Kline interval must be a positive integer.");
+  }
+  if (candles.length === 0) throw new RangeError("Kline series is empty.");
+  const intervalMs = intervalMinutes * 60 * 1000;
+
+  for (let index = 0; index < candles.length; index++) {
+    const candle = candles[index];
+    const values = [candle.openTime, candle.open, candle.high, candle.low, candle.close, candle.volume];
+    if (values.some((value) => !Number.isFinite(value))) {
+      throw new RangeError("Kline contains a non-finite field.");
+    }
+    if (
+      candle.openTime < 0 || candle.open <= 0 || candle.high <= 0 ||
+      candle.low <= 0 || candle.close <= 0 || candle.volume < 0 ||
+      candle.high < Math.max(candle.open, candle.close) ||
+      candle.low > Math.min(candle.open, candle.close) ||
+      candle.high < candle.low
+    ) {
+      throw new RangeError("Kline contains invalid OHLCV values.");
+    }
+    if (candle.openTime % intervalMs !== 0) {
+      throw new RangeError("Kline open time is not aligned to the configured interval.");
+    }
+    if (index > 0 && candle.openTime - candles[index - 1].openTime !== intervalMs) {
+      throw new RangeError("Kline series contains a missing or duplicate interval.");
+    }
+  }
+}
