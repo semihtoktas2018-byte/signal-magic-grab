@@ -283,3 +283,22 @@ Deno.test("V2 includes a valid funding rate in the sentiment factor", () => {
   equal(result.factors.find((factor) => factor.key === "sentiment")?.available, true, "funding makes sentiment available");
   equal(result.coverage, 0.85, "trend, momentum, volume, sentiment and volatility coverage");
 });
+
+Deno.test("invalid numeric V2 inputs are excluded instead of contaminating scores", () => {
+  const result = calculateV2Signal({
+    price: 100, prevPrice: 99, rsi: Number.NaN, prevRsi: null,
+    ema20: Number.POSITIVE_INFINITY, ema20Prev: 99, ema50: 98,
+    macdHist: Number.NaN, bbPct: Number.NaN, volRatio: Number.NaN,
+    whaleBuyUsd: Number.NaN, whaleSellUsd: 0,
+    fearGreed: 120, funding: Number.NaN, volatilityPct: Number.NaN,
+  });
+  equal(result.coverage, 0, "invalid factor coverage");
+  equal(result.direction, "WAIT", "invalid inputs must not create direction");
+  assert(Number.isFinite(result.score) && Number.isFinite(result.bias), "score and bias stay finite");
+});
+
+Deno.test("trade-level helper rejects unsupported runtime directions", () => {
+  let threw = false;
+  try { getTradeLevels("HOLD" as never, 100); } catch { threw = true; }
+  assert(threw, "unsupported direction must throw");
+});
