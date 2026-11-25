@@ -1,0 +1,22 @@
+name: Edge Function Check
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/kpk-signals-cron/**"
+      - ".github/workflows/edge-function-check.yml"
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check kpk-signals-cron
+        run: deno check supabase/functions/kpk-signals-cron/index.ts
