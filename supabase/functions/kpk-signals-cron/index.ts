@@ -475,7 +475,7 @@ async function runCron() {
     signal: 'BUY' | 'SELL'
     score: number
     quality: string
-    price: number
+    entryPrice: number
     whale: WhaleActivity
     components: Record<string, unknown>
     scoreBand: string
@@ -487,6 +487,7 @@ async function runCron() {
       const klines = await fetchKlines(coin)
       const a = await analyzeCoin(coin, klines, fearGreed)
       if (a.fundingError) errors.push(`${coin} funding: ${a.fundingError}`)
+      const bybitTickerPrice = await fetchTicker(coin)
       whaleDiagnostics.push({ coin, market: 'spot', status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
 
       // Linear USDT perpetual trades are tracked separately; they do not affect Spot signal scoring.
@@ -510,18 +511,22 @@ async function runCron() {
         v2Coverage: a.v2.coverage, fundingRate: a.fundingRate, comparison: a.v2Comparison,
       })
 
-      // Bybit vs OKX fiyat karşılaştırması
-      try {
-        await sleep(150)
-        const okxPrice = await fetchOkxPrice(coin)
-        const diffPct = ((okxPrice - a.price) / a.price) * 100
-        const { error: exErr } = await supabase.from('exchange_prices').upsert({
-          coin, bybit_price: a.price, okx_price: okxPrice, diff_pct: diffPct, updated_at: new Date().toISOString(),
-        }, { onConflict: 'coin' })
-        if (exErr) errors.push(`${coin} exchange_prices: ${exErr.message}`)
-        else exchangeCompared.push(`${coin} diff ${diffPct.toFixed(3)}%`)
-      } catch (ee: any) {
-        errors.push(`${coin} okx: ${ee.message}`)
+      // Compare current tickers from both exchanges; do not mix a candle close with a live ticker.
+      if (bybitTickerPrice === null) {
+        errors.push(`${coin} Bybit ticker unavailable; exchange comparison and signal entry skipped`)
+      } else {
+        try {
+          await sleep(150)
+          const okxPrice = await fetchOkxPrice(coin)
+          const diffPct = ((okxPrice - bybitTickerPrice) / bybitTickerPrice) * 100
+          const { error: exErr } = await supabase.from('exchange_prices').upsert({
+            coin, bybit_price: bybitTickerPrice, okx_price: okxPrice, diff_pct: diffPct, updated_at: new Date().toISOString(),
+          }, { onConflict: 'coin' })
+          if (exErr) errors.push(`${coin} exchange_prices: ${exErr.message}`)
+          else exchangeCompared.push(`${coin} diff ${diffPct.toFixed(3)}%`)
+        } catch (ee: any) {
+          errors.push(`${coin} okx: ${ee.message}`)
+        }
       }
 
       if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt && a.whale.biggestTradePrice !== null) {
@@ -536,13 +541,13 @@ async function runCron() {
         else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
       }
 
-      if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= RECORD_THRESHOLD) {
+      if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= RECORD_THRESHOLD && bybitTickerPrice !== null) {
         candidates.push({
           coin,
           signal: a.signal,
           score: Math.round(a.score),
           quality: a.quality,
-          price: a.price,
+          entryPrice: bybitTickerPrice,
           whale: a.whale,
           components: a.components,
           scoreBand: scoreBand(Math.round(a.score)),
@@ -565,12 +570,11 @@ async function runCron() {
         .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
         .limit(1)
       if (dup && dup.length > 0) continue
-      const tickerPrice = await fetchTicker(c.coin)
-      if (tickerPrice === null || !Number.isFinite(tickerPrice) || tickerPrice <= 0) {
+      const entryPrice = c.entryPrice
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
         errors.push(`${c.coin} ticker unavailable or invalid; signal not recorded`)
         continue
       }
-      const entryPrice = tickerPrice
       const entrySnapshotAt = new Date().toISOString()
       const { error } = await supabase.from('kpk_signals').insert({
         coin: c.coin, signal: c.signal, score: c.score,
