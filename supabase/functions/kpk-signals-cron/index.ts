@@ -262,7 +262,7 @@ async function fetchKlines(symbol: string) {
   return closedCandles
 }
 
-async function analyzeCoin(symbol: string, klines: any[][]) {
+async function analyzeCoin(symbol: string, klines: any[][], fearGreed: number | null) {
   const closes = klines.map(k => parseFloat(k[4]))
   const volumes = klines.map(k => parseFloat(k[5]))
   const price = closes[closes.length - 1]
@@ -295,7 +295,7 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
     whaleSellUsd: whale.sellUsd,
     volatilityPct,
     funding: null,
-    fearGreed: null,
+    fearGreed,
   })
   return {
     ...sig, price, v2,
@@ -413,6 +413,61 @@ ${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
   }
 }
 
+async function loadFearGreed(supabase: any, errors: string[]): Promise<number | null> {
+  const maxAgeMs = 6 * 60 * 60 * 1000;
+  const { data: cached, error: cacheError } = await supabase
+    .from('market_sentiment')
+    .select('value, classification, source_timestamp, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (cacheError) errors.push(`fear-greed cache: ${cacheError.message}`);
+  const cachedValue = Number(cached?.value);
+  const cachedAt = cached?.updated_at ? new Date(cached.updated_at).getTime() : NaN;
+  if (
+    Number.isFinite(cachedValue) && cachedValue >= 0 && cachedValue <= 100 &&
+    Number.isFinite(cachedAt) && Date.now() - cachedAt >= 0 && Date.now() - cachedAt < maxAgeMs
+  ) {
+    return cachedValue;
+  }
+
+  try {
+    const response = await fetch('https://api.alternative.me/fng/?limit=1', {
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`alternative_me_http_${response.status}`);
+    const payload = await response.json() as {
+      data?: Array<{ value?: string; value_classification?: string; timestamp?: string }>;
+    };
+    const item = payload.data?.[0];
+    const value = Number(item?.value);
+    const classification = item?.value_classification;
+    const sourceTimestamp = Number(item?.timestamp);
+    if (
+      !Number.isFinite(value) || value < 0 || value > 100 ||
+      !classification || !Number.isFinite(sourceTimestamp) || sourceTimestamp <= 0
+    ) {
+      throw new Error('alternative_me_invalid_payload');
+    }
+
+    const row = {
+      value: Math.round(value),
+      classification,
+      source_timestamp: new Date(sourceTimestamp * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const { error: writeError } = await supabase
+      .from('market_sentiment')
+      .upsert(row, { onConflict: 'source_timestamp' });
+    if (writeError) errors.push(`fear-greed cache update: ${writeError.message}`);
+    return row.value;
+  } catch (error) {
+    errors.push(`fear-greed fetch: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
 // ============================================================
 // Ana cron mantığı
 // ============================================================
@@ -436,6 +491,7 @@ async function runCron() {
   const inserted: string[] = []
   const closed: string[] = []
   const errors: string[] = []
+  const fearGreed = await loadFearGreed(supabase, errors)
   const whaleLogged: string[] = []
   const whaleDiagnostics: Array<Record<string, unknown>> = []
   const exchangeCompared: string[] = []
@@ -455,7 +511,7 @@ async function runCron() {
   for (const coin of COINS) {
     try {
       const klines = await fetchKlines(coin)
-      const a = await analyzeCoin(coin, klines)
+      const a = await analyzeCoin(coin, klines, fearGreed)
       whaleDiagnostics.push({ coin, market: 'spot', status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
 
       // Linear USDT perpetual trades are tracked separately; they do not affect Spot signal scoring.
