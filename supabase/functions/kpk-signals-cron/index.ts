@@ -13,7 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles } from '../../../src/lib/signal-math.ts'
+import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles, validateKlineSeries } from '../../../src/lib/signal-math.ts'
 
 // ============================================================
 // Konfigürasyon
@@ -219,6 +219,14 @@ async function fetchKlines(symbol: string) {
   if (closedCandles.length < 50) {
     throw new Error(`klines ${symbol}: insufficient closed candles (${closedCandles.length})`)
   }
+  validateKlineSeries(closedCandles.map((k) => ({
+    openTime: Number(k[0]),
+    open: Number(k[1]),
+    high: Number(k[2]),
+    low: Number(k[3]),
+    close: Number(k[4]),
+    volume: Number(k[5]),
+  })), 15)
   return closedCandles
 }
 
