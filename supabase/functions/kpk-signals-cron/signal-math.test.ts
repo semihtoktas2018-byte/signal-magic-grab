@@ -13,7 +13,7 @@ import {
   getTradeLevels,
   resolveSignalFromCandles,
   validateKlineSeries,
-} from "../_shared/signal-math.ts";
+} from "./_shared/signal-math.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
