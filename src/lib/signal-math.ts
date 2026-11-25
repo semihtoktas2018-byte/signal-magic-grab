@@ -312,3 +312,188 @@ export function calculateV1Signal(input: V1SignalInputs): V1SignalResult {
   if (sell >= 65) return { signal: "SELL", quality: "ORTA", score: Math.min(100, sell) };
   return { signal: "WAIT", quality: "ZAYIF", score: Math.max(buy, sell) };
 }
+
+
+export interface V2SignalInputs {
+  price: number;
+  prevPrice: number;
+  rsi: number | null;
+  prevRsi: number | null;
+  ema20: number;
+  ema20Prev: number;
+  ema50: number;
+  macdHist: number | null;
+  bbPct: number | null;
+  volRatio: number | null;
+  whaleBuyUsd: number;
+  whaleSellUsd: number;
+  fearGreed?: number | null;
+  funding?: number | null;
+  volatilityPct?: number | null;
+}
+export type V2Direction = "BUY" | "SELL" | "WAIT";
+export interface V2Factor {
+  key: string;
+  label: string;
+  weight: number;
+  effectiveWeight: number;
+  available: boolean;
+  value: number;
+  contribution: number;
+}
+export interface V2Result {
+  version: "v2";
+  direction: V2Direction;
+  score: number;
+  bias: number;
+  quality: "ULTRA" | "GÜÇLÜ" | "ORTA" | "ZAYIF";
+  coverage: number;
+  factors: V2Factor[];
+}
+
+const V2_WEIGHTS = {
+  trend: 0.3,
+  momentum: 0.25,
+  volume: 0.15,
+  whale: 0.15,
+  sentiment: 0.1,
+  volatility: 0.05,
+} as const;
+
+const clamp = (value: number, lower = -1, upper = 1) => Math.max(lower, Math.min(upper, value));
+
+function trendScore(input: V2SignalInputs): number | null {
+  if (!input.ema20 || !input.ema50) return null;
+  const spread = (input.ema20 - input.ema50) / input.ema50;
+  const slope = input.ema20Prev ? (input.ema20 - input.ema20Prev) / input.ema20Prev : 0;
+  const position = input.ema20 ? (input.price - input.ema20) / input.ema20 : 0;
+  return clamp(0.5 * clamp(spread / 0.015) + 0.3 * clamp(slope / 0.004) + 0.2 * clamp(position / 0.01));
+}
+
+function momentumScore(input: V2SignalInputs): number | null {
+  const parts: number[] = [];
+  if (input.rsi !== null && input.rsi !== undefined) {
+    let value = clamp((50 - input.rsi) / 20);
+    if (input.prevRsi !== null && input.prevRsi !== undefined) {
+      if (input.prevRsi < 30 && input.rsi >= 30) value = clamp(value + 0.35);
+      if (input.prevRsi > 70 && input.rsi <= 70) value = clamp(value - 0.35);
+    }
+    parts.push(value);
+  }
+  if (input.macdHist !== null && input.macdHist !== undefined && input.price) {
+    parts.push(clamp(input.macdHist / input.price / 0.003));
+  }
+  if (input.bbPct !== null && input.bbPct !== undefined) {
+    parts.push(clamp((0.5 - input.bbPct) * 2) * 0.5);
+  }
+  if (!parts.length) return null;
+  return clamp(parts.reduce((sum, value) => sum + value, 0) / parts.length);
+}
+
+function volumeScore(input: V2SignalInputs, directionalBias: number): number | null {
+  if (input.volRatio === null || input.volRatio === undefined) return null;
+  const strength = clamp((input.volRatio - 1) / 0.6, 0, 1);
+  return clamp(strength * (directionalBias >= 0 ? 1 : -1));
+}
+
+function whaleScore(input: V2SignalInputs): number | null {
+  const total = (input.whaleBuyUsd || 0) + (input.whaleSellUsd || 0);
+  if (total <= 0) return null;
+  return clamp((input.whaleBuyUsd - input.whaleSellUsd) / total);
+}
+
+function sentimentScore(input: V2SignalInputs): number | null {
+  const parts: number[] = [];
+  if (input.fearGreed !== null && input.fearGreed !== undefined) {
+    parts.push(clamp((50 - input.fearGreed) / 30));
+  }
+  if (input.funding !== null && input.funding !== undefined) {
+    parts.push(clamp(-input.funding / 0.0005));
+  }
+  if (!parts.length) return null;
+  return clamp(parts.reduce((sum, value) => sum + value, 0) / parts.length);
+}
+
+function volatilityScore(input: V2SignalInputs, directionalBias: number): number | null {
+  if (input.volatilityPct === null || input.volatilityPct === undefined) return null;
+  const penalty = clamp((input.volatilityPct - 1.5) / 3, 0, 1);
+  return clamp((1 - 2 * penalty) * (directionalBias >= 0 ? 1 : -1));
+}
+
+function qualityOf(score: number): V2Result["quality"] {
+  if (score >= 85) return "ULTRA";
+  if (score >= 72) return "GÜÇLÜ";
+  if (score >= 55) return "ORTA";
+  return "ZAYIF";
+}
+
+export function calculateV2Signal(input: V2SignalInputs): V2Result {
+  const trend = trendScore(input);
+  const momentum = momentumScore(input);
+  const whale = whaleScore(input);
+  const sentiment = sentimentScore(input);
+
+  const coreEntries: Array<[number, number | null]> = [
+    [V2_WEIGHTS.trend, trend],
+    [V2_WEIGHTS.momentum, momentum],
+    [V2_WEIGHTS.whale, whale],
+    [V2_WEIGHTS.sentiment, sentiment],
+  ];
+  const coreWeight = coreEntries.filter(([, value]) => value !== null).reduce((sum, [weight]) => sum + weight, 0);
+  const coreBias = coreWeight
+    ? coreEntries.filter(([, value]) => value !== null).reduce((sum, [weight, value]) => sum + weight * (value as number), 0) / coreWeight
+    : 1;
+
+  const volume = volumeScore(input, coreBias);
+  const volatility = volatilityScore(input, coreBias);
+  const raw: Array<{ key: string; label: string; weight: number; value: number | null }> = [
+    { key: "trend", label: "Trend (EMA20/50)", weight: V2_WEIGHTS.trend, value: trend },
+    { key: "momentum", label: "Momentum (RSI + MACD)", weight: V2_WEIGHTS.momentum, value: momentum },
+    { key: "volume", label: "Hacim / Likidite", weight: V2_WEIGHTS.volume, value: volume },
+    { key: "whale", label: "Whale akışı", weight: V2_WEIGHTS.whale, value: whale },
+    { key: "sentiment", label: "Funding / Fear & Greed", weight: V2_WEIGHTS.sentiment, value: sentiment },
+    { key: "volatility", label: "Oynaklık", weight: V2_WEIGHTS.volatility, value: volatility },
+  ];
+
+  const coverage = raw.filter((factor) => factor.value !== null).reduce((sum, factor) => sum + factor.weight, 0);
+  const normalizer = coverage > 0 ? 1 / coverage : 0;
+  const factors: V2Factor[] = raw.map((factor) => {
+    const available = factor.value !== null;
+    const effectiveWeight = available ? factor.weight * normalizer : 0;
+    const value = available ? (factor.value as number) : 0;
+    return {
+      key: factor.key,
+      label: factor.label,
+      weight: factor.weight,
+      effectiveWeight: Number(effectiveWeight.toFixed(4)),
+      available,
+      value: Number(value.toFixed(4)),
+      contribution: Number((effectiveWeight * value).toFixed(4)),
+    };
+  });
+
+  const bias = clamp(factors.reduce((sum, factor) => sum + factor.contribution, 0)) * 100;
+  const score = Math.round(Math.abs(bias));
+  const direction: V2Direction = score < 45 ? "WAIT" : bias > 0 ? "BUY" : "SELL";
+
+  return {
+    version: "v2",
+    direction,
+    score,
+    bias: Math.round(bias),
+    quality: direction === "WAIT" ? "ZAYIF" : qualityOf(score),
+    coverage: Number(coverage.toFixed(4)),
+    factors,
+  };
+}
+
+export function compareV1V2(v1Signal: string, v2: V2Result): "confirm" | "conflict" | "neutral" {
+  if (v2.direction === "WAIT" || v1Signal === "WAIT") return "neutral";
+  return v1Signal === v2.direction ? "confirm" : "conflict";
+}
+
+export function compareSignalScores(v1Score: number, v2Score: number, tolerance = 3): "V2 Better" | "V2 Same" | "V2 Lower" {
+  const difference = v2Score - v1Score;
+  if (Math.abs(difference) <= tolerance) return "V2 Same";
+  return difference > 0 ? "V2 Better" : "V2 Lower";
+}
