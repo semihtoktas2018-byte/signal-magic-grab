@@ -15,6 +15,9 @@ export function getTradeLevels(
   takeProfitPct = TAKE_PROFIT_PCT,
   stopLossPct = STOP_LOSS_PCT,
 ): TradeLevels {
+  if (direction !== "BUY" && direction !== "SELL") {
+    throw new RangeError("Trade direction must be BUY or SELL.");
+  }
   if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
     throw new RangeError("Entry price must be a finite positive number.");
   }
@@ -363,27 +366,33 @@ const V2_WEIGHTS = {
 const clamp = (value: number, lower = -1, upper = 1) => Math.max(lower, Math.min(upper, value));
 
 function trendScore(input: V2SignalInputs): number | null {
-  if (!input.ema20 || !input.ema50) return null;
+  if (
+    !Number.isFinite(input.ema20) || input.ema20 <= 0 ||
+    !Number.isFinite(input.ema50) || input.ema50 <= 0 ||
+    !Number.isFinite(input.price) || input.price <= 0
+  ) return null;
   const spread = (input.ema20 - input.ema50) / input.ema50;
-  const slope = input.ema20Prev ? (input.ema20 - input.ema20Prev) / input.ema20Prev : 0;
-  const position = input.ema20 ? (input.price - input.ema20) / input.ema20 : 0;
+  const slope = Number.isFinite(input.ema20Prev) && input.ema20Prev > 0
+    ? (input.ema20 - input.ema20Prev) / input.ema20Prev
+    : 0;
+  const position = (input.price - input.ema20) / input.ema20;
   return clamp(0.5 * clamp(spread / 0.015) + 0.3 * clamp(slope / 0.004) + 0.2 * clamp(position / 0.01));
 }
 
 function momentumScore(input: V2SignalInputs): number | null {
   const parts: number[] = [];
-  if (input.rsi !== null && input.rsi !== undefined) {
+  if (input.rsi !== null && input.rsi !== undefined && Number.isFinite(input.rsi) && input.rsi >= 0 && input.rsi <= 100) {
     let value = clamp((50 - input.rsi) / 20);
-    if (input.prevRsi !== null && input.prevRsi !== undefined) {
+    if (input.prevRsi !== null && input.prevRsi !== undefined && Number.isFinite(input.prevRsi) && input.prevRsi >= 0 && input.prevRsi <= 100) {
       if (input.prevRsi < 30 && input.rsi >= 30) value = clamp(value + 0.35);
       if (input.prevRsi > 70 && input.rsi <= 70) value = clamp(value - 0.35);
     }
     parts.push(value);
   }
-  if (input.macdHist !== null && input.macdHist !== undefined && input.price) {
+  if (input.macdHist !== null && input.macdHist !== undefined && Number.isFinite(input.macdHist) && Number.isFinite(input.price) && input.price > 0) {
     parts.push(clamp(input.macdHist / input.price / 0.003));
   }
-  if (input.bbPct !== null && input.bbPct !== undefined) {
+  if (input.bbPct !== null && input.bbPct !== undefined && Number.isFinite(input.bbPct)) {
     parts.push(clamp((0.5 - input.bbPct) * 2) * 0.5);
   }
   if (!parts.length) return null;
@@ -391,23 +400,24 @@ function momentumScore(input: V2SignalInputs): number | null {
 }
 
 function volumeScore(input: V2SignalInputs, directionalBias: number): number | null {
-  if (input.volRatio === null || input.volRatio === undefined) return null;
+  if (input.volRatio === null || input.volRatio === undefined || !Number.isFinite(input.volRatio) || input.volRatio < 0) return null;
   const strength = clamp((input.volRatio - 1) / 0.6, 0, 1);
   return clamp(strength * Math.sign(directionalBias));
 }
 
 function whaleScore(input: V2SignalInputs): number | null {
-  const total = (input.whaleBuyUsd || 0) + (input.whaleSellUsd || 0);
+  if (!Number.isFinite(input.whaleBuyUsd) || !Number.isFinite(input.whaleSellUsd) || input.whaleBuyUsd < 0 || input.whaleSellUsd < 0) return null;
+  const total = input.whaleBuyUsd + input.whaleSellUsd;
   if (total <= 0) return null;
   return clamp((input.whaleBuyUsd - input.whaleSellUsd) / total);
 }
 
 function sentimentScore(input: V2SignalInputs): number | null {
   const parts: number[] = [];
-  if (input.fearGreed !== null && input.fearGreed !== undefined) {
+  if (input.fearGreed !== null && input.fearGreed !== undefined && Number.isFinite(input.fearGreed) && input.fearGreed >= 0 && input.fearGreed <= 100) {
     parts.push(clamp((50 - input.fearGreed) / 30));
   }
-  if (input.funding !== null && input.funding !== undefined) {
+  if (input.funding !== null && input.funding !== undefined && Number.isFinite(input.funding)) {
     parts.push(clamp(-input.funding / 0.0005));
   }
   if (!parts.length) return null;
@@ -415,7 +425,7 @@ function sentimentScore(input: V2SignalInputs): number | null {
 }
 
 function volatilityScore(input: V2SignalInputs, directionalBias: number): number | null {
-  if (input.volatilityPct === null || input.volatilityPct === undefined) return null;
+  if (input.volatilityPct === null || input.volatilityPct === undefined || !Number.isFinite(input.volatilityPct) || input.volatilityPct < 0) return null;
   const penalty = clamp((input.volatilityPct - 1.5) / 3, 0, 1);
   return clamp((1 - 2 * penalty) * Math.sign(directionalBias));
 }
