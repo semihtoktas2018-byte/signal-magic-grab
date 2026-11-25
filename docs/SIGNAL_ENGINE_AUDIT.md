@@ -16,7 +16,7 @@ This document describes the proposed calculation changes in branch `feat/signal-
 - Exchange comparison: Bybit Spot candle close versus OKX ticker. Invalid OKX prices are rejected.
 - Whale flow: Bybit recent trades, Spot and Linear are recorded separately. The current V1 signal score uses Spot whale flow; the Linear feed is diagnostic/event data and does not currently contribute to V1.
 - Sentiment: Alternative.me Fear & Greed. The proposed cron reads a cache using `updated_at`, refreshes it no more than once per six hours when successful, and supplies the value to V2. If refresh fails and the cache is stale, V2 receives no sentiment value.
-- Funding: not currently supplied to V2.
+- Funding: current Bybit Linear ticker `fundingRate` per coin, fetched on each cron run. A missing/invalid response is excluded from V2 coverage and logged; it is not fabricated.
 
 ### Indicators
 
@@ -50,7 +50,7 @@ V2 remains a comparison/reporting engine; it does not authorize or block V1 sign
 | Funding / Fear & Greed | 10% |
 | Volatility | 5% |
 
-Only available factors contribute; available weights are normalized and reported as coverage. Funding remains unavailable. Fear & Greed is supplied only when the cache or refresh provides a valid value. V2 must not be marketed as a fully populated six-factor engine until its missing inputs and volatility definition are resolved.
+Only available factors contribute; available weights are normalized and reported as coverage. Funding is supplied from the Bybit Linear ticker when valid. Fear & Greed is supplied only when the cache or refresh provides a valid value. V2 coverage is dynamic and must be inspected per run; it must not be marketed as a fully populated six-factor engine when any input is unavailable or its volatility definition remains unresolved.
 
 ### TP/SL resolution
 
@@ -91,7 +91,7 @@ The Deno test suite covers:
 2. Obtain or store historical whale-flow data; current recent-trade snapshots cannot reproduce past whale inputs.
 3. Define and test fee, spread, slippage, funding, and position-sizing assumptions for net P&L.
 4. Replace or formally calibrate the V2 price-dispersion input with a documented realized-volatility measure.
-5. Add funding-rate collection and source freshness checks if funding remains part of the V2 factor.
+5. Monitor funding-rate availability and source freshness; keep missing funding out of V2 coverage.
 6. Evaluate V1 and V2 separately on out-of-sample periods, including BUY and SELL breakdowns and drawdown.
 7. Add operational monitoring for stale market data, cron failures, API failures, and unresolved signals.
 8. Deploy the Edge Function only after the branch passes tests, code review, and an explicit production rollout decision.
