@@ -11,7 +11,7 @@ This document describes the proposed calculation changes in branch `feat/signal-
 ### Market data
 
 - Signal candles: Bybit Spot, 15-minute interval.
-- Indicator input: closed candles only; the engine requires at least 50 closed candles.
+- Indicator input: closed candles only; the engine requires at least 50 closed candles, validates OHLCV ranges, and rejects missing, duplicate, or misaligned 15-minute intervals.
 - Entry snapshot: Bybit Spot ticker at signal-record time. If the ticker is missing, invalid, zero, or negative, the signal is not recorded. The previous fallback to the last candle close is removed.
 - Exchange comparison: current Bybit Spot ticker versus current OKX ticker. Invalid or unavailable Bybit/OKX prices prevent a fresh comparison record; the system does not compare a candle close against a live ticker.
 - Performance-page live P&L: uses the same Bybit price snapshot stored in `exchange_prices`, not a different exchange's ticker. Each coin's source timestamp is shown; data older than ten minutes is visibly marked stale.
