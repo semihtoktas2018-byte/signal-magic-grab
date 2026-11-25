@@ -655,14 +655,14 @@ function Performance() {
 
           <div className="type-row">
             <div className="type-card" style={{ border: "1px solid rgba(34,197,94,.25)" }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#22c55e" }}>{buyClosed.length > 0 ? `${buyRate}%` : "—"}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "#22c55e" }}>{buyClosed > 0 ? `${buyRate}%` : "—"}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#22c55e", margin: "4px 0 6px" }}>🟢 BUY İsabet</div>
-              <div style={{ fontSize: 12, color: "#8a93a3" }}>{buyClosed.length} kapalı · {buySignals.filter(s => s.result === "tuttu").length} tuttu · {buySignals.length} toplam</div>
+              <div style={{ fontSize: 12, color: "#8a93a3" }}>{buyClosed} kapalı · {buySignals.filter(s => s.result === "tuttu").length} tuttu · {buySignals.length} toplam</div>
             </div>
             <div className="type-card" style={{ border: "1px solid rgba(239,68,68,.25)" }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>{sellClosed.length > 0 ? `${sellRate}%` : "—"}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>{sellClosed > 0 ? `${sellRate}%` : "—"}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444", margin: "4px 0 6px" }}>🔴 SELL İsabet</div>
-              <div style={{ fontSize: 12, color: "#8a93a3" }}>{sellClosed.length} kapalı · {sellSignals.filter(s => s.result === "tuttu").length} tuttu · {sellSignals.length} toplam</div>
+              <div style={{ fontSize: 12, color: "#8a93a3" }}>{sellClosed} kapalı · {sellSignals.filter(s => s.result === "tuttu").length} tuttu · {sellSignals.length} toplam</div>
             </div>
           </div>
 
