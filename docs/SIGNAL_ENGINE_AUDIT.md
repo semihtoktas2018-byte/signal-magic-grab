@@ -63,6 +63,7 @@ Only available factors contribute; available weights are normalized and reported
 - An unfinished candle is ignored.
 - A TP/SL result is accepted only when all preceding expected candles from the first post-signal interval through the hit candle are present.
 - If TP and SL are both touched within the same candle, the result is conservatively classified as stop-loss because intrabar order is unknown.
+- The recorded `closed_at` is the confirming candle's close timestamp, not a claimed exact intrabar hit time.
 - A signal is marked expired only after 48 hours and only if the complete candle history for the entire window is available. Otherwise it remains unresolved.
 
 ## Performance accounting
