@@ -116,6 +116,101 @@ export function calculatePerformanceSummary(
   };
 }
 
+
+export function calculateEma(values: number[], period: number): number[] {
+  if (!Number.isInteger(period) || period <= 0) throw new RangeError("EMA period must be a positive integer.");
+  if (values.length === 0 || values.some((value) => !Number.isFinite(value))) {
+    throw new RangeError("EMA requires a non-empty series of finite values.");
+  }
+  const multiplier = 2 / (period + 1);
+  const output = [values[0]];
+  let previous = values[0];
+  for (let index = 1; index < values.length; index++) {
+    previous = values[index] * multiplier + previous * (1 - multiplier);
+    output.push(previous);
+  }
+  return output;
+}
+
+export function calculateRsi(values: number[], period = 14): (number | null)[] {
+  if (!Number.isInteger(period) || period <= 0) throw new RangeError("RSI period must be a positive integer.");
+  if (values.some((value) => !Number.isFinite(value))) {
+    throw new RangeError("RSI requires finite values.");
+  }
+  const output: (number | null)[] = new Array(values.length).fill(null);
+  if (values.length <= period) return output;
+
+  let gains = 0;
+  let losses = 0;
+  for (let index = 1; index <= period; index++) {
+    const change = values[index] - values[index - 1];
+    if (change >= 0) gains += change;
+    else losses -= change;
+  }
+
+  let averageGain = gains / period;
+  let averageLoss = losses / period;
+  const toRsi = (gain: number, loss: number) => {
+    if (gain === 0 && loss === 0) return 50;
+    if (loss === 0) return 100;
+    if (gain === 0) return 0;
+    return 100 - 100 / (1 + gain / loss);
+  };
+  output[period] = toRsi(averageGain, averageLoss);
+
+  for (let index = period + 1; index < values.length; index++) {
+    const change = values[index] - values[index - 1];
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? -change : 0;
+    averageGain = (averageGain * (period - 1) + gain) / period;
+    averageLoss = (averageLoss * (period - 1) + loss) / period;
+    output[index] = toRsi(averageGain, averageLoss);
+  }
+  return output;
+}
+
+export function calculateMacdHistogram(values: number[]): number {
+  if (values.length < 34) throw new RangeError("MACD requires at least 34 values for the configured signal line.");
+  const fast = calculateEma(values, 12);
+  const slow = calculateEma(values, 26);
+  const line = values.map((_, index) => fast[index] - slow[index]);
+  const signal = calculateEma(line.slice(25), 9);
+  return line[line.length - 1] - signal[signal.length - 1];
+}
+
+export function calculateBollingerPct(values: number[], period = 20, multiplier = 2): number | null {
+  if (!Number.isInteger(period) || period <= 0 || !Number.isFinite(multiplier) || multiplier <= 0) {
+    throw new RangeError("Bollinger period and multiplier must be positive.");
+  }
+  if (values.some((value) => !Number.isFinite(value))) throw new RangeError("Bollinger requires finite values.");
+  if (values.length < period) return null;
+
+  const slice = values.slice(-period);
+  const mean = slice.reduce((sum, value) => sum + value, 0) / period;
+  const variance = slice.reduce((sum, value) => sum + (value - mean) ** 2, 0) / period;
+  const deviation = Math.sqrt(variance);
+  const upper = mean + multiplier * deviation;
+  const lower = mean - multiplier * deviation;
+  const price = values[values.length - 1];
+  return upper === lower ? 0.5 : (price - lower) / (upper - lower);
+}
+
+/**
+ * Current closed-bar volume divided by the mean of the preceding N bars.
+ * The current bar is deliberately excluded from its own baseline.
+ */
+export function calculateRelativeVolumeRatio(volumes: number[], period = 20): number | null {
+  if (!Number.isInteger(period) || period <= 0) throw new RangeError("Volume period must be a positive integer.");
+  if (volumes.some((value) => !Number.isFinite(value) || value < 0)) {
+    throw new RangeError("Volume series must contain finite non-negative values.");
+  }
+  if (volumes.length <= period) return null;
+  const baseline = volumes.slice(-period - 1, -1);
+  const average = baseline.reduce((sum, value) => sum + value, 0) / period;
+  if (average <= 0) return null;
+  return volumes[volumes.length - 1] / average;
+}
+
 export interface V1SignalInputs {
   price: number;
   prevPrice: number;
