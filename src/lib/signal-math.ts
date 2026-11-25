@@ -560,7 +560,7 @@ export function resolveSignalFromCandles(
     const outcome = evaluateCandleOutcome(direction, entryPrice, candle.high, candle.low);
     if (outcome !== null) {
       if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAtMs: null };
-      return { result: outcome, closedAtMs: candle.openTime };
+      return { result: outcome, closedAtMs: candle.openTime + intervalMs };
     }
   }
 
