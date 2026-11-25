@@ -142,3 +142,68 @@
     color: var(--color-foreground);
   }
 }
+
+/* ===== Market Analysis Terminal — unified premium design layer =====
+ * Shared surface/typography tokens applied across all pages. Pages keep their
+ * own layout CSS; these rules only harmonise colour, type, cards and states. */
+:root {
+  --mat-bg: oklch(0.145 0.004 260);
+  --mat-surface: oklch(0.185 0.005 260);
+  --mat-surface-2: oklch(0.215 0.006 260);
+  --mat-line: oklch(1 0 0 / 7%);
+  --mat-line-strong: oklch(1 0 0 / 12%);
+  --mat-text: oklch(0.95 0.005 85);
+  --mat-muted: oklch(0.68 0.01 260);
+  --mat-gold: oklch(0.8 0.14 78);
+  --mat-gold-soft: oklch(0.8 0.14 78 / 12%);
+  --mat-radius: 12px;
+  --mat-shadow: 0 1px 0 oklch(1 0 0 / 4%) inset, 0 12px 32px -18px oklch(0 0 0 / 70%);
+  --mat-font: "Manrope", system-ui, sans-serif;
+  --mat-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+html body { background: var(--mat-bg); font-family: var(--mat-font); -webkit-font-smoothing: antialiased; }
+html body .landing, html body .kt-page-shell, html body main { font-family: var(--mat-font); }
+html body .landing { background: radial-gradient(1200px 500px at 70% -10%, var(--mat-gold-soft), transparent 60%), var(--mat-bg); }
+html body :is(h1, h2, h3, .hero-title, .section-title, .sec-t, .card-h) { letter-spacing: -0.02em; font-weight: 700; }
+html body .hero-title { font-size: clamp(2rem, 4.6vw, 3.6rem); line-height: 1.05; font-weight: 800; }
+html body .hero-title-gold { color: var(--mat-gold); }
+html body :is(.mono, .stat-val, .stat-value, .radar-v, .ind-v, .live-pnl, .plan-price, .spread, td) { font-family: var(--mat-mono); font-variant-numeric: tabular-nums; }
+html body :is(.card, .panel, .stat-card, .stat-box, .live-card, .type-card, .t-icon + *) {
+  background: linear-gradient(180deg, var(--mat-surface-2), var(--mat-surface));
+  border: 1px solid var(--mat-line);
+  border-radius: var(--mat-radius);
+  box-shadow: var(--mat-shadow);
+  backdrop-filter: none;
+}
+html body :is(.card, .panel, .stat-card, .stat-box, .live-card):hover { border-color: var(--mat-line-strong); }
+html body :is(.stat-label, .ind-k, .lv-k, .radar-k, .d-lv-k, .meta, .subtitle, .live-meta, .stat-sub) { color: var(--mat-muted); }
+html body :is(.stat-label, .ind-k, .radar-k, .lv-k) { text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; font-weight: 600; }
+html body :is(.nav, .topbar) { background: oklch(0.145 0.004 260 / 85%); backdrop-filter: blur(14px); border-bottom: 1px solid var(--mat-line); box-shadow: none; }
+html body .nav-links a { font-weight: 600; font-size: 14px; }
+html body :is(.empty, .empty-state) {
+  border: 1px dashed var(--mat-line-strong); border-radius: var(--mat-radius);
+  background: var(--mat-surface); color: var(--mat-muted); padding: 28px 20px; text-align: center; font-size: 14px;
+}
+html body table { border-collapse: collapse; }
+html body :is(th) { color: var(--mat-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; border-bottom: 1px solid var(--mat-line-strong); }
+html body :is(td) { border-bottom: 1px solid var(--mat-line); }
+html body tr:hover td { background: oklch(1 0 0 / 2.5%); }
+html body .btn { border-radius: 10px; font-weight: 700; letter-spacing: 0; transition: transform .15s, filter .15s; }
+html body .btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+html body .kt-orb { opacity: .35; filter: blur(90px); }
+html body :focus-visible { outline: 2px solid var(--mat-gold); outline-offset: 2px; }
+html body ::selection { background: oklch(0.8 0.14 78 / 35%); }
+@keyframes mat-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+html body .skeleton, html body [aria-busy="true"] {
+  background: linear-gradient(90deg, var(--mat-surface) 0, var(--mat-surface-2) 50%, var(--mat-surface) 100%);
+  background-size: 800px 100%; animation: mat-shimmer 1.4s linear infinite; border-radius: 8px;
+}
+@media (max-width: 640px) {
+  html body :is(.card, .panel, .stat-card, .stat-box, .live-card) { border-radius: 10px; }
+  html body .hero-title { font-size: 2rem; }
+}
+/* Admin pages (branding, user management) use Tailwind slate utilities. */
+html body main.bg-slate-950 { background: var(--mat-bg); }
+html body main :is(.bg-slate-900\/70, .bg-slate-900) { background: var(--mat-surface); }
+html body main :is(.border-slate-700, .border-slate-800) { border-color: var(--mat-line-strong); }
+html body main .bg-blue-600 { background: var(--mat-gold); color: oklch(0.2 0.03 70); }

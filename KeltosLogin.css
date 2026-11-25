@@ -22,7 +22,7 @@
     radial-gradient(ellipse at 18% 38%, rgba(174, 113, 20, .11), transparent 34%),
     radial-gradient(ellipse at 83% 65%, rgba(173, 119, 28, .10), transparent 32%),
     linear-gradient(135deg, #05070b 0%, #090c12 52%, #050609 100%);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Manrope', 'DM Sans', sans-serif;
 }
 
 .kt-grid {
