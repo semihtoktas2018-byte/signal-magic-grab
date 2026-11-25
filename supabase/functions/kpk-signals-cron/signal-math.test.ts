@@ -11,6 +11,7 @@ import {
   compareV1V2,
   evaluateCandleOutcome,
   getTradeLevels,
+  resolveSignalFromCandles,
 } from "../../../src/lib/signal-math.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -195,4 +196,53 @@ Deno.test("V1/V2 comparison and score tolerance are deterministic", () => {
   equal(compareSignalScores(70, 72), "V2 Same", "within tolerance");
   equal(compareSignalScores(70, 75), "V2 Better", "V2 higher");
   equal(compareSignalScores(75, 70), "V2 Lower", "V2 lower");
+});
+
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+
+Deno.test("historical resolver ignores candles before the signal and closes on first valid target", () => {
+  const result = resolveSignalFromCandles("BUY", 100, 1_000, 2 * FIFTEEN_MINUTES, [
+    { openTime: 0, high: 110, low: 90 },
+    { openTime: FIFTEEN_MINUTES, high: 103, low: 99 },
+    { openTime: 2 * FIFTEEN_MINUTES, high: 104, low: 99 },
+  ]);
+  equal(result.result, "tuttu", "first target hit");
+  equal(result.closedAtMs, FIFTEEN_MINUTES, "target candle timestamp");
+});
+
+Deno.test("historical resolver refuses a hit when prior candle coverage has a gap", () => {
+  const result = resolveSignalFromCandles("BUY", 100, 1_000, 3 * FIFTEEN_MINUTES, [
+    { openTime: 2 * FIFTEEN_MINUTES, high: 103, low: 99 },
+  ]);
+  equal(result.result, null, "missing earlier candle blocks resolution");
+  equal(result.closedAtMs, null, "no false close timestamp");
+});
+
+Deno.test("historical resolver treats same-candle TP and SL as a stop", () => {
+  const result = resolveSignalFromCandles("BUY", 100, 1_000, 2 * FIFTEEN_MINUTES, [
+    { openTime: FIFTEEN_MINUTES, high: 103, low: 97 },
+  ]);
+  equal(result.result, "tutmadi", "same-candle collision");
+});
+
+Deno.test("historical resolver does not use an unfinished candle or expire early", () => {
+  const result = resolveSignalFromCandles("BUY", 100, 1_000, 1_000_000, [
+    { openTime: FIFTEEN_MINUTES, high: 103, low: 99 },
+  ]);
+  equal(result.result, null, "unfinished candle is ignored");
+});
+
+Deno.test("48-hour expiry requires complete 15-minute candle coverage", () => {
+  const createdAt = 1_000;
+  const endAt = createdAt + 48 * 60 * 60 * 1000;
+  const completeCandles = [];
+  for (let time = FIFTEEN_MINUTES; time + FIFTEEN_MINUTES <= endAt; time += FIFTEEN_MINUTES) {
+    completeCandles.push({ openTime: time, high: 101, low: 99 });
+  }
+  const complete = resolveSignalFromCandles("BUY", 100, createdAt, endAt + 1, completeCandles);
+  equal(complete.result, "suresi_doldu", "complete 48-hour history expires");
+  equal(complete.closedAtMs, endAt, "expiry timestamp");
+
+  const incomplete = resolveSignalFromCandles("BUY", 100, createdAt, endAt + 1, completeCandles.slice(1));
+  equal(incomplete.result, null, "missing candle prevents expiry classification");
 });
