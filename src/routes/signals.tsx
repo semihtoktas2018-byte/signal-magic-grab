@@ -304,6 +304,7 @@ function SignalTerminal() {
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Indicators | "loading" | "error">>({});
+  const [detailErrors, setDetailErrors] = useState<Record<string, string>>({});
   const [chartCoin, setChartCoin] = useState<string>("BTCUSDT");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [refreshing, setRefreshing] = useState(false);
@@ -398,7 +399,12 @@ function SignalTerminal() {
           if (closes.length < 50) throw new Error("Yetersiz mum verisi");
           setDetails((d) => ({ ...d, [s.id]: computeIndicators(closes) }));
         })
-        .catch(() => { setDetails((d) => ({ ...d, [s.id]: "error" })); });
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : "Bilinmeyen hata";
+          console.error(`Sinyal detayı yüklenemedi (${s.coin}):`, error);
+          setDetailErrors((d) => ({ ...d, [s.id]: message.slice(0, 180) }));
+          setDetails((d) => ({ ...d, [s.id]: "error" }));
+        });
     }
   }
 
@@ -1101,7 +1107,11 @@ function SignalTerminal() {
                     {isOpen && (
                       <div className="detail">
                         {det === "loading" && <div className="meta">{t("indicatorsLoading")}</div>}
-                        {det === "error" && <div className="meta">{t("detailDataError")}</div>}
+                        {det === "error" && (
+                          <div className="meta" role="alert">
+                            {t("detailDataError")} {detailErrors[s.id] || "Hata nedeni alınamadı."}
+                          </div>
+                        )}
                         {det && det !== "loading" && det !== "error" && (
                           <>
                             <div className="ind-grid">
