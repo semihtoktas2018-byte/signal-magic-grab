@@ -20,7 +20,7 @@ This document describes the proposed calculation changes in branch `feat/signal-
 
 ### Indicators
 
-- EMA: recursive exponential moving average, periods 20 and 50.
+- EMA: recursive exponential moving average, periods 20 and 50; the initial seed is the first available close and subsequent values use the standard smoothing multiplier.
 - RSI: Wilder-smoothed RSI, period 14. A flat series returns 50; a series with gains and no losses returns 100; a series with losses and no gains returns 0.
 - MACD: EMA(12) minus EMA(26), with EMA(9) signal line; histogram is MACD minus signal.
 - Bollinger position: 20-period population standard deviation, 2 standard deviations.
