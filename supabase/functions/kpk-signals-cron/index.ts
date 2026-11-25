@@ -13,7 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, evaluateCandleOutcome, getTradeLevels } from '../../../src/lib/signal-math.ts'
+import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles } from '../../../src/lib/signal-math.ts'
 
 // ============================================================
 // Konfigürasyon
@@ -179,8 +179,6 @@ interface TPSLResolution {
   error?: string
 }
 
-const RESOLVE_WINDOW_HOURS = 48
-
 async function resolveTPSLWithKlines(
   symbol: string,
   signal: 'BUY' | 'SELL',
@@ -188,63 +186,25 @@ async function resolveTPSLWithKlines(
   createdAtISO: string
 ): Promise<TPSLResolution> {
   const createdAtMs = new Date(createdAtISO).getTime()
-  const endMs = createdAtMs + RESOLVE_WINDOW_HOURS * 60 * 60 * 1000
-
+  const endMs = createdAtMs + 48 * 60 * 60 * 1000
   const batch = await fetchResolveKlines(symbol, createdAtMs, endMs)
-  const parsed: Array<{ openTime: number; high: number; low: number }> = []
+  const candles: Array<{ openTime: number; high: number; low: number }> = []
+
   for (const k of batch) {
     const openTime = Number(k[0])
     const high = Number(k[2])
     const low = Number(k[3])
     if (Number.isFinite(openTime) && Number.isFinite(high) && Number.isFinite(low) && high > 0 && low > 0) {
-      parsed.push({ openTime, high, low })
+      candles.push({ openTime, high, low })
     }
   }
 
-  if (parsed.length === 0) return { result: null, closedAt: null }
-
-  parsed.sort((a, b) => a.openTime - b.openTime)
-  const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime)
-
-  const intervalMs = 15 * 60 * 1000
-  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
-  const observedTimes = new Set(unique
-    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
-    .map((candle) => candle.openTime))
-  const hasCompleteCoverageThrough = (lastOpenTime: number): boolean => {
-    if (lastOpenTime < firstExpected) return false
-    for (let time = firstExpected; time <= lastOpenTime; time += intervalMs) {
-      if (time + intervalMs > endMs || !observedTimes.has(time)) return false
-    }
-    return true
+  if (candles.length === 0) return { result: null, closedAt: null }
+  const resolution = resolveSignalFromCandles(signal, entryPrice, createdAtMs, Date.now(), candles)
+  return {
+    result: resolution.result,
+    closedAt: resolution.closedAtMs === null ? null : new Date(resolution.closedAtMs).toISOString(),
   }
-
-  const { target: tp, stop: sl } = getTradeLevels(signal, entryPrice)
-
-  for (const candle of unique) {
-    // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
-    if (candle.openTime < createdAtMs) continue
-    // 48 saatlik pencerenin dışına taşan mumları sonuç hesabına katma.
-    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > endMs) break
-    if (candle.openTime + 15 * 60 * 1000 > Date.now()) break
-
-    const candleOutcome = evaluateCandleOutcome(signal, entryPrice, candle.high, candle.low)
-    if (candleOutcome !== null) {
-      // Önceki mumlarda veri boşluğu varsa ilk TP/SL temasını kesin sonuç sayma.
-      if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAt: null }
-      return { result: candleOutcome, closedAt: new Date(candle.openTime).toISOString() }
-    }
-  }
-
-  if (Date.now() < endMs) return { result: null, closedAt: null }
-
-  // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
-  const lastExpected = Math.floor((endMs - intervalMs) / intervalMs) * intervalMs
-  const complete = lastExpected >= firstExpected && hasCompleteCoverageThrough(lastExpected)
-
-  return complete
-    ? { result: 'suresi_doldu', closedAt: new Date(endMs).toISOString() }
-    : { result: null, closedAt: null }
 }
 
 // ---------- Bybit fetchers ----------
