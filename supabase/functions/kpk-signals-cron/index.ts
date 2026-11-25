@@ -13,7 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { calculateV1Signal, evaluateCandleOutcome, getTradeLevels } from '../../../src/lib/signal-math.ts'
+import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, evaluateCandleOutcome, getTradeLevels } from '../../../src/lib/signal-math.ts'
 
 // ============================================================
 // Signal Engine V2 (Phase 1) — src/lib/signal-engine-v2.ts'ten taşındı
@@ -217,58 +217,10 @@ const MAX_SIGNALS_PER_RUN = 2
 
 
 // ---------- indicator helpers ----------
-function ema(values: number[], period: number): number[] {
-  const k = 2 / (period + 1)
-  const out: number[] = []
-  let prev = values[0]
-  out.push(prev)
-  for (let i = 1; i < values.length; i++) {
-    prev = values[i] * k + prev * (1 - k)
-    out.push(prev)
-  }
-  return out
-}
-
-function rsi(values: number[], period = 14): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null)
-  if (values.length <= period) return out
-  let gain = 0, loss = 0
-  for (let i = 1; i <= period; i++) {
-    const ch = values[i] - values[i - 1]
-    if (ch >= 0) gain += ch; else loss -= ch
-  }
-  let ag = gain / period, al = loss / period
-  out[period] = al === 0 ? 100 : 100 - 100 / (1 + ag / al)
-  for (let i = period + 1; i < values.length; i++) {
-    const ch = values[i] - values[i - 1]
-    const g = ch > 0 ? ch : 0
-    const l = ch < 0 ? -ch : 0
-    ag = (ag * (period - 1) + g) / period
-    al = (al * (period - 1) + l) / period
-    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al)
-  }
-  return out
-}
-
-function macd(values: number[]) {
-  const e12 = ema(values, 12), e26 = ema(values, 26)
-  const line = values.map((_, i) => e12[i] - e26[i])
-  const sig = ema(line.slice(25), 9)
-  const last = line[line.length - 1]
-  const lastSig = sig[sig.length - 1]
-  return { hist: last - lastSig }
-}
-
-function bollinger(values: number[], period = 20, mult = 2) {
-  if (values.length < period) return { pct: null as number | null }
-  const slice = values.slice(-period)
-  const mean = slice.reduce((a, b) => a + b, 0) / period
-  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period
-  const sd = Math.sqrt(variance)
-  const upper = mean + mult * sd, lower = mean - mult * sd
-  const price = values[values.length - 1]
-  return { pct: upper === lower ? 0.5 : (price - lower) / (upper - lower) }
-}
+const ema = calculateEma
+const rsi = calculateRsi
+const macd = (values: number[]) => ({ hist: calculateMacdHistogram(values) })
+const bollinger = (values: number[], period = 20, mult = 2) => ({ pct: calculateBollingerPct(values, period, mult) })
 
 // ---------- Whale Radar ----------
 const WHALE_THRESHOLD_USD = 250_000
@@ -513,8 +465,7 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
   const prevRsi = rsiArr[rsiArr.length - 2]
   const macdData = macd(closes)
   const bbData = bollinger(closes)
-  const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
-  const volData = { ratio: avgVol ? volumes[volumes.length - 1] / avgVol : null }
+  const volData = { ratio: calculateRelativeVolumeRatio(volumes, 20) }
   const whale = await fetchWhaleActivity(symbol)
   const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
   const recent = closes.slice(-15)
