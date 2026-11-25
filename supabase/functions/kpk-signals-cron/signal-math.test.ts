@@ -246,3 +246,28 @@ Deno.test("48-hour expiry requires complete 15-minute candle coverage", () => {
   const incomplete = resolveSignalFromCandles("BUY", 100, createdAt, endAt + 1, completeCandles.slice(1));
   equal(incomplete.result, null, "missing candle prevents expiry classification");
 });
+
+Deno.test("V2 volume and volatility cannot invent a direction without core factors", () => {
+  const result = calculateV2Signal({
+    price: 100, prevPrice: 100, rsi: null, prevRsi: null,
+    ema20: 0, ema20Prev: 0, ema50: 0,
+    macdHist: null, bbPct: null, volRatio: 2,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: null, funding: null, volatilityPct: 1,
+  });
+  equal(result.coverage, 0, "confirmatory-only inputs have no coverage");
+  equal(result.direction, "WAIT", "confirmatory-only inputs must wait");
+});
+
+Deno.test("V2 neutral core bias does not turn positive volume into a BUY signal", () => {
+  const result = calculateV2Signal({
+    price: 100, prevPrice: 100, rsi: 50, prevRsi: 50,
+    ema20: 100, ema20Prev: 100, ema50: 100,
+    macdHist: 0, bbPct: 0.5, volRatio: 2,
+    whaleBuyUsd: 0, whaleSellUsd: 0,
+    fearGreed: null, funding: null, volatilityPct: 1.5,
+  });
+  equal(result.direction, "WAIT", "neutral core remains neutral");
+  equal(result.factors.find((factor) => factor.key === "volume")?.value, 0, "neutral volume contribution");
+  equal(result.factors.find((factor) => factor.key === "volatility")?.value, 0, "neutral volatility contribution");
+});
