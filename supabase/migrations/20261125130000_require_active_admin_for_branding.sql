@@ -1,7 +1,11 @@
--- Ensure banned administrators cannot mutate white-label branding or brand assets.
--- RLS policies must check the current Auth user record, not only a possibly stale JWT role claim.
+-- Ensure revoked or banned administrators cannot mutate white-label branding or brand assets.
+-- Keep the SECURITY DEFINER helper in a non-exposed schema, never in public.
 
-create or replace function public.is_active_deployment_admin()
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_active_deployment_admin()
 returns boolean
 language sql
 stable
@@ -10,34 +14,34 @@ set search_path = ''
 as $$
   select exists (
     select 1
-    from auth.users u
+    from auth.users as u
     where u.id = (select auth.uid())
       and u.raw_app_meta_data ->> 'role' = 'admin'
       and (u.banned_until is null or u.banned_until <= now())
   );
 $$;
 
-revoke all on function public.is_active_deployment_admin() from public;
-grant execute on function public.is_active_deployment_admin() to authenticated;
+revoke all on function private.is_active_deployment_admin() from public;
+grant execute on function private.is_active_deployment_admin() to authenticated;
 
 drop policy if exists "Admins can insert branding" on public.app_branding;
 create policy "Admins can insert branding"
   on public.app_branding for insert
   to authenticated
-  with check ((select public.is_active_deployment_admin()));
+  with check ((select private.is_active_deployment_admin()));
 
 drop policy if exists "Admins can update branding" on public.app_branding;
 create policy "Admins can update branding"
   on public.app_branding for update
   to authenticated
-  using ((select public.is_active_deployment_admin()))
-  with check ((select public.is_active_deployment_admin()));
+  using ((select private.is_active_deployment_admin()))
+  with check ((select private.is_active_deployment_admin()));
 
 drop policy if exists "Admins can delete branding" on public.app_branding;
 create policy "Admins can delete branding"
   on public.app_branding for delete
   to authenticated
-  using ((select public.is_active_deployment_admin()));
+  using ((select private.is_active_deployment_admin()));
 
 drop policy if exists "Admins can upload brand assets" on storage.objects;
 create policy "Admins can upload brand assets"
@@ -45,7 +49,7 @@ create policy "Admins can upload brand assets"
   to authenticated
   with check (
     bucket_id = 'brand-assets'
-    and (select public.is_active_deployment_admin())
+    and (select private.is_active_deployment_admin())
   );
 
 drop policy if exists "Admins can update brand assets" on storage.objects;
@@ -54,11 +58,11 @@ create policy "Admins can update brand assets"
   to authenticated
   using (
     bucket_id = 'brand-assets'
-    and (select public.is_active_deployment_admin())
+    and (select private.is_active_deployment_admin())
   )
   with check (
     bucket_id = 'brand-assets'
-    and (select public.is_active_deployment_admin())
+    and (select private.is_active_deployment_admin())
   );
 
 drop policy if exists "Admins can delete brand assets" on storage.objects;
@@ -67,5 +71,5 @@ create policy "Admins can delete brand assets"
   to authenticated
   using (
     bucket_id = 'brand-assets'
-    and (select public.is_active_deployment_admin())
+    and (select private.is_active_deployment_admin())
   );
