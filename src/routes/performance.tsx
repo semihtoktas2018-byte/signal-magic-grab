@@ -161,6 +161,9 @@ function Performance() {
   const [lang, setLang] = useState<LangCode>(getLang());
   const [stale, setStale] = useState<Signal[]>([]);
   const [staleError, setStaleError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,7 +182,7 @@ function Performance() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshKey]);
 
   const t = (key: string) => translations[key]?.[lang] || key;
 
@@ -191,16 +194,17 @@ function Performance() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setRefreshing(true);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     setLoadError(null);
     loadSignals(since)
-      .then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); } })
+      .then((loaded) => { if (!cancelled) { setSignals(loaded); setLoading(false); setRefreshing(false); setLastUpdated(new Date()); } })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) { setSignals([]); setLoadError(err?.message || "Bilinmeyen hata"); setLoading(false); }
+        if (!cancelled) { setSignals([]); setLoadError(err?.message || "Bilinmeyen hata"); setLoading(false); setRefreshing(false); }
       });
     return () => { cancelled = true; };
-  }, [days]);
+  }, [days, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -482,6 +486,23 @@ function Performance() {
       .kt-page-shell .perf-title { font-size: 0.82rem; }
     }
   
+/* Performance dashboard hierarchy and responsive controls */
+.kt-page-shell .dashboard-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:2px 0 24px}
+.kt-page-shell .dashboard-heading h1{font-size:clamp(27px,4vw,38px);line-height:1.08;letter-spacing:-.045em;margin:7px 0;color:#f7f4ed;font-weight:850}
+.kt-page-shell .dashboard-heading p{margin:0;color:#9aa4b3;font-size:13px}
+.kt-page-shell .eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;color:#e7b84f}
+.kt-page-shell .dashboard-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.kt-page-shell .data-stamp{font-size:11px;color:#929baa;font-variant-numeric:tabular-nums}
+.kt-page-shell .refresh-dashboard{border:1px solid rgba(245,182,41,.35);background:rgba(245,182,41,.09);color:#f3ca72;border-radius:10px;padding:9px 13px;font-weight:750;cursor:pointer}
+.kt-page-shell .refresh-dashboard:disabled{opacity:.55;cursor:wait}
+.kt-page-shell .period-row{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.kt-page-shell .section-title{font-size:16px;font-weight:800;margin:26px 0 12px}
+.kt-page-shell .stat-card,.kt-page-shell .ev-card,.kt-page-shell .type-card,.kt-page-shell .coin-card,.kt-page-shell .live-card{transition:border-color .2s ease,transform .2s ease}
+.kt-page-shell .stat-card:hover,.kt-page-shell .ev-card:hover,.kt-page-shell .coin-card:hover{border-color:rgba(245,182,41,.28);transform:translateY(-1px)}
+.kt-page-shell .stat-sub{font-size:11px;margin-top:6px}
+.kt-page-shell .live-head{display:flex;align-items:center;gap:9px;margin:26px 0 12px}
+@media(max-width:640px){.kt-page-shell .dashboard-heading{align-items:flex-start;flex-direction:column}.kt-page-shell .dashboard-actions{justify-content:space-between;width:100%}.kt-page-shell .period-row{align-items:flex-start;flex-wrap:wrap}.kt-page-shell .dashboard-heading p{max-width:34ch}}
+
 /* Unified Premium performance layer */
 .kt-page-shell{background:radial-gradient(ellipse at 50% -12%,rgba(245,182,41,.13),transparent 55%),#05070b}
 .kt-page-shell .perf-nav{padding:15px clamp(14px,3vw,34px);background:rgba(5,7,11,.9);border-bottom:1px solid rgba(245,182,41,.2);box-shadow:0 12px 36px rgba(0,0,0,.2);backdrop-filter:blur(18px)}
@@ -532,6 +553,10 @@ function Performance() {
         <div className="empty" style={{ maxWidth: 540, margin: "32px auto 0" }}>⚠️ Sinyal verisi yüklenemedi: {loadError}</div>
       ) : (
         <div className="container">
+          <div className="dashboard-heading">
+            <div><div className="eyebrow">ANALYTICS / SIGNAL INTELLIGENCE</div><h1>Performans Merkezi</h1><p>Geçmiş sinyal sonuçları, canlı takip ve ölçülebilir performans.</p></div>
+            <div className="dashboard-actions"><span className="data-stamp">{refreshing ? "Veriler güncelleniyor…" : lastUpdated ? `Son güncelleme ${lastUpdated.toLocaleTimeString("tr-TR")}` : "Veri bekleniyor"}</span><button type="button" className="refresh-dashboard" onClick={() => setRefreshKey((v) => v + 1)} disabled={refreshing}>{refreshing ? "Yenileniyor…" : "↻ Yenile"}</button></div>
+          </div>
           <div className="period-row">
             <span className="period-label">{t("period")}</span>
             {([7, 30] as const).map((d) => (
