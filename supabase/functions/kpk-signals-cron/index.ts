@@ -238,7 +238,7 @@ async function analyzeCoin(symbol: string, klines: any[][], fearGreed: number | 
   const macdData = macd(closes)
   const bbData = bollinger(closes)
   const volData = { ratio: calculateRelativeVolumeRatio(volumes, 20) }
-  const whale = await fetchWhaleActivity(symbol)
+  const [whale, fundingData] = await Promise.all([fetchWhaleActivity(symbol), fetchFundingRate(symbol)])
   const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
   const recent = closes.slice(-15)
   const volatilityPct = recent.length > 1 && price
@@ -254,11 +254,11 @@ async function analyzeCoin(symbol: string, klines: any[][], fearGreed: number | 
     whaleBuyUsd: whale.buyUsd,
     whaleSellUsd: whale.sellUsd,
     volatilityPct,
-    funding: null,
+    funding: fundingData.rate,
     fearGreed,
   })
   return {
-    ...sig, price, v2,
+    ...sig, price, v2, fundingRate: fundingData.rate, fundingError: fundingData.error,
     v2Agreement: compareV1V2(sig.signal, v2),
     v2Comparison: compareSignalScores(Math.round(sig.score), v2.score),
     components: {
@@ -272,6 +272,7 @@ async function analyzeCoin(symbol: string, klines: any[][], fearGreed: number | 
       whaleBuyUsd: whale.buyUsd,
       whaleSellUsd: whale.sellUsd,
       v2Score: v2.score,
+      fundingRate: fundingData.rate,
     },
   }
 }
@@ -283,6 +284,19 @@ function scoreBand(score: number): string {
   if (score >= 75) return '75-81'
   if (score >= 70) return '70-74'
   return '<70'
+}
+
+async function fetchFundingRate(symbol: string): Promise<{ rate: number | null; error: string | null }> {
+  try {
+    const url = `https://api.bybit.com/v5/market/tickers?category=linear&symbol=${symbol}`
+    const response = await fetchBybitMarketJson(url, `funding ${symbol}`)
+    const raw = response.result?.list?.[0]?.fundingRate
+    const rate = Number(raw)
+    if (!Number.isFinite(rate)) return { rate: null, error: 'invalid fundingRate in Bybit response' }
+    return { rate, error: null }
+  } catch (error) {
+    return { rate: null, error: error instanceof Error ? error.message : String(error) }
+  }
 }
 
 async function fetchTicker(symbol: string): Promise<number | null> {
@@ -472,6 +486,7 @@ async function runCron() {
     try {
       const klines = await fetchKlines(coin)
       const a = await analyzeCoin(coin, klines, fearGreed)
+      if (a.fundingError) errors.push(`${coin} funding: ${a.fundingError}`)
       whaleDiagnostics.push({ coin, market: 'spot', status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
 
       // Linear USDT perpetual trades are tracked separately; they do not affect Spot signal scoring.
@@ -492,7 +507,7 @@ async function runCron() {
         coin, v1: a.signal, v1Score: Math.round(a.score),
         v2: a.v2.direction, v2Score: a.v2.score, v2Bias: a.v2.bias,
         v2Quality: a.v2.quality, agreement: a.v2Agreement,
-        v2Coverage: a.v2.coverage, comparison: a.v2Comparison,
+        v2Coverage: a.v2.coverage, fundingRate: a.fundingRate, comparison: a.v2Comparison,
       })
 
       // Bybit vs OKX fiyat karşılaştırması
