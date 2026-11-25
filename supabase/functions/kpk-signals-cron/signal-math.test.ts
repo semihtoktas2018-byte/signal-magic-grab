@@ -281,5 +281,5 @@ Deno.test("V2 includes a valid funding rate in the sentiment factor", () => {
     fearGreed: null, funding: -0.0001, volatilityPct: 1.2,
   });
   equal(result.factors.find((factor) => factor.key === "sentiment")?.available, true, "funding makes sentiment available");
-  equal(result.coverage, 0.75, "trend, momentum, volume, sentiment and volatility coverage");
+  equal(result.coverage, 0.85, "trend, momentum, volume, sentiment and volatility coverage");
 });
