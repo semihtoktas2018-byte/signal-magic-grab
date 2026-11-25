@@ -71,29 +71,29 @@ function durationText(from: string, to?: string | null): string {
   return `${mins}dk`;
 }
 
-const LIVE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
-const LIVE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+interface LivePriceSnapshot {
+  prices: Record<string, number>;
+  updatedAtByCoin: Record<string, string>;
+}
 
-async function fetchLivePrices(): Promise<Record<string, number>> {
-  const q = encodeURIComponent(JSON.stringify(LIVE_SYMBOLS));
-  for (const host of LIVE_HOSTS) {
-    try {
-      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
-      if (!res.ok) continue;
-      const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string }>;
-      const map: Record<string, number> = {};
-      (rows || []).forEach((r) => {
-        if (!r.symbol || r.lastPrice == null) return;
-        const price = Number(r.lastPrice);
-        if (!Number.isFinite(price) || price <= 0) return;
-        map[r.symbol] = price;
-        map[r.symbol.replace("USDT", "")] = price;
-      });
-      return map;
-    } catch {
-    }
-  }
-  return {};
+async function fetchLivePrices(): Promise<LivePriceSnapshot> {
+  const { data, error } = await supabase
+    .from("exchange_prices")
+    .select("coin, bybit_price, updated_at");
+  if (error) return { prices: {}, updatedAtByCoin: {} };
+
+  const prices: Record<string, number> = {};
+  const updatedAtByCoin: Record<string, string> = {};
+  (data || []).forEach((row) => {
+    const price = Number(row.bybit_price);
+    const timestamp = row.updated_at ? new Date(row.updated_at).getTime() : NaN;
+    if (!row.coin || !Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return;
+    prices[row.coin] = price;
+    prices[row.coin.replace("USDT", "")] = price;
+    updatedAtByCoin[row.coin] = row.updated_at;
+    updatedAtByCoin[row.coin.replace("USDT", "")] = row.updated_at;
+  });
+  return { prices, updatedAtByCoin };
 }
 
 function computeLive(signal: Signal, curPrice: number) {
@@ -151,6 +151,7 @@ function Performance() {
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [days, setDays] = useState<7 | 30>(30);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [livePriceUpdatedAt, setLivePriceUpdatedAt] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [lang, setLang] = useState<LangCode>(getLang());
   const [stale, setStale] = useState<Signal[]>([]);
@@ -198,7 +199,7 @@ function Performance() {
 
   useEffect(() => {
     let cancelled = false;
-    const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
+    const load = () => fetchLivePrices().then((snapshot) => { if (!cancelled) { setLivePrices(snapshot.prices); setLivePriceUpdatedAt(snapshot.updatedAtByCoin); } });
     load();
     const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
@@ -627,6 +628,9 @@ function Performance() {
               {openSignals.slice(0, 8).map((s) => {
                 const cur = livePrices[s.coin];
                 const live = cur ? computeLive(s, cur) : null;
+                const priceUpdatedAt = livePriceUpdatedAt[s.coin];
+                const priceAgeMs = priceUpdatedAt ? Date.now() - new Date(priceUpdatedAt).getTime() : null;
+                const priceIsStale = priceAgeMs === null || priceAgeMs > 10 * 60 * 1000;
                 const isBuy = s.signal === "BUY";
                 const pnl = live?.pnlPct ?? 0;
                 const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
@@ -648,7 +652,7 @@ function Performance() {
                     )}
                     <div className="live-meta" style={{ marginTop: 8 }}>
                       <span>⭐ Skor {s.score} · {s.quality}</span>
-                      <span>{new Date(s.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <span>{priceUpdatedAt ? `Fiyat: ${new Date(priceUpdatedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}${priceIsStale ? " · eski veri" : ""}` : "Fiyat zamanı yok"}</span>
                     </div>
                   </div>
                 );
