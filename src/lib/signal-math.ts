@@ -497,3 +497,75 @@ export function compareSignalScores(v1Score: number, v2Score: number, tolerance 
   if (Math.abs(difference) <= tolerance) return "V2 Same";
   return difference > 0 ? "V2 Better" : "V2 Lower";
 }
+
+
+export interface HistoricalCandle {
+  openTime: number;
+  high: number;
+  low: number;
+}
+
+export interface HistoricalResolution {
+  result: "tuttu" | "tutmadi" | "suresi_doldu" | null;
+  closedAtMs: number | null;
+}
+
+export function resolveSignalFromCandles(
+  direction: TradeDirection,
+  entryPrice: number,
+  createdAtMs: number,
+  nowMs: number,
+  candles: HistoricalCandle[],
+  windowHours = 48,
+  intervalMinutes = 15,
+): HistoricalResolution {
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(nowMs) || nowMs < createdAtMs) {
+    throw new RangeError("Signal and current timestamps must be valid and ordered.");
+  }
+  if (!Number.isInteger(windowHours) || windowHours <= 0 ||
+      !Number.isInteger(intervalMinutes) || intervalMinutes <= 0) {
+    throw new RangeError("Resolution window and candle interval must be positive integers.");
+  }
+  const intervalMs = intervalMinutes * 60 * 1000;
+  const endMs = createdAtMs + windowHours * 60 * 60 * 1000;
+  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs;
+  const parsed = candles.map((candle) => {
+    if (!Number.isFinite(candle.openTime) || !Number.isFinite(candle.high) ||
+        !Number.isFinite(candle.low) || candle.high <= 0 || candle.low <= 0 ||
+        candle.high < candle.low) {
+      throw new RangeError("Historical candle contains invalid timestamp or OHLC values.");
+    }
+    return candle;
+  }).sort((left, right) => left.openTime - right.openTime);
+  const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime);
+  const observedTimes = new Set(unique
+    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
+    .map((candle) => candle.openTime));
+
+  const hasCompleteCoverageThrough = (lastOpenTime: number): boolean => {
+    if (lastOpenTime < firstExpected) return false;
+    for (let time = firstExpected; time <= lastOpenTime; time += intervalMs) {
+      if (time + intervalMs > endMs || !observedTimes.has(time)) return false;
+    }
+    return true;
+  };
+
+  for (const candle of unique) {
+    if (candle.openTime < createdAtMs) continue;
+    if (candle.openTime >= endMs || candle.openTime + intervalMs > endMs) break;
+    if (candle.openTime + intervalMs > nowMs) break;
+
+    const outcome = evaluateCandleOutcome(direction, entryPrice, candle.high, candle.low);
+    if (outcome !== null) {
+      if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAtMs: null };
+      return { result: outcome, closedAtMs: candle.openTime };
+    }
+  }
+
+  if (nowMs < endMs) return { result: null, closedAtMs: null };
+  const lastExpected = Math.floor((endMs - intervalMs) / intervalMs) * intervalMs;
+  const complete = lastExpected >= firstExpected && hasCompleteCoverageThrough(lastExpected);
+  return complete
+    ? { result: "suresi_doldu", closedAtMs: endMs }
+    : { result: null, closedAtMs: null };
+}
