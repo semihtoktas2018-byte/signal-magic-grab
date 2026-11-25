@@ -13,7 +13,8 @@ This document describes the proposed calculation changes in branch `feat/signal-
 - Signal candles: Bybit Spot, 15-minute interval.
 - Indicator input: closed candles only; the engine requires at least 50 closed candles.
 - Entry snapshot: Bybit Spot ticker at signal-record time. If the ticker is missing, invalid, zero, or negative, the signal is not recorded. The previous fallback to the last candle close is removed.
-- Exchange comparison: Bybit Spot candle close versus OKX ticker. Invalid OKX prices are rejected.
+- Exchange comparison: current Bybit Spot ticker versus current OKX ticker. Invalid or unavailable Bybit/OKX prices prevent a fresh comparison record; the system does not compare a candle close against a live ticker.
+- Performance-page live P&L: uses the same Bybit price snapshot stored in `exchange_prices`, not a different exchange's ticker. Each coin's source timestamp is shown; data older than ten minutes is visibly marked stale.
 - Whale flow: Bybit recent trades, Spot and Linear are recorded separately. The current V1 signal score uses Spot whale flow; the Linear feed is diagnostic/event data and does not currently contribute to V1.
 - Sentiment: Alternative.me Fear & Greed. The proposed cron reads a cache using `updated_at`, refreshes it no more than once per six hours when successful, and supplies the value to V2. If refresh fails and the cache is stale, V2 receives no sentiment value.
 - Funding: current Bybit Linear ticker `fundingRate` per coin, fetched on each cron run. A missing/invalid response is excluded from V2 coverage and logged; it is not fabricated.
