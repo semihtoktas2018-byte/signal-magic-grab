@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "../branding";
 import { translations, getLang, setLangStorage, type LangCode } from "../i18n";
+import { calculatePerformanceSummary, getTradeLevels } from "@/lib/signal-math";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
@@ -33,6 +34,7 @@ interface SignalComponents {
   whaleBuyUsd?: number | null;
   whaleSellUsd?: number | null;
   v2Score?: number | null;
+  fundingRate?: number | null;
 }
 interface Signal {
   id: string;
@@ -52,8 +54,6 @@ interface CoinStat {
   coin: string; total: number; tuttu: number; tutmadi: number; bekliyor: number; expired: number; rate: number; closed: number;
 }
 
-const TP_PCT = 0.025;
-const SL_PCT = 0.02;
 const MIN_SAMPLE = 20;
 
 function fmtNum(p: number): string {
@@ -63,13 +63,6 @@ function fmtNum(p: number): string {
   return p.toFixed(6);
 }
 function coinShort(c: string) { return c.replace("USDT", ""); }
-function levels(signal: "BUY" | "SELL", entry: number) {
-  const isBuy = signal === "BUY";
-  return {
-    target: isBuy ? entry * (1 + TP_PCT) : entry * (1 - TP_PCT),
-    stop: isBuy ? entry * (1 - SL_PCT) : entry * (1 + SL_PCT),
-  };
-}
 function durationText(from: string, to?: string | null): string {
   if (!to) return "—";
   const mins = Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60000));
@@ -78,36 +71,37 @@ function durationText(from: string, to?: string | null): string {
   return `${mins}dk`;
 }
 
-const LIVE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
-const LIVE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+interface LivePriceSnapshot {
+  prices: Record<string, number>;
+  updatedAtByCoin: Record<string, string>;
+}
 
-async function fetchLivePrices(): Promise<Record<string, number>> {
-  const q = encodeURIComponent(JSON.stringify(LIVE_SYMBOLS));
-  for (const host of LIVE_HOSTS) {
-    try {
-      const res = await fetch(`${host}/api/v3/ticker/24hr?symbols=${q}`);
-      if (!res.ok) continue;
-      const rows = (await res.json()) as Array<{ symbol: string; lastPrice: string }>;
-      const map: Record<string, number> = {};
-      (rows || []).forEach((r) => {
-        if (!r.symbol || r.lastPrice == null) return;
-        const price = Number(r.lastPrice);
-        map[r.symbol] = price;
-        map[r.symbol.replace("USDT", "")] = price;
-      });
-      return map;
-    } catch {
-    }
-  }
-  return {};
+async function fetchLivePrices(): Promise<LivePriceSnapshot> {
+  const { data, error } = await supabase
+    .from("exchange_prices")
+    .select("coin, bybit_price, updated_at");
+  if (error) return { prices: {}, updatedAtByCoin: {} };
+
+  const prices: Record<string, number> = {};
+  const updatedAtByCoin: Record<string, string> = {};
+  (data || []).forEach((row) => {
+    const price = Number(row.bybit_price);
+    const timestamp = row.updated_at ? new Date(row.updated_at).getTime() : NaN;
+    if (!row.coin || !Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return;
+    prices[row.coin] = price;
+    prices[row.coin.replace("USDT", "")] = price;
+    updatedAtByCoin[row.coin] = row.updated_at;
+    updatedAtByCoin[row.coin.replace("USDT", "")] = row.updated_at;
+  });
+  return { prices, updatedAtByCoin };
 }
 
 function computeLive(signal: Signal, curPrice: number) {
   const entry = Number(signal.price);
-  if (!entry || !curPrice) return null;
+  if (!Number.isFinite(entry) || entry <= 0 || !Number.isFinite(curPrice) || curPrice <= 0) return null;
   const isBuy = signal.signal === "BUY";
   const pnlPct = isBuy ? ((curPrice - entry) / entry) * 100 : ((entry - curPrice) / entry) * 100;
-  const { target, stop } = levels(signal.signal, entry);
+  const { target, stop } = getTradeLevels(signal.signal, entry);
   const lo = Math.min(stop, target), hi = Math.max(stop, target);
   let progress = ((curPrice - lo) / (hi - lo)) * 100;
   progress = Math.max(0, Math.min(100, progress));
@@ -157,6 +151,7 @@ function Performance() {
   const [filter, setFilter] = useState<"hepsi" | "BUY" | "SELL">("hepsi");
   const [days, setDays] = useState<7 | 30>(30);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [livePriceUpdatedAt, setLivePriceUpdatedAt] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [lang, setLang] = useState<LangCode>(getLang());
   const [stale, setStale] = useState<Signal[]>([]);
@@ -204,32 +199,31 @@ function Performance() {
 
   useEffect(() => {
     let cancelled = false;
-    const load = () => fetchLivePrices().then((p) => { if (!cancelled) setLivePrices(p); });
+    const load = () => fetchLivePrices().then((snapshot) => { if (!cancelled) { setLivePrices(snapshot.prices); setLivePriceUpdatedAt(snapshot.updatedAtByCoin); } });
     load();
     const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const closed = signals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
-  const tuttu = signals.filter((s) => s.result === "tuttu").length;
-  const tutmadi = signals.filter((s) => s.result === "tutmadi").length;
-  const bekliyor = signals.filter((s) => s.result === "bekliyor").length;
-  const expired = signals.filter((s) => s.result === "suresi_doldu").length;
-  const rate = closed.length > 0 ? Math.round((tuttu / closed.length) * 100) : 0;
-  const ev = closed.length > 0
-    ? ((tuttu * TP_PCT - tutmadi * SL_PCT) / closed.length) * 100
-    : 0;
-  const smallSample = closed.length < MIN_SAMPLE;
+  const summary = calculatePerformanceSummary(signals);
+  const closed = summary.closed;
+  const tuttu = summary.wins;
+  const tutmadi = summary.losses;
+  const bekliyor = summary.pending;
+  const expired = summary.expired;
+  const rate = summary.winRatePct === null ? 0 : Math.round(summary.winRatePct);
+  const ev = summary.grossTheoreticalEvPct ?? 0;
+  const smallSample = closed < MIN_SAMPLE;
 
   const openSignals = signals.filter((s) => s.result === "bekliyor")
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const buySignals = signals.filter((s) => s.signal === "BUY");
   const sellSignals = signals.filter((s) => s.signal === "SELL");
-  const buyClosed = buySignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
-  const sellClosed = sellSignals.filter((s) => s.result === "tuttu" || s.result === "tutmadi");
-  const buyRate = buyClosed.length > 0 ? Math.round((buySignals.filter((s) => s.result === "tuttu").length / buyClosed.length) * 100) : 0;
-  const sellRate = sellClosed.length > 0 ? Math.round((sellSignals.filter((s) => s.result === "tuttu").length / sellClosed.length) * 100) : 0;
+  const buyClosed = summary.byDirection.BUY.closed;
+  const sellClosed = summary.byDirection.SELL.closed;
+  const buyRate = summary.byDirection.BUY.winRatePct === null ? 0 : Math.round(summary.byDirection.BUY.winRatePct);
+  const sellRate = summary.byDirection.SELL.winRatePct === null ? 0 : Math.round(summary.byDirection.SELL.winRatePct);
 
   const coinMap = new Map<string, CoinStat>();
   signals.forEach((s) => {
@@ -254,7 +248,7 @@ function Performance() {
 
   function explain(s: Signal): { what: string; why: string[] } {
     const entry = Number(s.price);
-    const { target, stop } = levels(s.signal, entry);
+    const { target, stop } = getTradeLevels(s.signal, entry);
     let what = "";
     if (s.result === "tuttu") what = `Fiyat hedefe (${fmtNum(target)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kazanç +%2.5.`;
     else if (s.result === "tutmadi") what = `Fiyat stop seviyesine (${fmtNum(stop)}) ulaştı — ${durationText(s.created_at, s.closed_at)} içinde. Kayıp -%2.`;
@@ -272,6 +266,7 @@ function Performance() {
       if (c.rsi != null) why.push(`RSI ${Math.round(c.rsi)}${c.rsi >= 70 ? " (aşırı alım)" : c.rsi <= 30 ? " (aşırı satım)" : ""}`);
       if (c.emaTrend) why.push(`trend ${c.emaTrend === "up" ? "yukarı" : "aşağı"}`);
       if (c.macdHist != null) why.push(`momentum ${c.macdHist >= 0 ? "pozitif" : "negatif"}`);
+      if (c.fundingRate != null) why.push(`funding ${(c.fundingRate * 100).toFixed(4)}%`);
       if (c.bbPct != null) why.push(`Bollinger %${Math.round(c.bbPct * 100)}`);
       if (c.whaleBuyUsd != null && c.whaleSellUsd != null && (c.whaleBuyUsd > 0 || c.whaleSellUsd > 0))
         why.push(`whale ${c.whaleBuyUsd >= c.whaleSellUsd ? "alım" : "satım"} baskılı`);
@@ -563,23 +558,23 @@ function Performance() {
             ))}
           </div>
 
-          {closed.length === 0 ? (
+          {closed === 0 ? (
             <div className="banner">
               Bu dönemde henüz <b>kapanmış sinyal yok</b> — sinyaller hedefe (+%2.5) ya da stopa (-%2) ulaşınca sonuçlanır.
               İsabet oranı, kapanmış sinyaller birikince anlamlı olacak.
             </div>
           ) : smallSample ? (
             <div className="banner">
-              ⚠️ <b>Örneklem küçük ({closed.length} kapalı sinyal).</b> Aşağıdaki oranlar henüz istatistiksel olarak güvenilir değil —
+              ⚠️ <b>Örneklem küçük ({closed} kapalı sinyal).</b> Aşağıdaki oranlar henüz istatistiksel olarak güvenilir değil —
               anlamlı bir değerlendirme için en az {MIN_SAMPLE} kapalı sinyal gerekir. Sayı arttıkça oran netleşir.
             </div>
           ) : null}
 
           <div className="stat-grid">
             <div className="stat-card">
-              <div className="stat-val" style={{ color: rateColor(rate) }}>{closed.length > 0 ? `${rate}%` : "—"}</div>
+              <div className="stat-val" style={{ color: rateColor(rate) }}>{closed > 0 ? `${rate}%` : "—"}</div>
               <div className="stat-label">{t("accuracyRate")}</div>
-              <div className="stat-sub">{closed.length} {t("completed")}</div>
+              <div className="stat-sub">{closed} {t("completed")}</div>
             </div>
             <div className="stat-card">
               <div className="stat-val" style={{ color: "#e8eef7" }}>{signals.length}</div>
@@ -604,12 +599,12 @@ function Performance() {
           <div className="ev-row">
             <div className="ev-card">
               <div className="ev-k">Sinyal başına brüt teorik EV</div>
-              <div className="ev-v" style={{ color: closed.length === 0 ? "#8a93a3" : ev >= 0 ? "#22c55e" : "#ef4444" }}>
-                {closed.length === 0 ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(2)}%`}
+              <div className="ev-v" style={{ color: closed === 0 ? "#8a93a3" : ev >= 0 ? "#22c55e" : "#ef4444" }}>
+                {closed === 0 ? "—" : `${ev >= 0 ? "+" : ""}${ev.toFixed(2)}%`}
               </div>
               <div className="ev-note">
                 Kapanan sinyallerin sabit TP +%2.5 / SL −%2 sonuçlarından hesaplanır. Brüt teorik değerdir; komisyon, spread, kayma ve gerçek emir gerçekleşmesini içermez. Başabaş isabet oranı yaklaşık <b>%44.4</b>.
-                {closed.length > 0 && ev < 0 && " Şu an başabaşın altında."}
+                {closed > 0 && ev < 0 && " Şu an başabaşın altında."}
               </div>
             </div>
             <div className="ev-card">
@@ -633,6 +628,9 @@ function Performance() {
               {openSignals.slice(0, 8).map((s) => {
                 const cur = livePrices[s.coin];
                 const live = cur ? computeLive(s, cur) : null;
+                const priceUpdatedAt = livePriceUpdatedAt[s.coin];
+                const priceAgeMs = priceUpdatedAt ? Date.now() - new Date(priceUpdatedAt).getTime() : null;
+                const priceIsStale = priceAgeMs === null || priceAgeMs > 10 * 60 * 1000;
                 const isBuy = s.signal === "BUY";
                 const pnl = live?.pnlPct ?? 0;
                 const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
@@ -654,7 +652,7 @@ function Performance() {
                     )}
                     <div className="live-meta" style={{ marginTop: 8 }}>
                       <span>⭐ Skor {s.score} · {s.quality}</span>
-                      <span>{new Date(s.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <span>{priceUpdatedAt ? `Fiyat: ${new Date(priceUpdatedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}${priceIsStale ? " · eski veri" : ""}` : "Fiyat zamanı yok"}</span>
                     </div>
                   </div>
                 );
@@ -664,14 +662,14 @@ function Performance() {
 
           <div className="type-row">
             <div className="type-card" style={{ border: "1px solid rgba(34,197,94,.25)" }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#22c55e" }}>{buyClosed.length > 0 ? `${buyRate}%` : "—"}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "#22c55e" }}>{buyClosed > 0 ? `${buyRate}%` : "—"}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#22c55e", margin: "4px 0 6px" }}>🟢 BUY İsabet</div>
-              <div style={{ fontSize: 12, color: "#8a93a3" }}>{buyClosed.length} kapalı · {buySignals.filter(s => s.result === "tuttu").length} tuttu · {buySignals.length} toplam</div>
+              <div style={{ fontSize: 12, color: "#8a93a3" }}>{buyClosed} kapalı · {buySignals.filter(s => s.result === "tuttu").length} tuttu · {buySignals.length} toplam</div>
             </div>
             <div className="type-card" style={{ border: "1px solid rgba(239,68,68,.25)" }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>{sellClosed.length > 0 ? `${sellRate}%` : "—"}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>{sellClosed > 0 ? `${sellRate}%` : "—"}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444", margin: "4px 0 6px" }}>🔴 SELL İsabet</div>
-              <div style={{ fontSize: 12, color: "#8a93a3" }}>{sellClosed.length} kapalı · {sellSignals.filter(s => s.result === "tuttu").length} tuttu · {sellSignals.length} toplam</div>
+              <div style={{ fontSize: 12, color: "#8a93a3" }}>{sellClosed} kapalı · {sellSignals.filter(s => s.result === "tuttu").length} tuttu · {sellSignals.length} toplam</div>
             </div>
           </div>
 
@@ -749,7 +747,7 @@ function Performance() {
             <div className="signal-list">
               {filtered.map((s) => {
                 const entry = Number(s.price);
-                const { target, stop } = levels(s.signal, entry);
+                const { target, stop } = getTradeLevels(s.signal, entry);
                 const isOpen = openId === s.id;
                 const info = isOpen ? explain(s) : null;
                 return (

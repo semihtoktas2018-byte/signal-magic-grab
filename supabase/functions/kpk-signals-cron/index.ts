@@ -13,196 +13,7 @@
 // eşleşmezse 401 döner.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-// ============================================================
-// Signal Engine V2 (Phase 1) — src/lib/signal-engine-v2.ts'ten taşındı
-// ============================================================
-interface V2Inputs {
-  price: number
-  prevPrice: number
-  rsi: number | null
-  prevRsi: number | null
-  ema20: number
-  ema20Prev: number
-  ema50: number
-  macdHist: number | null
-  bbPct: number | null
-  volRatio: number | null
-  whaleBuyUsd: number
-  whaleSellUsd: number
-  fearGreed?: number | null
-  funding?: number | null
-  volatilityPct?: number | null
-}
-type V2Direction = 'BUY' | 'SELL' | 'WAIT'
-interface V2Factor {
-  key: string
-  label: string
-  weight: number
-  effectiveWeight: number
-  available: boolean
-  value: number
-  contribution: number
-}
-interface V2Result {
-  version: 'v2'
-  direction: V2Direction
-  score: number
-  bias: number
-  quality: 'ULTRA' | 'GÜÇLÜ' | 'ORTA' | 'ZAYIF'
-  coverage: number
-  factors: V2Factor[]
-}
-
-const V2_WEIGHTS = {
-  trend: 0.3,
-  momentum: 0.25,
-  volume: 0.15,
-  whale: 0.15,
-  sentiment: 0.1,
-  volatility: 0.05,
-} as const
-
-const clamp = (n: number, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, n))
-
-function trendScore(i: V2Inputs): number | null {
-  if (!i.ema20 || !i.ema50) return null
-  const spread = (i.ema20 - i.ema50) / i.ema50
-  const slope = i.ema20Prev ? (i.ema20 - i.ema20Prev) / i.ema20Prev : 0
-  const position = i.ema20 ? (i.price - i.ema20) / i.ema20 : 0
-  return clamp(0.5 * clamp(spread / 0.015) + 0.3 * clamp(slope / 0.004) + 0.2 * clamp(position / 0.01))
-}
-
-function momentumScore(i: V2Inputs): number | null {
-  const parts: number[] = []
-  if (i.rsi !== null && i.rsi !== undefined) {
-    let v = clamp((50 - i.rsi) / 20)
-    if (i.prevRsi !== null && i.prevRsi !== undefined) {
-      if (i.prevRsi < 30 && i.rsi >= 30) v = clamp(v + 0.35)
-      if (i.prevRsi > 70 && i.rsi <= 70) v = clamp(v - 0.35)
-    }
-    parts.push(v)
-  }
-  if (i.macdHist !== null && i.macdHist !== undefined && i.price) {
-    parts.push(clamp(i.macdHist / i.price / 0.003))
-  }
-  if (i.bbPct !== null && i.bbPct !== undefined) {
-    parts.push(clamp((0.5 - i.bbPct) * 2) * 0.5)
-  }
-  if (!parts.length) return null
-  return clamp(parts.reduce((a, b) => a + b, 0) / parts.length)
-}
-
-function volumeScore(i: V2Inputs, directionalBias: number): number | null {
-  if (i.volRatio === null || i.volRatio === undefined) return null
-  const strength = clamp((i.volRatio - 1) / 0.6, 0, 1)
-  return clamp(strength * (directionalBias >= 0 ? 1 : -1))
-}
-
-function whaleScore(i: V2Inputs): number | null {
-  const total = (i.whaleBuyUsd || 0) + (i.whaleSellUsd || 0)
-  if (total <= 0) return null
-  return clamp((i.whaleBuyUsd - i.whaleSellUsd) / total)
-}
-
-function sentimentScore(i: V2Inputs): number | null {
-  const parts: number[] = []
-  if (i.fearGreed !== null && i.fearGreed !== undefined) {
-    parts.push(clamp((50 - i.fearGreed) / 30))
-  }
-  if (i.funding !== null && i.funding !== undefined) {
-    parts.push(clamp(-i.funding / 0.0005))
-  }
-  if (!parts.length) return null
-  return clamp(parts.reduce((a, b) => a + b, 0) / parts.length)
-}
-
-function volatilityScore(i: V2Inputs, directionalBias: number): number | null {
-  if (i.volatilityPct === null || i.volatilityPct === undefined) return null
-  const penalty = clamp((i.volatilityPct - 1.5) / 3, 0, 1)
-  return clamp((1 - 2 * penalty) * (directionalBias >= 0 ? 1 : -1))
-}
-
-function qualityOf(score: number): V2Result['quality'] {
-  if (score >= 85) return 'ULTRA'
-  if (score >= 72) return 'GÜÇLÜ'
-  if (score >= 55) return 'ORTA'
-  return 'ZAYIF'
-}
-
-function scoreSignalV2(i: V2Inputs): V2Result {
-  const trend = trendScore(i)
-  const momentum = momentumScore(i)
-  const whale = whaleScore(i)
-  const sentiment = sentimentScore(i)
-
-  const coreEntries: Array<[number, number | null]> = [
-    [V2_WEIGHTS.trend, trend],
-    [V2_WEIGHTS.momentum, momentum],
-    [V2_WEIGHTS.whale, whale],
-    [V2_WEIGHTS.sentiment, sentiment],
-  ]
-  const coreW = coreEntries.filter(([, v]) => v !== null).reduce((a, [w]) => a + w, 0)
-  const coreBias = coreW
-    ? coreEntries.filter(([, v]) => v !== null).reduce((a, [w, v]) => a + w * (v as number), 0) / coreW
-    : 1
-
-  const volume = volumeScore(i, coreBias)
-  const volatility = volatilityScore(i, coreBias)
-
-  const raw: Array<{ key: string; label: string; weight: number; value: number | null }> = [
-    { key: 'trend', label: 'Trend (EMA20/50)', weight: V2_WEIGHTS.trend, value: trend },
-    { key: 'momentum', label: 'Momentum (RSI + MACD)', weight: V2_WEIGHTS.momentum, value: momentum },
-    { key: 'volume', label: 'Hacim / Likidite', weight: V2_WEIGHTS.volume, value: volume },
-    { key: 'whale', label: 'Whale akışı', weight: V2_WEIGHTS.whale, value: whale },
-    { key: 'sentiment', label: 'Funding / Fear & Greed', weight: V2_WEIGHTS.sentiment, value: sentiment },
-    { key: 'volatility', label: 'Oynaklık', weight: V2_WEIGHTS.volatility, value: volatility },
-  ]
-
-  const coverage = raw.filter((f) => f.value !== null).reduce((a, f) => a + f.weight, 0)
-  const norm = coverage > 0 ? 1 / coverage : 0
-
-  const factors: V2Factor[] = raw.map((f) => {
-    const available = f.value !== null
-    const effectiveWeight = available ? f.weight * norm : 0
-    const value = available ? (f.value as number) : 0
-    return {
-      key: f.key,
-      label: f.label,
-      weight: f.weight,
-      effectiveWeight: Number(effectiveWeight.toFixed(4)),
-      available,
-      value: Number(value.toFixed(4)),
-      contribution: Number((effectiveWeight * value).toFixed(4)),
-    }
-  })
-
-  const bias = clamp(factors.reduce((a, f) => a + f.contribution, 0)) * 100
-  const score = Math.round(Math.abs(bias))
-  const direction: V2Direction = score < 45 ? 'WAIT' : bias > 0 ? 'BUY' : 'SELL'
-
-  return {
-    version: 'v2',
-    direction,
-    score,
-    bias: Math.round(bias),
-    quality: direction === 'WAIT' ? 'ZAYIF' : qualityOf(score),
-    coverage: Number(coverage.toFixed(4)),
-    factors,
-  }
-}
-
-function agreementWithV1(v1Signal: string, v2: V2Result): 'confirm' | 'conflict' | 'neutral' {
-  if (v2.direction === 'WAIT' || v1Signal === 'WAIT') return 'neutral'
-  return v1Signal === v2.direction ? 'confirm' : 'conflict'
-}
-
-type V2Comparison = 'V2 Better' | 'V2 Same' | 'V2 Lower'
-function compareScores(v1Score: number, v2Score: number, tolerance = 3): V2Comparison {
-  const diff = v2Score - v1Score
-  if (Math.abs(diff) <= tolerance) return 'V2 Same'
-  return diff > 0 ? 'V2 Better' : 'V2 Lower'
-}
+import { calculateBollingerPct, calculateEma, calculateMacdHistogram, calculateRelativeVolumeRatio, calculateRsi, calculateV1Signal, calculateV2Signal, compareSignalScores, compareV1V2, getTradeLevels, resolveSignalFromCandles, validateKlineSeries } from '../../../src/lib/signal-math.ts'
 
 // ============================================================
 // Konfigürasyon
@@ -216,58 +27,10 @@ const MAX_SIGNALS_PER_RUN = 2
 
 
 // ---------- indicator helpers ----------
-function ema(values: number[], period: number): number[] {
-  const k = 2 / (period + 1)
-  const out: number[] = []
-  let prev = values[0]
-  out.push(prev)
-  for (let i = 1; i < values.length; i++) {
-    prev = values[i] * k + prev * (1 - k)
-    out.push(prev)
-  }
-  return out
-}
-
-function rsi(values: number[], period = 14): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null)
-  if (values.length <= period) return out
-  let gain = 0, loss = 0
-  for (let i = 1; i <= period; i++) {
-    const ch = values[i] - values[i - 1]
-    if (ch >= 0) gain += ch; else loss -= ch
-  }
-  let ag = gain / period, al = loss / period
-  out[period] = al === 0 ? 100 : 100 - 100 / (1 + ag / al)
-  for (let i = period + 1; i < values.length; i++) {
-    const ch = values[i] - values[i - 1]
-    const g = ch > 0 ? ch : 0
-    const l = ch < 0 ? -ch : 0
-    ag = (ag * (period - 1) + g) / period
-    al = (al * (period - 1) + l) / period
-    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al)
-  }
-  return out
-}
-
-function macd(values: number[]) {
-  const e12 = ema(values, 12), e26 = ema(values, 26)
-  const line = values.map((_, i) => e12[i] - e26[i])
-  const sig = ema(line.slice(25), 9)
-  const last = line[line.length - 1]
-  const lastSig = sig[sig.length - 1]
-  return { hist: last - lastSig }
-}
-
-function bollinger(values: number[], period = 20, mult = 2) {
-  if (values.length < period) return { pct: null as number | null }
-  const slice = values.slice(-period)
-  const mean = slice.reduce((a, b) => a + b, 0) / period
-  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period
-  const sd = Math.sqrt(variance)
-  const upper = mean + mult * sd, lower = mean - mult * sd
-  const price = values[values.length - 1]
-  return { pct: upper === lower ? 0.5 : (price - lower) / (upper - lower) }
-}
+const ema = calculateEma
+const rsi = calculateRsi
+const macd = (values: number[]) => ({ hist: calculateMacdHistogram(values) })
+const bollinger = (values: number[], period = 20, mult = 2) => ({ pct: calculateBollingerPct(values, period, mult) })
 
 // ---------- Whale Radar ----------
 const WHALE_THRESHOLD_USD = 250_000
@@ -339,7 +102,9 @@ async function fetchOkxPrice(symbol: string): Promise<number> {
     if (r.ok) {
       const j = await r.json() as any
       if (j.code !== '0' || !j.data?.[0]) throw new Error(`okx ${symbol} bad response`)
-      return parseFloat(j.data[0].last)
+      const price = Number(j.data[0].last)
+      if (!Number.isFinite(price) || price <= 0) throw new Error(`okx ${symbol} invalid price`)
+      return price
     }
     lastErr = `okx ${symbol} ${r.status}`
     if (r.status === 429 || r.status >= 500) {
@@ -361,70 +126,14 @@ function signalLogic(
   volData: { ratio: number | null },
   whale: WhaleActivity
 ) {
-  if (!rsiVal || !e20 || !e50) return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
-  const rsiTurn = prevRsi !== null && prevRsi < 30 && rsiVal >= 30
-  const rsiOS = rsiVal < 30
-  const above20 = price > e20
-  const crossed20 = prevPrice < e20 && price >= e20
-  const below20 = price < e20
-  const trendOk = e20 >= e50
-  const slopeUp = e20Prev ? e20 > e20Prev : false
-  const overbought = rsiVal > 70
-  const macdBull = macdData.hist !== null && macdData.hist > 0
-  const macdBear = macdData.hist !== null && macdData.hist < 0
-  const bbOS = bbData.pct !== null && bbData.pct < 0.2
-  const bbOB = bbData.pct !== null && bbData.pct > 0.8
-  const highVol = volData.ratio !== null && volData.ratio > 1.3
-  const whaleBuy = whale.buyUsd > whale.sellUsd * 1.5 && whale.buyUsd > 0
-  const whaleSell = whale.sellUsd > whale.buyUsd * 1.5 && whale.sellUsd > 0
-
-  const trendDown = e20 < e50
-  const slopeDown = e20Prev ? e20 < e20Prev : false
-
-  // ============ BUY puanı ============
-  let buy = 0
-  if (rsiTurn) buy += 32; else if (rsiOS) buy += 20
-  if (above20) buy += 20
-  if (crossed20) buy += 10
-  if (trendOk) buy += 15
-  if (slopeUp) buy += 12
-  if (macdBull) buy += 14
-  if (bbOS) buy += 8
-  if (highVol) buy += 6
-  if (whaleBuy) buy += 14
-  if (!trendOk || !slopeUp) buy -= 30
-  if (whaleSell) buy -= 15
-
-  // ============ SELL puanı ============
-  let sell = 0
-  if (below20) sell += 28
-  if (overbought) sell += 24
-  if (trendDown) sell += 18
-  if (slopeDown) sell += 12
-  if (macdBear) sell += 14
-  if (bbOB) sell += 8
-  if (highVol) sell += 6
-  if (whaleSell) sell += 14
-  if (!trendDown || !slopeDown) sell -= 30
-  if (whaleBuy) sell -= 15
-
-  buy = Math.max(0, buy)
-  sell = Math.max(0, sell)
-
-  if (buy >= 50 && sell >= 50) {
-    return { signal: 'WAIT', quality: 'ZAYIF', score: 0, whale }
-  }
-
-  const ultraBuy = rsiTurn && above20 && trendOk && slopeUp && macdBull && whaleBuy && buy >= 88
-  const ultraSell = below20 && overbought && trendDown && slopeDown && macdBear && whaleSell && sell >= 88
-
-  if (ultraBuy) return { signal: 'BUY', quality: 'ULTRA', score: Math.min(100, buy), whale }
-  if (ultraSell) return { signal: 'SELL', quality: 'ULTRA', score: Math.min(100, sell), whale }
-  if (buy >= 82) return { signal: 'BUY', quality: 'GÜÇLÜ', score: Math.min(100, buy), whale }
-  if (sell >= 82) return { signal: 'SELL', quality: 'GÜÇLÜ', score: Math.min(100, sell), whale }
-  if (buy >= 65) return { signal: 'BUY', quality: 'ORTA', score: Math.min(100, buy), whale }
-  if (sell >= 65) return { signal: 'SELL', quality: 'ORTA', score: Math.min(100, sell), whale }
-  return { signal: 'WAIT', quality: 'ZAYIF', score: Math.max(buy, sell), whale }
+  const result = calculateV1Signal({
+    price, prevPrice, rsi: rsiVal, prevRsi,
+    ema20: e20, ema50: e50, ema20Prev: e20Prev,
+    macdHist: macdData.hist, bbPct: bbData.pct,
+    volumeRatio: volData.ratio,
+    whaleBuyUsd: whale.buyUsd, whaleSellUsd: whale.sellUsd,
+  })
+  return { ...result, whale }
 }
 
 // Bybit market endpoints can return HTTP 429 or retCode 10006 during bursts.
@@ -470,8 +179,6 @@ interface TPSLResolution {
   error?: string
 }
 
-const RESOLVE_WINDOW_HOURS = 48
-
 async function resolveTPSLWithKlines(
   symbol: string,
   signal: 'BUY' | 'SELL',
@@ -479,69 +186,25 @@ async function resolveTPSLWithKlines(
   createdAtISO: string
 ): Promise<TPSLResolution> {
   const createdAtMs = new Date(createdAtISO).getTime()
-  const endMs = createdAtMs + RESOLVE_WINDOW_HOURS * 60 * 60 * 1000
-
+  const endMs = createdAtMs + 48 * 60 * 60 * 1000
   const batch = await fetchResolveKlines(symbol, createdAtMs, endMs)
-  const parsed: Array<{ openTime: number; high: number; low: number }> = []
+  const candles: Array<{ openTime: number; high: number; low: number }> = []
+
   for (const k of batch) {
     const openTime = Number(k[0])
     const high = Number(k[2])
     const low = Number(k[3])
     if (Number.isFinite(openTime) && Number.isFinite(high) && Number.isFinite(low) && high > 0 && low > 0) {
-      parsed.push({ openTime, high, low })
+      candles.push({ openTime, high, low })
     }
   }
 
-  if (parsed.length === 0) return { result: null, closedAt: null }
-
-  parsed.sort((a, b) => a.openTime - b.openTime)
-  const unique = parsed.filter((candle, index) => index === 0 || candle.openTime !== parsed[index - 1].openTime)
-
-  const intervalMs = 15 * 60 * 1000
-  const firstExpected = Math.ceil(createdAtMs / intervalMs) * intervalMs
-  const observedTimes = new Set(unique
-    .filter((candle) => candle.openTime >= firstExpected && candle.openTime + intervalMs <= endMs)
-    .map((candle) => candle.openTime))
-  const hasCompleteCoverageThrough = (lastOpenTime: number): boolean => {
-    if (lastOpenTime < firstExpected) return false
-    for (let time = firstExpected; time <= lastOpenTime; time += intervalMs) {
-      if (time + intervalMs > endMs || !observedTimes.has(time)) return false
-    }
-    return true
+  if (candles.length === 0) return { result: null, closedAt: null }
+  const resolution = resolveSignalFromCandles(signal, entryPrice, createdAtMs, Date.now(), candles)
+  return {
+    result: resolution.result,
+    closedAt: resolution.closedAtMs === null ? null : new Date(resolution.closedAtMs).toISOString(),
   }
-
-  const tp = signal === 'BUY' ? entryPrice * 1.025 : entryPrice * 0.975
-  const sl = signal === 'BUY' ? entryPrice * 0.98 : entryPrice * 1.02
-
-  for (const candle of unique) {
-    // Sinyal anında açık olan mumun sinyal öncesi hareketlerini kullanma.
-    if (candle.openTime < createdAtMs) continue
-    // 48 saatlik pencerenin dışına taşan mumları sonuç hesabına katma.
-    if (candle.openTime >= endMs || candle.openTime + 15 * 60 * 1000 > endMs) break
-    if (candle.openTime + 15 * 60 * 1000 > Date.now()) break
-
-    const tpHit = signal === 'BUY' ? candle.high >= tp : candle.low <= tp
-    const slHit = signal === 'BUY' ? candle.low <= sl : candle.high >= sl
-
-    // Aynı 15 dakikalık mumda TP ve SL birlikte görülürse muhafazakâr olarak SL say.
-    if (tpHit || slHit) {
-      // Önceki mumlarda veri boşluğu varsa ilk TP/SL temasını kesin sonuç sayma.
-      if (!hasCompleteCoverageThrough(candle.openTime)) return { result: null, closedAt: null }
-      if (tpHit && slHit) return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-      if (tpHit) return { result: 'tuttu', closedAt: new Date(candle.openTime).toISOString() }
-      return { result: 'tutmadi', closedAt: new Date(candle.openTime).toISOString() }
-    }
-  }
-
-  if (Date.now() < endMs) return { result: null, closedAt: null }
-
-  // Süre doldu kararı yalnızca sinyal sonrası tüm 15 dakikalık mumlar eksiksizse verilir.
-  const lastExpected = Math.floor((endMs - intervalMs) / intervalMs) * intervalMs
-  const complete = lastExpected >= firstExpected && hasCompleteCoverageThrough(lastExpected)
-
-  return complete
-    ? { result: 'suresi_doldu', closedAt: new Date(endMs).toISOString() }
-    : { result: null, closedAt: null }
 }
 
 // ---------- Bybit fetchers ----------
@@ -556,10 +219,18 @@ async function fetchKlines(symbol: string) {
   if (closedCandles.length < 50) {
     throw new Error(`klines ${symbol}: insufficient closed candles (${closedCandles.length})`)
   }
+  validateKlineSeries(closedCandles.map((k) => ({
+    openTime: Number(k[0]),
+    open: Number(k[1]),
+    high: Number(k[2]),
+    low: Number(k[3]),
+    close: Number(k[4]),
+    volume: Number(k[5]),
+  })), 15)
   return closedCandles
 }
 
-async function analyzeCoin(symbol: string, klines: any[][]) {
+async function analyzeCoin(symbol: string, klines: any[][], fearGreed: number | null) {
   const closes = klines.map(k => parseFloat(k[4]))
   const volumes = klines.map(k => parseFloat(k[5]))
   const price = closes[closes.length - 1]
@@ -574,15 +245,14 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
   const prevRsi = rsiArr[rsiArr.length - 2]
   const macdData = macd(closes)
   const bbData = bollinger(closes)
-  const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
-  const volData = { ratio: avgVol ? volumes[volumes.length - 1] / avgVol : null }
-  const whale = await fetchWhaleActivity(symbol)
+  const volData = { ratio: calculateRelativeVolumeRatio(volumes, 20) }
+  const [whale, fundingData] = await Promise.all([fetchWhaleActivity(symbol), fetchFundingRate(symbol)])
   const sig = signalLogic(price, prevPrice, rsiVal, prevRsi, e20, e50, e20Prev, macdData, bbData, volData, whale)
   const recent = closes.slice(-15)
   const volatilityPct = recent.length > 1 && price
     ? (Math.sqrt(recent.reduce((a, c) => a + (c - recent.reduce((x, y) => x + y, 0) / recent.length) ** 2, 0) / recent.length) / price) * 100
     : null
-  const v2 = scoreSignalV2({
+  const v2 = calculateV2Signal({
     price, prevPrice,
     rsi: rsiVal, prevRsi,
     ema20: e20, ema20Prev: e20Prev, ema50: e50,
@@ -592,13 +262,13 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
     whaleBuyUsd: whale.buyUsd,
     whaleSellUsd: whale.sellUsd,
     volatilityPct,
-    funding: null,
-    fearGreed: null,
+    funding: fundingData.rate,
+    fearGreed,
   })
   return {
-    ...sig, price, v2,
-    v2Agreement: agreementWithV1(sig.signal, v2),
-    v2Comparison: compareScores(Math.round(sig.score), v2.score),
+    ...sig, price, v2, fundingRate: fundingData.rate, fundingError: fundingData.error,
+    v2Agreement: compareV1V2(sig.signal, v2),
+    v2Comparison: compareSignalScores(Math.round(sig.score), v2.score),
     components: {
       rsi: rsiVal,
       ema20: e20,
@@ -610,6 +280,7 @@ async function analyzeCoin(symbol: string, klines: any[][]) {
       whaleBuyUsd: whale.buyUsd,
       whaleSellUsd: whale.sellUsd,
       v2Score: v2.score,
+      fundingRate: fundingData.rate,
     },
   }
 }
@@ -623,12 +294,25 @@ function scoreBand(score: number): string {
   return '<70'
 }
 
+async function fetchFundingRate(symbol: string): Promise<{ rate: number | null; error: string | null }> {
+  try {
+    const url = `https://api.bybit.com/v5/market/tickers?category=linear&symbol=${symbol}`
+    const response = await fetchBybitMarketJson(url, `funding ${symbol}`)
+    const raw = response.result?.list?.[0]?.fundingRate
+    const rate = Number(raw)
+    if (!Number.isFinite(rate)) return { rate: null, error: 'invalid fundingRate in Bybit response' }
+    return { rate, error: null }
+  } catch (error) {
+    return { rate: null, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 async function fetchTicker(symbol: string): Promise<number | null> {
   try {
     const url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`
     const j = await fetchBybitMarketJson(url, `ticker ${symbol}`)
-    const p = j.result?.list?.[0]?.lastPrice
-    return p ? parseFloat(p) : null
+    const p = Number(j.result?.list?.[0]?.lastPrice)
+    return Number.isFinite(p) && p > 0 ? p : null
   } catch {
     return null
   }
@@ -652,8 +336,7 @@ async function sendTelegram(coin: string, signal: string, quality: string, score
   const symbol = coin.replace(/USDT$/, '')
   const isBuy = signal === 'BUY'
   const emoji = isBuy ? '🟢' : '🔴'
-  const stop = isBuy ? price * 0.98 : price * 1.02
-  const target = isBuy ? price * 1.025 : price * 0.975
+  const { stop, target } = getTradeLevels(signal as 'BUY' | 'SELL', price)
   const time = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
   const whaleLine = whale.biggestUsd > 0
     ? `\n🐋 Whale: ${whale.biggestSide === 'BUY' ? 'Büyük ALIM' : 'Büyük SATIM'} — en büyük işlem ${fmtUsd(whale.biggestUsd)}\n━━━━━━━━━━━━━━`
@@ -712,6 +395,61 @@ ${win ? '🎯 Hedefe ulaştı' : '🛑 Stop oldu'} (${pct})
   }
 }
 
+async function loadFearGreed(supabase: any, errors: string[]): Promise<number | null> {
+  const maxAgeMs = 6 * 60 * 60 * 1000;
+  const { data: cached, error: cacheError } = await supabase
+    .from('market_sentiment')
+    .select('value, classification, source_timestamp, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (cacheError) errors.push(`fear-greed cache: ${cacheError.message}`);
+  const cachedValue = Number(cached?.value);
+  const cachedAt = cached?.updated_at ? new Date(cached.updated_at).getTime() : NaN;
+  if (
+    Number.isFinite(cachedValue) && cachedValue >= 0 && cachedValue <= 100 &&
+    Number.isFinite(cachedAt) && Date.now() - cachedAt >= 0 && Date.now() - cachedAt < maxAgeMs
+  ) {
+    return cachedValue;
+  }
+
+  try {
+    const response = await fetch('https://api.alternative.me/fng/?limit=1', {
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`alternative_me_http_${response.status}`);
+    const payload = await response.json() as {
+      data?: Array<{ value?: string; value_classification?: string; timestamp?: string }>;
+    };
+    const item = payload.data?.[0];
+    const value = Number(item?.value);
+    const classification = item?.value_classification;
+    const sourceTimestamp = Number(item?.timestamp);
+    if (
+      !Number.isFinite(value) || value < 0 || value > 100 ||
+      !classification || !Number.isFinite(sourceTimestamp) || sourceTimestamp <= 0
+    ) {
+      throw new Error('alternative_me_invalid_payload');
+    }
+
+    const row = {
+      value: Math.round(value),
+      classification,
+      source_timestamp: new Date(sourceTimestamp * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const { error: writeError } = await supabase
+      .from('market_sentiment')
+      .upsert(row, { onConflict: 'source_timestamp' });
+    if (writeError) errors.push(`fear-greed cache update: ${writeError.message}`);
+    return row.value;
+  } catch (error) {
+    errors.push(`fear-greed fetch: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
 // ============================================================
 // Ana cron mantığı
 // ============================================================
@@ -735,6 +473,7 @@ async function runCron() {
   const inserted: string[] = []
   const closed: string[] = []
   const errors: string[] = []
+  const fearGreed = await loadFearGreed(supabase, errors)
   const whaleLogged: string[] = []
   const whaleDiagnostics: Array<Record<string, unknown>> = []
   const exchangeCompared: string[] = []
@@ -744,7 +483,7 @@ async function runCron() {
     signal: 'BUY' | 'SELL'
     score: number
     quality: string
-    price: number
+    entryPrice: number
     whale: WhaleActivity
     components: Record<string, unknown>
     scoreBand: string
@@ -754,7 +493,9 @@ async function runCron() {
   for (const coin of COINS) {
     try {
       const klines = await fetchKlines(coin)
-      const a = await analyzeCoin(coin, klines)
+      const a = await analyzeCoin(coin, klines, fearGreed)
+      if (a.fundingError) errors.push(`${coin} funding: ${a.fundingError}`)
+      const bybitTickerPrice = await fetchTicker(coin)
       whaleDiagnostics.push({ coin, market: 'spot', status: a.whale.apiStatus, tradesScanned: a.whale.tradesScanned, qualifyingTrades: a.whale.qualifyingTrades, biggestUsd: a.whale.biggestUsd, error: a.whale.apiError })
 
       // Linear USDT perpetual trades are tracked separately; they do not affect Spot signal scoring.
@@ -775,21 +516,25 @@ async function runCron() {
         coin, v1: a.signal, v1Score: Math.round(a.score),
         v2: a.v2.direction, v2Score: a.v2.score, v2Bias: a.v2.bias,
         v2Quality: a.v2.quality, agreement: a.v2Agreement,
-        v2Coverage: a.v2.coverage, comparison: a.v2Comparison,
+        v2Coverage: a.v2.coverage, fundingRate: a.fundingRate, comparison: a.v2Comparison,
       })
 
-      // Bybit vs OKX fiyat karşılaştırması
-      try {
-        await sleep(150)
-        const okxPrice = await fetchOkxPrice(coin)
-        const diffPct = ((okxPrice - a.price) / a.price) * 100
-        const { error: exErr } = await supabase.from('exchange_prices').upsert({
-          coin, bybit_price: a.price, okx_price: okxPrice, diff_pct: diffPct, updated_at: new Date().toISOString(),
-        }, { onConflict: 'coin' })
-        if (exErr) errors.push(`${coin} exchange_prices: ${exErr.message}`)
-        else exchangeCompared.push(`${coin} diff ${diffPct.toFixed(3)}%`)
-      } catch (ee: any) {
-        errors.push(`${coin} okx: ${ee.message}`)
+      // Compare current tickers from both exchanges; do not mix a candle close with a live ticker.
+      if (bybitTickerPrice === null) {
+        errors.push(`${coin} Bybit ticker unavailable; exchange comparison and signal entry skipped`)
+      } else {
+        try {
+          await sleep(150)
+          const okxPrice = await fetchOkxPrice(coin)
+          const diffPct = ((okxPrice - bybitTickerPrice) / bybitTickerPrice) * 100
+          const { error: exErr } = await supabase.from('exchange_prices').upsert({
+            coin, bybit_price: bybitTickerPrice, okx_price: okxPrice, diff_pct: diffPct, updated_at: new Date().toISOString(),
+          }, { onConflict: 'coin' })
+          if (exErr) errors.push(`${coin} exchange_prices: ${exErr.message}`)
+          else exchangeCompared.push(`${coin} diff ${diffPct.toFixed(3)}%`)
+        } catch (ee: any) {
+          errors.push(`${coin} okx: ${ee.message}`)
+        }
       }
 
       if (a.whale.biggestUsd > 0 && a.whale.biggestSide && a.whale.biggestTradeId && a.whale.biggestTradeAt && a.whale.biggestTradePrice !== null) {
@@ -804,13 +549,13 @@ async function runCron() {
         else whaleLogged.push(`${coin} ${a.whale.biggestSide} ${Math.round(a.whale.biggestUsd)}`)
       }
 
-      if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= RECORD_THRESHOLD) {
+      if ((a.signal === 'BUY' || a.signal === 'SELL') && a.score >= RECORD_THRESHOLD && bybitTickerPrice !== null) {
         candidates.push({
           coin,
           signal: a.signal,
           score: Math.round(a.score),
           quality: a.quality,
-          price: a.price,
+          entryPrice: bybitTickerPrice,
           whale: a.whale,
           components: a.components,
           scoreBand: scoreBand(Math.round(a.score)),
@@ -833,8 +578,11 @@ async function runCron() {
         .gte('created_at', new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString())
         .limit(1)
       if (dup && dup.length > 0) continue
-      const tickerPrice = await fetchTicker(c.coin)
-      const entryPrice = tickerPrice ?? c.price
+      const entryPrice = c.entryPrice
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+        errors.push(`${c.coin} ticker unavailable or invalid; signal not recorded`)
+        continue
+      }
       const entrySnapshotAt = new Date().toISOString()
       const { error } = await supabase.from('kpk_signals').insert({
         coin: c.coin, signal: c.signal, score: c.score,

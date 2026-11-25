@@ -1,0 +1,25 @@
+name: Signal math verification
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/signal-math.ts"
+      - "supabase/functions/kpk-signals-cron/**"
+      - ".github/workflows/signal-math-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/signal-math.ts"
+      - "supabase/functions/kpk-signals-cron/**"
+      - ".github/workflows/signal-math-tests.yml"
+
+jobs:
+  deno-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check and run deterministic signal math tests
+        run: deno test --check supabase/functions/kpk-signals-cron/signal-math.test.ts
