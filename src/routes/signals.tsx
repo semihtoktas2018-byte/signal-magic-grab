@@ -1060,9 +1060,12 @@ function SignalTerminal() {
                 const res = resultLabel(s.result);
                 const cur = priceMap[s.coin];
                 const logo = getCoinLogo(s.coin);
-                let pnl: number | null = null;
-                if (cur && entry) {
-                  pnl = s.signal === "BUY" ? ((cur - entry) / entry) * 100 : ((entry - cur) / entry) * 100;
+                // Current market movement is meaningful only while a signal is open.
+                // Closed signals keep their historical outcome label; do not mix it with today's price.
+                const isPending = s.result === "bekliyor";
+                let liveMove: number | null = null;
+                if (isPending && cur && entry > 0) {
+                  liveMove = s.signal === "BUY" ? ((cur - entry) / entry) * 100 : ((entry - cur) / entry) * 100;
                 }
                 const det = details[s.id];
                 const isOpen = openId === s.id;
@@ -1091,9 +1094,10 @@ function SignalTerminal() {
                       </div>
                       <span className="score">{s.score}</span>
                       <div style={{ textAlign: "right" }}>
-                        {pnl != null && (
-                          <div className="pnl" style={{ color: pnl >= 0 ? "#22c55e" : "#ef4444" }}>
-                            {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
+                        {liveMove != null && (
+                          <div className="pnl" style={{ color: liveMove >= 0 ? "#22c55e" : "#ef4444" }}>
+                            <span className="lv-k" style={{ display: "block", marginBottom: 3 }}>{t("liveMove")}</span>
+                            {liveMove >= 0 ? "+" : ""}{liveMove.toFixed(2)}%
                           </div>
                         )}
                         <div className={res.cls}>{res.text}</div>

@@ -9,6 +9,7 @@ export const translations: Record<string, Record<LangCode, string>> = {
   pricing: { tr: "Fiyatlandırma", en: "Pricing", de: "Preise", fr: "Tarification", ar: "التسعير" },
   marketStatus: { tr: "Piyasa Durumu", en: "Market Status", de: "Marktstatus", fr: "État du marché", ar: "حالة السوق" },
   livePrice: { tr: "Canlı Fiyat / Fark", en: "Live Price / Change", de: "Live-Preis / Änderung", fr: "Prix en direct / Variation", ar: "السعر المباشر / التغيير" },
+  liveMove: { tr: "Açık sinyal anlık farkı", en: "Open signal live change", de: "Live-Änderung offener Signale", fr: "Variation en direct du signal ouvert", ar: "التغير المباشر للإشارة المفتوحة" },
   signals: { tr: "Sinyaller", en: "Signals", de: "Signale", fr: "Signaux", ar: "الإشارات" },
   all: { tr: "Hepsi", en: "All", de: "Alle", fr: "Tous", ar: "الكل" },
   open: { tr: "açık", en: "open", de: "offen", fr: "ouvert", ar: "مفتوح" },
