@@ -234,3 +234,38 @@ The seller's published application and version-15 backend show live data activit
 - Repository-wide ESLint is not clean; do not claim lint passed.
 - The Lovable editor preview retains a stale backend reference described in section 12. The published site and its live Supabase project are separate and must not be conflated.
 - The current performance snapshot is effectively near-flat on the fixed theoretical TP/SL model before trading costs. Keep the engine unchanged; do not enable V2 as a hard gate or retune thresholds from these samples.
+
+## 12. Live operational and performance audit — 2026-11-26 09:02 UTC
+
+Read-only verification against the seller Supabase project. No database rows, schema, secrets, cron settings, or Edge Function configuration were changed.
+
+### Current operating checks
+- The `kpk-signals-cron` job is active on the five-minute schedule (`*/5 * * * *`).
+- The latest 72 recorded HTTP invocations in the preceding 24 hours returned HTTP 2xx; none had a recorded failure.
+- The latest inspected invocation at 2026-11-26 09:00 UTC returned HTTP 200, `ok: true`, and an empty `errors` array. It inserted one real signal: `ETHUSDT BUY 77`.
+- At that same check, the price table contained all 9 tracked coins, with latest updates around 09:00 UTC.
+- `whale_events` contained 249 records. The latest inspected cron invocation reported all 18 Spot/Linear market checks (9 coins × 2 markets) with status `ok` and no API errors. A qualifying Linear trade had been logged in the 08:50 UTC run.
+- One signal was pending and it was newly created; no pending signal older than 48 hours was present.
+- RLS was enabled on all five public tables inspected. Public policies were SELECT-only for market/signal/branding data; branding writes were restricted to the active deployment admin helper. Cron writes are performed by the server-side function.
+
+### Rolling 30-day outcome snapshot
+Calculated from `kpk_signals` by `created_at` at the audit time:
+- 350 signals total: 156 `tuttu`, 170 `tutmadi`, 23 `suresi_doldu`, and 1 `bekliyor`.
+- 326 closed signals; hit rate 47.85%.
+- Gross theoretical EV: +0.1534% per closed signal using the configured +2.5% TP / -2.0% SL, before fees, spread, slippage, and execution effects.
+- BUY: 18 wins / 77 losses, 95 closed; hit rate 18.95%; 12 expired and 1 pending.
+- SELL: 138 wins / 93 losses, 231 closed; hit rate 59.74%; 11 expired.
+- Expired and pending signals are excluded from hit-rate and EV denominators.
+
+These are a timestamped historical snapshot of the seller environment, not a forecast, a guarantee, or evidence that BUY and SELL perform equally. BUY performance is materially weaker in this sample. Do not market the product as profitable or as an investment recommendation.
+
+### Publication and code verification
+- GitHub PR #52 (closed-signal live movement display) was merged into `main` as commit `bb33d517b62b2598d6b4b854d7b961c6c2d2d3f2`.
+- The production Build Check and Pages deployment workflows for that commit both completed successfully.
+- The linked Lovable project reports the same latest commit and remains published.
+- The Lovable AI agent final audit could not be started because the workspace reported that it was out of credits. No credits were purchased.
+
+### Remaining acceptance limitations
+- The Lovable Security view previously showed that a scan could not complete. This is not a clean security certification; the result must not be represented as one.
+- The live site was not browser-automated in this audit, so visual interaction checks for login, mobile layout, and each route still require a browser session.
+- This seller-environment check does not replace a buyer's separate Supabase setup, secret configuration, cron, Telegram, and acceptance tests.
