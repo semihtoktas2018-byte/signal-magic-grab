@@ -224,8 +224,8 @@ function MarketXRay() {
             </section>
             <div className="xray-status">
               Kaynak: Bybit V5 public API · Kategori: Linear · Son istemci kontrolü: {new Date(activeSnapshot.fetchedAt).toLocaleString("tr-TR")} · Otomatik yenileme: 60 saniye.
-              {activeSnapshot.oi[0]?.timestamp ? ` OI veri zamanı: ${formatTime(snapshot.oi[0].timestamp)}.` : ""}
-              {activeSnapshot.book?.ts ? ` Emir defteri zamanı: ${formatTime(snapshot.book.ts)}.` : ""}
+              {activeSnapshot.oi[0]?.timestamp ? ` OI veri zamanı: ${formatTime(activeSnapshot.oi[0].timestamp)}.` : ""}
+              {activeSnapshot.book?.ts ? ` Emir defteri zamanı: ${formatTime(activeSnapshot.book.ts)}.` : ""}
             </div>
             {activeSnapshot.errors.length > 0 ? <div className="xray-status xray-error">Bazı veriler eksik: {activeSnapshot.errors.join(" · ")}</div> : null}
           </>
