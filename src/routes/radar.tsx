@@ -79,7 +79,7 @@ function compact(value: number | null, digits = 2): string {
 }
 function money(value: number | null): string {
   if (value == null) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 }).format(value);
+  return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} USDT`;
 }
 function depthUsd(levels: BookLevel[] | undefined): number {
   return (levels ?? []).reduce((sum, level) => {
@@ -189,7 +189,7 @@ function MarketXRay() {
               </article>
               <article className="xray-card">
                 <div className="xray-label">Açık pozisyon (OI)</div>
-                <div className="xray-value">{oiLatest == null ? "—" : compact(oiLatest, 3)}</div>
+                <div className="xray-value">{oiLatest == null ? "—" : `${compact(oiLatest, 3)} ${symbol.replace("USDT", "")}`}</div>
                 <div className={oiChange == null ? "xray-sub" : oiChange >= 0 ? "xray-positive xray-sub" : "xray-negative xray-sub"}>{oiChange == null ? "5 dk karşılaştırması yok" : `${oiChange >= 0 ? "+" : ""}${compact(oiChange, 2)}% · önceki 5 dk ölçümüne göre`}</div>
               </article>
               <article className="xray-card">
