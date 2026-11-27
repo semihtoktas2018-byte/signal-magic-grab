@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SignalsRouteImport } from './routes/signals'
 import { Route as WhaleRouteImport } from './routes/whale'
+import { Route as RadarRouteImport } from './routes/radar'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const WhaleRoute = WhaleRouteImport.update({
   path: '/whale',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RadarRoute = RadarRouteImport.update({
+  id: '/radar',
+  path: '/radar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/performance': typeof PerformanceRoute
   '/signals': typeof SignalsRoute
   '/whale': typeof WhaleRoute
+  '/radar': typeof RadarRoute
   '/admin/users': typeof AdminUsersRoute
 }
 export interface FileRoutesByTo {
@@ -100,6 +107,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/signals'
     | '/whale'
+    | '/radar'
     | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,6 +139,7 @@ export interface RootRouteChildren {
   PerformanceRoute: typeof PerformanceRoute
   SignalsRoute: typeof SignalsRoute
   WhaleRoute: typeof WhaleRoute
+  RadarRoute: typeof RadarRoute
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
@@ -185,6 +194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WhaleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/radar': {
+      id: '/radar'
+      path: '/radar'
+      fullPath: '/radar'
+      preLoaderRoute: typeof RadarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -203,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerformanceRoute: PerformanceRoute,
   SignalsRoute: SignalsRoute,
   WhaleRoute: WhaleRoute,
+  RadarRoute: RadarRoute,
   AdminUsersRoute: AdminUsersRoute,
 }
 export const routeTree = rootRouteImport
