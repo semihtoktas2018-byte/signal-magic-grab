@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/radar")({
   head: () => ({
@@ -35,7 +35,7 @@ interface MarketSnapshot {
 }
 
 async function bybit<T>(path: string): Promise<ApiEnvelope<T>> {
-  const response = await fetch(`https://api.bybit.com${path}`, { cache: "no-store" });
+  const response = await fetch(`https://api.bybit.tr${path}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const body = (await response.json()) as ApiEnvelope<T>;
   if (body.retCode !== 0) throw new Error(body.retMsg || `Bybit retCode ${body.retCode}`);
@@ -100,20 +100,25 @@ function MarketXRay() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   const refresh = useCallback(async (selected: SymbolCode, initial = false) => {
+    const currentRequest = ++requestId.current;
     if (initial) setLoading(true);
     else setRefreshing(true);
     setLastError(null);
     try {
       const data = await loadSnapshot(selected);
+      if (currentRequest !== requestId.current) return;
       setSnapshot(data);
       if (data.errors.length === 4) setLastError("Bybit verileri alınamadı. Biraz sonra tekrar deneyin.");
     } catch (error) {
-      setLastError(error instanceof Error ? error.message : "Veri alınamadı.");
+      if (currentRequest === requestId.current) setLastError(error instanceof Error ? error.message : "Veri alınamadı.");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -125,20 +130,21 @@ function MarketXRay() {
     return () => window.clearInterval(timer);
   }, [symbol, refresh]);
 
-  const ticker = snapshot?.ticker;
-  const oiLatest = numberOrNull(snapshot?.oi[0]?.openInterest);
-  const oiPrevious = numberOrNull(snapshot?.oi[1]?.openInterest);
+  const activeSnapshot = snapshot?.symbol === symbol ? snapshot : null;
+  const ticker = activeSnapshot?.ticker;
+  const oiLatest = numberOrNull(activeSnapshot?.oi[0]?.openInterest);
+  const oiPrevious = numberOrNull(activeSnapshot?.oi[1]?.openInterest);
   const oiChange = oiLatest != null && oiPrevious != null && oiPrevious !== 0
     ? ((oiLatest - oiPrevious) / oiPrevious) * 100
     : null;
-  const buyRatio = numberOrNull(snapshot?.ratio?.buyRatio);
-  const sellRatio = numberOrNull(snapshot?.ratio?.sellRatio);
+  const buyRatio = numberOrNull(activeSnapshot?.ratio?.buyRatio);
+  const sellRatio = numberOrNull(activeSnapshot?.ratio?.sellRatio);
   const longShare = buyRatio != null && sellRatio != null && buyRatio + sellRatio > 0
     ? (buyRatio / (buyRatio + sellRatio)) * 100
     : null;
   const shortShare = longShare == null ? null : 100 - longShare;
-  const bidsUsd = depthUsd(snapshot?.book?.b);
-  const asksUsd = depthUsd(snapshot?.book?.a);
+  const bidsUsd = depthUsd(activeSnapshot?.book?.b);
+  const asksUsd = depthUsd(activeSnapshot?.book?.a);
   const totalDepth = bidsUsd + asksUsd;
   const bidShare = totalDepth > 0 ? (bidsUsd / totalDepth) * 100 : null;
   const funding = numberOrNull(ticker?.fundingRate);
@@ -179,7 +185,7 @@ function MarketXRay() {
 
         {loading ? <div className="xray-status">Bybit piyasa verileri yükleniyor…</div> : null}
         {lastError ? <div className="xray-status xray-error">{lastError}</div> : null}
-        {snapshot ? (
+        {activeSnapshot ? (
           <>
             <section className="xray-grid" aria-label="Piyasa göstergeleri">
               <article className="xray-card">
@@ -217,11 +223,11 @@ function MarketXRay() {
               </div>
             </section>
             <div className="xray-status">
-              Kaynak: Bybit V5 public API · Kategori: Linear · Son istemci kontrolü: {new Date(snapshot.fetchedAt).toLocaleString("tr-TR")} · Otomatik yenileme: 60 saniye.
-              {snapshot.oi[0]?.timestamp ? ` OI veri zamanı: ${formatTime(snapshot.oi[0].timestamp)}.` : ""}
-              {snapshot.book?.ts ? ` Emir defteri zamanı: ${formatTime(snapshot.book.ts)}.` : ""}
+              Kaynak: Bybit V5 public API · Kategori: Linear · Son istemci kontrolü: {new Date(activeSnapshot.fetchedAt).toLocaleString("tr-TR")} · Otomatik yenileme: 60 saniye.
+              {activeSnapshot.oi[0]?.timestamp ? ` OI veri zamanı: ${formatTime(snapshot.oi[0].timestamp)}.` : ""}
+              {activeSnapshot.book?.ts ? ` Emir defteri zamanı: ${formatTime(snapshot.book.ts)}.` : ""}
             </div>
-            {snapshot.errors.length > 0 ? <div className="xray-status xray-error">Bazı veriler eksik: {snapshot.errors.join(" · ")}</div> : null}
+            {activeSnapshot.errors.length > 0 ? <div className="xray-status xray-error">Bazı veriler eksik: {activeSnapshot.errors.join(" · ")}</div> : null}
           </>
         ) : null}
 
