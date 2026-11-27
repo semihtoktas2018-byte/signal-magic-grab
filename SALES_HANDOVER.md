@@ -269,3 +269,28 @@ These are a timestamped historical snapshot of the seller environment, not a for
 - The Lovable Security view previously showed that a scan could not complete. This is not a clean security certification; the result must not be represented as one.
 - The live site was not browser-automated in this audit, so visual interaction checks for login, mobile layout, and each route still require a browser session.
 - This seller-environment check does not replace a buyer's separate Supabase setup, secret configuration, cron, Telegram, and acceptance tests.
+
+
+## 14. Güncel satıcı ortamı denetimi — 2026-11-28
+
+Salt-okunur Supabase ve Lovable incelemesi:
+
+- Mevcut Lovable proje commit'i: `1e99200485f6d0a00ae6d378914f68189e49ea8f`. Proje durumu `ready`, yayın bayrağı `is_published=true`; bu bayrak tek başına son commit'in canlı URL'de başarıyla açıldığını kanıtlamaz.
+- Kaynakta `/radar` (Piyasa Röntgeni) rotası, route ağacı ve ana sayfa navigasyonu bulunuyor. Bu denetimde canlı sayfa tarayıcıyla açılamadığı için son üretim yayını görsel/etkileşimli olarak kabul edilmedi.
+- Satıcı Supabase tabloları: 418 sinyal, 368 whale olayı, 9 borsa fiyatı, 14 market sentiment kaydı ve 1 marka ayarı.
+- `kpk-signals-cron` görevi etkin ve beş dakikada bir çalışacak şekilde kayıtlı. 2026-11-27 23:10 UTC tarihli son incelenen fonksiyon çağrısı HTTP 200 ve `errors: []` döndürdü; o çalıştırmada 9 coin × Spot/Linear veri istekleri başarılıydı.
+- Son görülen kayıt zamanları: sinyal 2026-11-27 22:15 UTC, whale olayı 22:55 UTC, borsa fiyatları 23:10 UTC, sentiment güncellemesi 18:30 UTC. Bu değerler denetim anının zaman damgalarıdır.
+- Tüm beş public uygulama tablosunda RLS etkin. Okuma politikaları piyasa/sinyal verilerini herkese açık SELECT olarak sunuyor; marka yazma/silme politikaları sunucu tarafından belirlenen aktif kurulum admin kontrolünü kullanıyor.
+- Security Advisor uyarıları: leaked-password protection kapalı; `pg_net` uzantısı `public` şemasında. Performance Advisor bir kullanılmayan whale index uyarısı verdi. Bu denetimde hiçbir güvenlik ayarı, indeks, tablo, veri veya fonksiyon değiştirilmedi.
+
+### Güncel sinyal kayıt özeti (tüm mevcut tablo kayıtları)
+- 418 toplam kayıt: 181 `tuttu`, 199 `tutmadi`, 33 `suresi_doldu`, 5 `bekliyor`.
+- `tuttu` ve `tutmadi` kayıtları üzerinden teorik kapanmış sinyal oranı 181/380 = %47,63. BUY: 23/106 = %21,70; SELL: 158/274 = %57,66.
+- Sabit +%2,5 TP / −%2 SL varsayımıyla brüt teorik EV yaklaşık +%0,143 / kapanmış sinyal; komisyon, spread, kayma, fonlama ve gerçek emir gerçekleşmesi hariçtir.
+- Bu tablo tüm mevcut satıcı ortamı kayıtlarının toplamıdır; belirli bir dönem backtest'i, bağımsız denetim veya gerçekleşmiş işlem getirisi değildir. Satış materyalinde kârlılık iddiası olarak kullanılmamalıdır.
+
+### Ticari ürün sınırı
+- Mevcut kodda ödeme/checkout veya Stripe entegrasyonu, abonelik yenileme, lisans anahtarı, süreli aktivasyon ya da merkezi lisans sunucusu bulunmuyor.
+- Kullanıcı yönetimi ekranı davet ve erişim kontrolü sağlar; abonelik/lisans yönetimi sağlamaz.
+- Bu nedenle mevcut teslim modeli, otomatik abonelik SaaS'ı değil; alıcıya özel Supabase/hosting kurulumu ve yazılı lisans/devir kapsamıyla sunulan white-label yazılım paketidir.
+- Canlı tarayıcı kabul testi, alıcıya özel temiz kurulum, gizli değişken/Edge Function/cron yapılandırması ve ticari lisans koşulları tamamlanmadan anahtar teslim üretim sistemi denmemelidir.
