@@ -19,7 +19,7 @@ KELTOŞ; kripto varlık piyasalarını, teknik gösterge tabanlı sinyal kayıtl
 - Marka ayarları ve yönetici ekranları
 - Ayrı özellik dalında geliştirilen Piyasa Röntgeni: fonlama, açık pozisyon, long/short hesap oranı ve emir defteri görünümü
 
-Modülün kaynak kodda bulunması, alıcı altyapısında kurulduğu veya canlı çalıştığı anlamına gelmez. Piyasa Röntgeni şu anda PR #53 içindeki ayrı geliştirme dalındadır; ana dala birleştirilmiş veya canlı sitede yayımlanmış değildir.
+Modülün kaynak kodda bulunması, alıcı altyapısında kurulduğu veya canlı çalıştığı anlamına gelmez. Piyasa Röntgeni `src/routes/radar.tsx` içinde bulunur; `/radar` rotası üretilmiş route ağacına ve ana sayfa navigasyonuna eklenmiştir. Lovable projesinin 2026-11-27 tarihli son commit'i `1e99200485f6d0a00ae6d378914f68189e49ea8f` bu rotayı kaydeder. Yayın durumu platformda `is_published=true` görünür; ancak bu denetimde canlı `/radar` sayfası tarayıcıyla doğrulanamadığından, son commit'in üretim URL'sinde başarıyla servis edildiği iddia edilmez.
 
 ## Teknik yapı
 
@@ -88,3 +88,23 @@ Aşağıdaki maddeler alıcıyla yazılı olarak kararlaştırılmalıdır:
 - Üçüncü taraf paket ve servis lisanslarına uyum
 
 Bu belgede fiyat, garanti, münhasır hak veya destek taahhüdü verilmemektedir.
+
+
+## 2026-11-28 — Güncel satış hazırlığı denetimi
+
+### Satıcı ortamı — salt okunur doğrulama
+- Supabase projesi `gmwlkkebwpenocatlmty` erişilebilir; beş uygulama tablosunda RLS etkin.
+- Tablolardaki mevcut satır sayıları: `kpk_signals` 418, `whale_events` 368, `exchange_prices` 9, `market_sentiment` 14, `app_branding` 1.
+- `kpk-signals-cron` görevi `*/5 * * * *` takviminde etkin. 2026-11-27 23:10 UTC tarihli son incelenen cron çağrısı HTTP 200 ve `errors: []` döndürdü; incelenen 9 coin için Spot ve Linear tarama yanıtları başarılıydı.
+- Son gözlenen güncelleme zamanları: sinyal 2026-11-27 22:15 UTC, Whale olayı 22:55 UTC, borsa karşılaştırması 23:10 UTC, sentiment tablosu 18:30 UTC. Bunlar denetim anındaki zaman damgalarıdır; kesintisiz hizmet garantisi değildir.
+- Bu doğrulama mevcut satıcı ortamına aittir; alıcı için temiz kurulum kabul testi yerine geçmez.
+
+### Satış modeli ve eksikler
+- Mevcut arayüzde self-servis ödeme/checkout, Stripe entegrasyonu, abonelik yenileme, lisans anahtarı, süreli aktivasyon veya merkezi lisans sunucusu bulunmaz.
+- `/admin/users` ekranı kullanıcı daveti ve erişim kapatma/açma sağlar; lisans/abonelik yönetimi sağlamaz.
+- Bu nedenle mevcut ürün, bugün için otomatik aylık abonelik SaaS'ı olarak değil, alıcıya özel Supabase kurulumu ve yazılı lisans/devir kapsamıyla sunulan white-label yazılım paketi olarak konumlandırılmalıdır.
+- Canlı siteye son commit'in yansıması, tarayıcıda giriş ve sayfa testleri, alıcıya özel kurulum, güvenlik uyarılarının ele alınması ve ticari lisans koşulları henüz tamamlanmış kabul edilmez.
+- Supabase Security Advisor denetiminde sızdırılmış parola korumasının kapalı olduğu ve `pg_net` uzantısının `public` şemasında bulunduğu uyarıları görüldü. Bunlar alıcıya teslim öncesi değerlendirilmelidir; bu denetimde ayar veya şema değiştirilmedi.
+
+### Satışta kullanılabilecek sınır
+Ürün, gerçek piyasa kaynaklarına bağlanan piyasa izleme ve teorik sinyal geçmişi yazılımı olarak gösterilebilir. Kârlılık, yatırım başarısı, kesintisiz çalışma, hazır abonelik sistemi veya tek tıkla alıcı kurulumu iddiası kullanılmamalıdır. Alıcı kurulumu ve kabul testleri tamamlanmadan “anahtar teslim üretim sistemi” olarak tanıtılmamalıdır.
