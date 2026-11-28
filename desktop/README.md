@@ -20,7 +20,7 @@ Paketlenmiş sürüm varsayılan olarak `app-config.json` içindeki Market Analy
 
 ## Windows kurulum dosyası
 
-GitHub deposunda Actions → **Windows Desktop Installer** → Run workflow adımlarını izleyin. `web_url` alanı varsayılan olarak üretim adresini getirir. Paketleme başlamadan önce iş akışı adresin HTTPS olduğunu ve HTTP 200 ile HTML döndürdüğünü doğrular. Doğrulama başarısızsa kurulum dosyası üretilmez. İş tamamlandığında Actions artifact bölümünden `KELTOS-Setup-1.0.0-x64.exe` dosyasını alın.
+GitHub deposunda Actions → **Windows Desktop Installer** → Run workflow adımlarını izleyin. `web_url` alanı varsayılan olarak üretim adresini getirir. Paketleme başlamadan önce iş akışı adresin HTTPS olduğunu ve HTTP 200 ile HTML döndürdüğünü doğrular. Doğrulama başarısızsa kurulum dosyası üretilmez. İş tamamlandığında Actions artifact bölümünden `Market-Analysis-Terminal-Setup-1.0.0-x64.exe` dosyasını alın.
 
 ## Çalışma sınırları
 
