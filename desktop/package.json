@@ -2,7 +2,7 @@
   "name": "keltos-windows-client",
   "version": "1.0.0",
   "private": true,
-  "description": "Market Analysis Terminal Windows desktop client for the hosted web application",
+  "description": "KELTOŞ Windows masaüstü istemcisi",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "com.keltos.desktop",
-    "productName": "Market Analysis Terminal",
+    "productName": "KELTOŞ",
     "directories": {
       "output": "dist"
     },
@@ -33,7 +33,7 @@
           "arch": ["x64"]
         }
       ],
-      "artifactName": "Market-Analysis-Terminal-Setup-${version}-${arch}.${ext}"
+      "artifactName": "KELTOS-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
