@@ -29,7 +29,7 @@ function readConfiguredUrl() {
 function validateWebUrl(value) {
   const parsed = new URL(String(value).trim());
   if (parsed.protocol !== "https:") {
-    throw new Error("KELTOŞ bağlantısı HTTPS olmalıdır.");
+    throw new Error("Market Analysis Terminal bağlantısı HTTPS olmalıdır.");
   }
   if (parsed.username || parsed.password) {
     throw new Error("Bağlantı adresinde kullanıcı adı veya parola bulunamaz.");
@@ -64,7 +64,7 @@ function createMainWindow(url) {
     minWidth: 1024,
     minHeight: 700,
     show: false,
-    title: "KELTOŞ",
+    title: "Market Analysis Terminal",
     backgroundColor: "#080d18",
     webPreferences: {
       contextIsolation: true,
@@ -94,7 +94,7 @@ function createSetupWindow() {
     minWidth: 480,
     minHeight: 460,
     resizable: false,
-    title: "KELTOŞ bağlantı ayarları",
+    title: "Market Analysis Terminal bağlantı ayarları",
     backgroundColor: "#080d18",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -125,7 +125,7 @@ ipcMain.handle("keltos:save-web-url", (_event, rawUrl) => {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
-      label: "KELTOŞ",
+      label: "Market Analysis Terminal",
       submenu: [
         { label: "Bağlantı ayarları", click: createSetupWindow },
         { type: "separator" },
